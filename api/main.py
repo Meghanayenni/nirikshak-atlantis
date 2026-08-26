@@ -12,8 +12,9 @@ from fastapi import FastAPI
 
 from api.config import settings
 from api.db.connection import connect
-from api.db.migrate import current_version, migrate
+from api.db.migrate import AUDIT_MIGRATIONS, OPERATIONAL_MIGRATIONS, current_version, migrate
 from api.routers import audit as audit_router
+from api.routers import ingest as ingest_router
 
 
 @asynccontextmanager
@@ -25,11 +26,21 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     that disagrees with its own history would undermine every hash the audit
     chain contains, so failing loudly here is the correct behaviour.
     """
-    conn = connect(settings.db_path)
-    try:
-        migrate(conn)
-    finally:
-        conn.close()
+    # Two databases (decision D4): the operational store holds configuration
+    # content, the audit chain holds identifiers and hashes. Keeping them apart
+    # makes "no configuration content in the audit database" checkable by
+    # opening the file rather than by trusting payload discipline.
+    settings.blob_root.mkdir(parents=True, exist_ok=True)
+
+    for path, migrations in (
+        (settings.db_path, OPERATIONAL_MIGRATIONS),
+        (settings.audit_db_path, AUDIT_MIGRATIONS),
+    ):
+        conn = connect(path)
+        try:
+            migrate(conn, migrations)
+        finally:
+            conn.close()
     yield
 
 
@@ -44,22 +55,26 @@ app = FastAPI(
 )
 
 app.include_router(audit_router.router)
+app.include_router(ingest_router.router)
 
 
 @app.get("/health")
 def health() -> dict[str, object]:
     """Liveness check, and a readout of the safety-relevant settings."""
-    conn = connect(settings.db_path)
-    try:
-        schema_version = current_version(conn)
-    finally:
-        conn.close()
+    versions = {}
+    for name, path in (("operational", settings.db_path), ("audit", settings.audit_db_path)):
+        conn = connect(path)
+        try:
+            versions[name] = current_version(conn)
+        finally:
+            conn.close()
 
     return {
         "status": "ok",
         "version": "0.1.0",
-        "phase": "P2",
-        "schema_version": schema_version,
+        "phase": "P3",
+        "schema_version": versions["audit"],
+        "schema_versions": versions,
         "airgap": settings.airgap,
         "confidence_threshold": settings.confidence_threshold,
     }

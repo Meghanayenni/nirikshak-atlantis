@@ -20,6 +20,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     keeps the suite from creating a database in the repository root.
     """
     monkeypatch.setattr(settings, "db_path", tmp_path / "nirikshak.db")
+    monkeypatch.setattr(settings, "audit_db_path", tmp_path / "nirikshak-audit.db")
+    monkeypatch.setattr(settings, "blob_root", tmp_path / "uploads")
     with TestClient(app) as test_client:
         yield test_client
 
@@ -31,7 +33,7 @@ def test_health_returns_ok(client: TestClient) -> None:
 
     body = response.json()
     assert body["status"] == "ok"
-    assert body["phase"] == "P2"
+    assert body["phase"] == "P3"
 
     # Rule 3 — the abstention threshold must be present and be a real
     # probability, not a placeholder.

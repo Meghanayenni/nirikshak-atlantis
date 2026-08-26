@@ -331,6 +331,13 @@ class ActorType(StrEnum):
 
 class AuditAction(StrEnum):
     FILE_INGESTED = "file_ingested"
+    FILE_REJECTED = "file_rejected"
+    """An upload was refused — binary, malformed, oversized or empty.
+
+    Separate from FILE_INGESTED on purpose (decision D5): recording a refusal
+    as an ingestion would misdescribe what happened, and an attempted upload of
+    an unreadable file is itself worth keeping.
+    """
     AUDIT_RUN = "audit_run"
     AI_SUGGESTED = "ai_suggested"
     ADMIN_CONFIRMED = "admin_confirmed"

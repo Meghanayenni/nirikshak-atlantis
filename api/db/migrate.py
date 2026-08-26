@@ -20,7 +20,19 @@ from pathlib import Path
 
 from api.db.connection import immediate_transaction, table_exists
 
-MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
+MIGRATIONS_ROOT = Path(__file__).resolve().parent / "migrations"
+
+AUDIT_MIGRATIONS = MIGRATIONS_ROOT / "audit"
+"""Schema for nirikshak-audit.db — the hash chain and nothing else."""
+
+OPERATIONAL_MIGRATIONS = MIGRATIONS_ROOT / "operational"
+"""Schema for nirikshak.db — ingested files, lines, devices.
+
+Decision D4 keeps these apart so "the audit database contains no configuration
+content" is provable by opening the file, rather than resting on payload
+discipline. The directory is a required argument everywhere below: a default
+that silently meant one of two databases would be a latent bug.
+"""
 FILENAME_RE = re.compile(r"^(\d{4})_([A-Za-z0-9_\-]+)\.sql$")
 
 
@@ -64,7 +76,7 @@ def split_statements(script: str) -> list[str]:
     return statements
 
 
-def discover(directory: Path = MIGRATIONS_DIR) -> list[Migration]:
+def discover(directory: Path) -> list[Migration]:
     """Read every migration file, ordered by version."""
     found: list[Migration] = []
     for path in sorted(directory.glob("*.sql")):
@@ -99,7 +111,7 @@ def applied_migrations(conn: sqlite3.Connection) -> dict[int, tuple[str, str]]:
     return {row["version"]: (row["name"], row["checksum"]) for row in rows}
 
 
-def verify_applied(conn: sqlite3.Connection, directory: Path = MIGRATIONS_DIR) -> None:
+def verify_applied(conn: sqlite3.Connection, directory: Path) -> None:
     """Confirm no already-applied migration file has been edited since.
 
     Silent schema drift beneath an integrity mechanism is worse than refusing to
@@ -122,7 +134,7 @@ def verify_applied(conn: sqlite3.Connection, directory: Path = MIGRATIONS_DIR) -
             )
 
 
-def migrate(conn: sqlite3.Connection, directory: Path = MIGRATIONS_DIR) -> list[Migration]:
+def migrate(conn: sqlite3.Connection, directory: Path) -> list[Migration]:
     """Apply every unapplied migration in order. Returns those applied now."""
     verify_applied(conn, directory)
 

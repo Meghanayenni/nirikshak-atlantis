@@ -23,7 +23,9 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 def get_conn() -> Any:
     from api.config import settings
 
-    conn = connect(settings.db_path)
+    # The chain lives in its own database (decision D4), separate from the
+    # operational store that holds configuration content.
+    conn = connect(settings.audit_db_path)
     try:
         if not table_exists(conn, "audit_log"):
             raise HTTPException(status_code=503, detail="audit log is not initialised")

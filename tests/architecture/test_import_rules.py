@@ -29,6 +29,10 @@ FORBIDDEN_EDGES: list[tuple[str, str, str]] = [
     ("audit", "comply", "the audit layer records events; it does not judge them"),
     ("audit", "learn", "the audit layer must not depend on the suggestion layer"),
     ("audit", "parse", "the audit layer must not depend on vendor syntax"),
+    ("ingest", "comply", "ingestion identifies files; it does not judge them"),
+    ("ingest", "normalise", "ingestion does not build the canonical model"),
+    ("ingest", "learn", "vendor identity is decided by data, never by a model"),
+    ("ingest", "remediate", "ingestion has nothing to do with remediation"),
 ]
 
 

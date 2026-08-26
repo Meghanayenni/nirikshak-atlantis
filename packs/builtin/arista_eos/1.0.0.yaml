@@ -1,0 +1,37 @@
+# NIRIKSHAK vendor pack — arista eos
+#
+# P3 ships this as a DETECTION-ONLY pack: `detect` and `identity` are populated,
+# `patterns` is empty. That is an honest state rather than a placeholder — the
+# platform is recognised and device identity is read, while every canonical
+# security field stays UNKNOWN because nothing here claims to parse one yet.
+#
+# P4 adds parsing patterns as a new pack version.
+#
+# Patterns use single-quoted YAML scalars: double quotes would process
+# backslashes as escapes and mangle every regex.
+
+vendor: arista
+os_family: eos
+pack_version: 1.0.0
+status: active
+created_by: team-atlantis
+checksum: sha256:308e69078ab9f2def898c2098486c25b444a82b4f6f10de66b04cb00ee8a2aa3
+
+detect:
+  - { type: regex, pattern: '^! device: \S+ \(', weight: 0.35 }
+  - { type: regex, pattern: '^transceiver qsfp default-mode ', weight: 0.3 }
+  - { type: regex, pattern: '^management api http-commands', weight: 0.25 }
+  - { type: regex, pattern: '^interface Ethernet\d', weight: 0.2 }
+  - { type: regex, pattern: '^line vty \d+', weight: 0.05 }
+
+identity:
+  - field: hostname
+    match:   { type: regex, pattern: '^hostname (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['hostname sw-leaf-01']
+  - field: os_version
+    match:   { type: regex, pattern: '^! device: \S+ \([^,]+, EOS-(\S+)\)' }
+    capture: { value: '$1', cast: str }
+    examples: ['! device: sw-leaf-01 (DCS-7050, EOS-4.29.2F)']
+
+patterns: []

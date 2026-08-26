@@ -9,6 +9,7 @@ import pytest
 
 from api.db.connection import connect, table_exists, trigger_exists
 from api.db.migrate import (
+    AUDIT_MIGRATIONS,
     MigrationError,
     applied_migrations,
     current_version,
@@ -20,7 +21,7 @@ from api.db.migrate import (
 
 
 def test_discovers_the_initial_migration() -> None:
-    found = discover()
+    found = discover(AUDIT_MIGRATIONS)
     assert found, "no migrations discovered"
     assert found[0].version == 1
     assert found[0].name == "initial"
@@ -29,7 +30,7 @@ def test_discovers_the_initial_migration() -> None:
 
 def test_statement_splitter_keeps_trigger_bodies_intact() -> None:
     """Splitting on ';' would cut a trigger in half; complete_statement does not."""
-    sql = discover()[0].sql
+    sql = discover(AUDIT_MIGRATIONS)[0].sql
     statements = split_statements(sql)
 
     triggers = [s for s in statements if s.upper().startswith("CREATE TRIGGER")]
@@ -41,7 +42,7 @@ def test_statement_splitter_keeps_trigger_bodies_intact() -> None:
 
 def test_migrate_creates_the_full_schema(tmp_path: Path) -> None:
     conn = connect(tmp_path / "a.db")
-    applied = migrate(conn)
+    applied = migrate(conn, AUDIT_MIGRATIONS)
 
     assert [m.version for m in applied] == [1]
     for table in ("schema_migrations", "audit_log", "audit_chain_head"):
@@ -53,33 +54,33 @@ def test_migrate_creates_the_full_schema(tmp_path: Path) -> None:
 
 def test_migrate_is_idempotent(tmp_path: Path) -> None:
     conn = connect(tmp_path / "a.db")
-    migrate(conn)
-    assert migrate(conn) == [], "re-running applied a migration twice"
+    migrate(conn, AUDIT_MIGRATIONS)
+    assert migrate(conn, AUDIT_MIGRATIONS) == [], "re-running applied a migration twice"
     assert len(applied_migrations(conn)) == 1
 
 
 def test_edited_applied_migration_refuses_to_proceed(tmp_path: Path) -> None:
     """Silent schema drift beneath an integrity mechanism is worse than downtime."""
     conn = connect(tmp_path / "a.db")
-    migrate(conn)
+    migrate(conn, AUDIT_MIGRATIONS)
 
     conn.execute("UPDATE schema_migrations SET checksum = ? WHERE version = 1", ("f" * 64,))
 
     with pytest.raises(MigrationError, match="has changed since it was applied"):
-        verify_applied(conn)
+        verify_applied(conn, AUDIT_MIGRATIONS)
     with pytest.raises(MigrationError, match="has changed since it was applied"):
-        migrate(conn)
+        migrate(conn, AUDIT_MIGRATIONS)
 
 
 def test_missing_migration_file_is_reported(tmp_path: Path) -> None:
     conn = connect(tmp_path / "a.db")
-    migrate(conn)
+    migrate(conn, AUDIT_MIGRATIONS)
     conn.execute(
         "INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (?,?,?,?)",
         (99, "ghost", "a" * 64, "2026-01-01T00:00:00Z"),
     )
     with pytest.raises(MigrationError, match="file is missing"):
-        verify_applied(conn)
+        verify_applied(conn, AUDIT_MIGRATIONS)
 
 
 def test_failed_migration_rolls_back_whole(tmp_path: Path) -> None:

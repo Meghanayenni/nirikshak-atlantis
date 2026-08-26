@@ -1,0 +1,174 @@
+# NIRIKSHAK corpus manifest — decision R9
+#
+# Every file under corpus/ must appear here with a matching checksum, or
+# tests/integration/test_corpus_policy.py fails. The manifest is what makes the
+# train/evaluation separation mechanical rather than remembered.
+#
+# PROVENANCE HONESTY
+# ------------------
+# Every configuration here is SYNTHETIC: written by the team to be realistic,
+# not captured from a real network. No file in this corpus is real-world
+# configuration data and none may be represented as such. The P9 evaluation
+# report must state this, and must not claim universal vendor coverage on the
+# strength of eleven hand-written files.
+#
+# SPLITS
+# ------
+#   dev      configurations vendor packs are authored from
+#   eval     hand-labelled; NEVER opened while authoring patterns
+#   holdout  PAN-OS — no pack, no seed example, no development label, until the
+#            generalisation experiment at P9/P10
+#
+# SANITISATION
+# ------------
+# RFC 5737 (192.0.2.0/24, 198.51.100.0/24) and RFC 1918 addressing only.
+# Invented hostnames under the reserved .example domain. No credentials in any
+# form — including hashed ones, since a type-7 or MD5 hash is crackable and a
+# file containing one is not sanitised.
+
+held_out_vendor: paloalto
+
+files:
+  - path: arista/dev/sw-leaf-01.cfg
+    split: dev
+    vendor: arista
+    os_family: eos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public vendor documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: false
+    sha256: 7f3509b7405b1d41f7f539d560159d9cd306f03f095da3f193c938ed0f349fec
+    added: 2026-08-27
+  - path: arista/dev/sw-spine-01.cfg
+    split: dev
+    vendor: arista
+    os_family: eos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public vendor documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: false
+    sha256: 5e2babefdd87b421f42bd0893b0d959219ec996a882276ae49081d06c2d3e938
+    added: 2026-08-27
+  - path: arista/eval/sw-leaf-07.cfg
+    split: eval
+    vendor: arista
+    os_family: eos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public vendor documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: true
+    sha256: a2740a777062e8e87a6b161ccd52ab5a29c99927e32c0b77a9d6e582af0bed0d
+    added: 2026-08-27
+  - path: cisco/dev/rtr-core-01.cfg
+    split: dev
+    vendor: cisco
+    os_family: ios
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public vendor documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: false
+    sha256: c0f08477bb6ad93bf0da05c4269b87c38c815ecf1d492fadd28ce38af2601fb1
+    added: 2026-08-27
+  - path: cisco/dev/sw-access-02.cfg
+    split: dev
+    vendor: cisco
+    os_family: ios
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public vendor documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: false
+    sha256: 478c6d98a5778879aa87c9ce92fb66a27dc04cf12ca780f1868e53ae2a3850ff
+    added: 2026-08-27
+  - path: cisco/eval/rtr-edge-09.cfg
+    split: eval
+    vendor: cisco
+    os_family: ios
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public vendor documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: true
+    sha256: 7cc8347c6914212c09ed4d922313fb95eb6ce4c7530e4f6c7c7ff53c22f5aa00
+    added: 2026-08-27
+  - path: holdout/panos/fw-dmz-02.xml
+    split: holdout
+    vendor: paloalto
+    os_family: panos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public vendor documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: true
+    sha256: ad6b31b375f3ef573e42fe602bca38d835cbafff85048d5ff8bbba602c332e65
+    added: 2026-08-27
+  - path: holdout/panos/fw-perimeter-01.xml
+    split: holdout
+    vendor: paloalto
+    os_family: panos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public vendor documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: true
+    sha256: 8fbbe56fd35fb670011ded3d500ebbae562df3f5e27be67206e8dd4085114f9a
+    added: 2026-08-27
+  - path: juniper/dev/srx-branch-04.conf
+    split: dev
+    vendor: juniper
+    os_family: junos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public vendor documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: false
+    sha256: 47ca57c3305a7345bfcbf291414e2d0644735b96d7058b97c9febd8198308d08
+    added: 2026-08-27
+  - path: juniper/dev/srx-edge-01.conf
+    split: dev
+    vendor: juniper
+    os_family: junos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public vendor documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: false
+    sha256: a73250b8fa1928990d8b4be414e4556e515dbf1a8bc48f1c3078ef33ac7bcf2e
+    added: 2026-08-27
+  - path: juniper/eval/srx-dc-02.conf
+    split: eval
+    vendor: juniper
+    os_family: junos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public vendor documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: true
+    sha256: 2a872f6e7afd3ecd1261956b83c335a46fa6dae059c7eebd6f8dc63808320cb9
+    added: 2026-08-27

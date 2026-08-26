@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<config version="10.2.0">
+  <devices>
+    <entry name="localhost.localdomain">
+      <deviceconfig>
+        <system>
+          <hostname>fw-perimeter-01</hostname>
+          <domain>lab.example</domain>
+          <ip-address>192.0.2.200</ip-address>
+          <netmask>255.255.255.0</netmask>
+          <service>
+            <disable-telnet>yes</disable-telnet>
+            <disable-http>yes</disable-http>
+          </service>
+          <ntp-servers>
+            <primary-ntp-server><ntp-server-address>192.0.2.20</ntp-server-address></primary-ntp-server>
+          </ntp-servers>
+        </system>
+      </deviceconfig>
+    </entry>
+  </devices>
+</config>

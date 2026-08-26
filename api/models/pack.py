@@ -164,6 +164,40 @@ class PatternDef(BaseModel):
         return failures
 
 
+class IdentityPattern(BaseModel):
+    """How to read one device-identity field from this platform's syntax.
+
+    Decision D3. Device identity — hostname, model, OS version, serial — is not
+    a security control, so it has no place among the canonical `patterns`. It is
+    still vendor-specific and must still be data rather than code, so it reuses
+    the same `MatchSpec` and `CaptureSpec` types the parsing patterns use.
+
+    Deterministic and data-driven, like everything else here: a pattern matched
+    or it did not, and a field nothing matched stays UNKNOWN rather than being
+    invented.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    field: str = Constraint(min_length=1, description="hostname · model · os_version · serial")
+    match: MatchSpec
+    capture: CaptureSpec = Constraint(default_factory=lambda: CaptureSpec(value="$1"))
+    confidence: float = Constraint(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="Parser confidence. Not an ML probability (R7).",
+    )
+    examples: tuple[str, ...] = ()
+
+
+IDENTITY_FIELDS: frozenset[str] = frozenset(
+    {"hostname", "model", "os_version", "serial", "domain_name"}
+)
+"""Recognised identity fields. Reference rather than enforcement — the mapping
+stays open so a platform exposing something else is a data change."""
+
+
 class PlatformDefault(BaseModel):
     """A documented default, with the citation that makes it usable.
 
@@ -219,6 +253,9 @@ class VendorPack(BaseModel):
     checksum: str | None = Constraint(default=None, pattern=SHA256_PREFIXED)
 
     detect: tuple[DetectSignature, ...] = ()
+    identity: tuple[IdentityPattern, ...] = Constraint(
+        default=(), description="Device-identity extraction (D3)"
+    )
     patterns: tuple[PatternDef, ...] = ()
     defaults: tuple[PlatformDefault, ...] = ()
     capabilities: tuple[PlatformCapability, ...] = ()
@@ -258,6 +295,19 @@ class VendorPack(BaseModel):
         """True / False / None where None means undocumented — so abstain."""
         cap = self.capability_for(field)
         return cap.supported if cap else None
+
+    def identity_for(self, field: str) -> IdentityPattern | None:
+        return next((i for i in self.identity if i.field == field), None)
+
+    @property
+    def is_detection_only(self) -> bool:
+        """True when this pack can recognise the platform but not parse it.
+
+        A legitimate state at P3, and the honest description of a vendor we know
+        of but cannot yet audit: detection works, every canonical field is
+        UNKNOWN, and the whole file becomes residue for the training queue.
+        """
+        return bool(self.detect) and not self.patterns
 
     def validate_patterns(self) -> dict[str, list[str]]:
         """Run every pattern against its own examples. Empty dict means clean."""

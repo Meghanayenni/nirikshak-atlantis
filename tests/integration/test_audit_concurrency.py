@@ -20,7 +20,7 @@ import pytest
 from api.audit.chain import AuditChain
 from api.audit.verify import verify_chain
 from api.db.connection import connect
-from api.db.migrate import migrate
+from api.db.migrate import AUDIT_MIGRATIONS, migrate
 from api.models import Actor, ActorType, AuditAction, Subject
 from tests.fixtures import tamper
 
@@ -32,7 +32,7 @@ SUBJECT = Subject(kind="audit", id="a-1")
 def test_eight_writers_produce_one_contiguous_chain(tmp_path: Path) -> None:
     """Acceptance criterion 7."""
     conn = connect(tmp_path / "audit.db")
-    migrate(conn)
+    migrate(conn, AUDIT_MIGRATIONS)
     chain = AuditChain(conn)
 
     threads, per_thread = 8, 50
@@ -75,7 +75,7 @@ def test_eight_writers_produce_one_contiguous_chain(tmp_path: Path) -> None:
 
 def test_no_payload_is_lost_under_contention(tmp_path: Path) -> None:
     conn = connect(tmp_path / "audit.db")
-    migrate(conn)
+    migrate(conn, AUDIT_MIGRATIONS)
     chain = AuditChain(conn)
 
     def writer(worker: int) -> None:
@@ -101,7 +101,7 @@ def test_second_connection_sees_a_verifiable_chain(tmp_path: Path) -> None:
     """WAL — a reader can verify while the same database is open for writing."""
     db = tmp_path / "audit.db"
     writer_conn = connect(db)
-    migrate(writer_conn)
+    migrate(writer_conn, AUDIT_MIGRATIONS)
     tamper.build_chain(writer_conn, count=6)
 
     reader_conn = connect(db)
@@ -121,7 +121,7 @@ def test_chain_verifies_in_a_fresh_interpreter(tmp_path: Path) -> None:
     """
     db = tmp_path / "audit.db"
     conn = connect(db)
-    migrate(conn)
+    migrate(conn, AUDIT_MIGRATIONS)
     tamper.build_chain(conn, count=4)
     conn.close()
 
@@ -140,7 +140,7 @@ def test_chain_verifies_in_a_fresh_interpreter(tmp_path: Path) -> None:
 def test_cli_reports_failure_with_exit_code_one(tmp_path: Path) -> None:
     db = tmp_path / "audit.db"
     conn = connect(db)
-    migrate(conn)
+    migrate(conn, AUDIT_MIGRATIONS)
     tamper.build_chain(conn, count=4)
     tamper.modify_payload(conn, seq=1)
     conn.close()
@@ -201,7 +201,7 @@ def test_verifier_does_not_import_fastapi() -> None:
 @pytest.mark.parametrize("count", [1, 25, 120])
 def test_property_any_chain_length_verifies(tmp_path: Path, count: int) -> None:
     conn = connect(tmp_path / f"audit-{count}.db")
-    migrate(conn)
+    migrate(conn, AUDIT_MIGRATIONS)
     tamper.build_chain(conn, count=count)
 
     report = verify_chain(conn)
@@ -214,7 +214,7 @@ def test_every_stored_payload_rehashes(tmp_path: Path) -> None:
     import hashlib
 
     conn = connect(tmp_path / "audit.db")
-    migrate(conn)
+    migrate(conn, AUDIT_MIGRATIONS)
     tamper.build_chain(conn, count=10)
 
     rows = conn.execute("SELECT payload_json, payload_hash FROM audit_log").fetchall()
@@ -226,7 +226,7 @@ def test_every_stored_payload_rehashes(tmp_path: Path) -> None:
 def test_no_configuration_contents_in_the_database(tmp_path: Path) -> None:
     """Acceptance criterion 10 — the chain records that things happened, not what was in them."""
     conn = connect(tmp_path / "audit.db")
-    migrate(conn)
+    migrate(conn, AUDIT_MIGRATIONS)
     chain = AuditChain(conn)
 
     chain.append(

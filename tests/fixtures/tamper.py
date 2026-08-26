@@ -14,7 +14,7 @@ from pathlib import Path
 
 from api.audit.chain import AuditChain
 from api.db.connection import connect
-from api.db.migrate import migrate
+from api.db.migrate import AUDIT_MIGRATIONS, migrate
 from api.models import Actor, ActorType, AuditAction, Subject
 
 TRIGGER_SQL = {
@@ -32,7 +32,7 @@ TRIGGER_SQL = {
 def new_db(tmp_path: Path, name: str = "audit.db") -> sqlite3.Connection:
     """A migrated, empty database."""
     conn = connect(tmp_path / name)
-    migrate(conn)
+    migrate(conn, AUDIT_MIGRATIONS)
     return conn
 
 

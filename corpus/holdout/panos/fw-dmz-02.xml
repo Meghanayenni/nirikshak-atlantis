@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<config version="10.1.0">
+  <devices>
+    <entry name="localhost.localdomain">
+      <deviceconfig>
+        <system>
+          <hostname>fw-dmz-02</hostname>
+          <ip-address>192.0.2.201</ip-address>
+          <service>
+            <disable-telnet>yes</disable-telnet>
+          </service>
+        </system>
+      </deviceconfig>
+    </entry>
+  </devices>
+</config>

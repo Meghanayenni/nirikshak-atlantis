@@ -78,8 +78,10 @@ from api.models.finding import (
     RemediationRef,
 )
 from api.models.pack import (
+    IDENTITY_FIELDS,
     CaptureSpec,
     DetectSignature,
+    IdentityPattern,
     MatchSpec,
     PatternDef,
     PatternProvenance,
@@ -137,6 +139,8 @@ __all__ = [
     "PatternScope",
     "PatternProvenance",
     "DetectSignature",
+    "IdentityPattern",
+    "IDENTITY_FIELDS",
     "PlatformDefault",
     "PlatformCapability",
     # rule

@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from api.audit import store
 from api.audit.chain import AuditChain
 from api.db.connection import connect
-from api.db.migrate import migrate
+from api.db.migrate import AUDIT_MIGRATIONS, migrate
 from api.models import Actor, ActorType, AuditAction, Subject
 from tests.fixtures import tamper
 
@@ -21,7 +21,7 @@ HUMAN = Actor(type=ActorType.HUMAN, id="admin@ntro", role="administrator")
 @pytest.fixture
 def conn(tmp_path: Path) -> sqlite3.Connection:
     c = connect(tmp_path / "audit.db")
-    migrate(c)
+    migrate(c, AUDIT_MIGRATIONS)
     return c
 
 
@@ -135,13 +135,14 @@ def test_ai_suggestions_are_distinguishable_from_decisions(conn: sqlite3.Connect
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     db = tmp_path / "audit.db"
     conn = connect(db)
-    migrate(conn)
+    migrate(conn, AUDIT_MIGRATIONS)
     tamper.build_chain(conn, count=4)
     conn.close()
 
     from api.config import settings
 
-    monkeypatch.setattr(settings, "db_path", db)
+    monkeypatch.setattr(settings, "audit_db_path", db)
+    monkeypatch.setattr(settings, "db_path", tmp_path / "operational.db")
 
     from api.main import app
 

@@ -13,7 +13,7 @@ from api.audit.errors import ChainIntegrityError, PayloadNotJsonNativeError
 from api.audit.store import validate_json_native
 from api.audit.verify import verify_chain
 from api.db.connection import connect
-from api.db.migrate import migrate
+from api.db.migrate import AUDIT_MIGRATIONS, migrate
 from api.models import GENESIS_HASH, Actor, ActorType, AuditAction, Subject
 from api.models.audit import canonical_timestamp
 from tests.fixtures import tamper
@@ -25,7 +25,7 @@ SUBJECT = Subject(kind="vendor_pack", id="acme/acme-os@1.0.0")
 @pytest.fixture
 def conn(tmp_path: Path) -> sqlite3.Connection:
     c = connect(tmp_path / "audit.db")
-    migrate(c)
+    migrate(c, AUDIT_MIGRATIONS)
     return c
 
 
