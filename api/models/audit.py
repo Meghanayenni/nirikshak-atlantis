@@ -18,10 +18,10 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from pydantic import Field as Constraint
 
 from api.models.enums import ActorType, AuditAction
@@ -30,6 +30,46 @@ SHA256_HEX = r"^[0-9a-f]{64}$"
 
 GENESIS_HASH = "0" * 64
 """`prev_hash` of the first record. A chain has to start somewhere."""
+
+CANONICAL_TS_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+"""One fixed representation for every hashed timestamp (decision D1).
+
+Always UTC, always a `T` separator, always six fractional digits, always a
+literal `Z`. No other form is ever hashed.
+"""
+
+
+class NaiveTimestampError(ValueError):
+    """A timestamp arrived without a timezone, so its instant is ambiguous."""
+
+
+def canonical_timestamp(value: datetime | str) -> str:
+    """Reduce a timestamp to the single string form used for hashing (D1).
+
+    Before this existed, `compute_entry_hash` hashed a string timestamp exactly
+    as supplied while Pydantic separately parsed it into a `datetime`. Three
+    spellings of one instant — `2026-08-26T12:00:00+00:00`, SQLite's
+    `2026-08-26 12:00:00+00:00`, and `2026-08-26T12:00:00Z` — therefore produced
+    three different `entry_hash` values while storing the identical moment.
+
+    That made a normal database round-trip look like tampering, which is the
+    false alarm this module's docstring warns against. Everything now passes
+    through here first, so the same instant always yields the same hash however
+    it was spelled on the way in.
+    """
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError(f"timestamp {value!r} is not a valid ISO 8601 datetime") from exc
+
+    if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+        raise NaiveTimestampError(
+            f"timestamp {value!r} is timezone-naive; an audit record must fix the "
+            "instant it attests to (D1)"
+        )
+
+    return value.astimezone(UTC).strftime(CANONICAL_TS_FORMAT)
 
 
 def canonical_json(payload: Any) -> str:
@@ -114,7 +154,7 @@ class AuditRecord(BaseModel):
         return hash_payload(
             {
                 "seq": seq,
-                "timestamp": timestamp if isinstance(timestamp, str) else timestamp.isoformat(),
+                "timestamp": canonical_timestamp(timestamp),
                 "actor": actor_d,
                 "action": str(action),
                 "subject": subject_d,
@@ -141,6 +181,12 @@ class AuditRecord(BaseModel):
                 "attests to have diverged"
             )
 
+        # D1 — settle the timestamp before anything is hashed, and let a naive
+        # or unparseable value report itself plainly rather than surfacing later
+        # as a missing entry_hash.
+        if out.get("timestamp") is not None:
+            canonical_timestamp(out["timestamp"])
+
         required = ("seq", "timestamp", "actor", "action", "subject", "prev_hash")
         if all(out.get(k) is not None for k in required):
             try:
@@ -164,6 +210,16 @@ class AuditRecord(BaseModel):
                     "tampering looks like"
                 )
         return out
+
+    @field_validator("timestamp")
+    @classmethod
+    def _require_timezone(cls, value: datetime) -> datetime:
+        """D1 — a naive timestamp does not identify an instant, so it is refused."""
+        if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+            raise NaiveTimestampError(
+                "audit timestamps must be timezone-aware; use datetime.now(UTC)"
+            )
+        return value
 
     @model_validator(mode="after")
     def _check_actor(self) -> AuditRecord:

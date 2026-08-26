@@ -12,7 +12,7 @@ PIP    := $(VENV_BIN)/pip
 PYTEST := $(VENV_BIN)/pytest
 RUFF   := $(VENV_BIN)/ruff
 
-.PHONY: help venv install install-report install-ai test lint fmt run clean
+.PHONY: help venv install install-report install-ai test lint fmt run migrate verify-audit clean
 
 help:
 	@echo "venv            Create the project-local Python 3.11 virtual environment"
@@ -22,6 +22,8 @@ help:
 	@echo "test            Run the test suite"
 	@echo "lint            Run ruff checks"
 	@echo "fmt             Format with ruff"
+	@echo "migrate         Apply pending database migrations"
+	@echo "verify-audit    Verify the audit hash chain (tamper-evident)"
 	@echo "run             Start the API with reload"
 	@echo "clean           Remove caches and build artefacts"
 
@@ -45,6 +47,12 @@ lint:
 
 fmt:
 	$(RUFF) format .
+
+migrate:
+	$(PY) -c "from api.db.connection import connect; from api.db.migrate import migrate; from api.config import settings; c=connect(settings.db_path); print([m.name for m in migrate(c)] or 'already current')"
+
+verify-audit:
+	$(PY) scripts/verify_audit_chain.py
 
 run:
 	$(VENV_BIN)/uvicorn api.main:app --reload

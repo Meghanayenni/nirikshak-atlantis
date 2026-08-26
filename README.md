@@ -21,9 +21,9 @@ administrator, and permanently learns the answer.
 
 ## Status
 
-**Phase P0 — scaffolding.** The repository contains the project skeleton, the
-architecture guardrails, and the decision records. Application logic begins at
-P1. See `docs/adr/` for decisions taken so far.
+**Phase P2 — audit hash chain.** The eleven data contracts (P1) and the
+hash-chained audit log on SQLite (P2) are in place. Parsing begins at P4.
+See `docs/adr/` for the decisions taken so far.
 
 ---
 
@@ -75,7 +75,33 @@ install quickly and stay within the 8 GB target hardware budget.
 uvicorn api.main:app --reload
 ```
 
-`GET /health` is currently the only endpoint.
+Endpoints so far:
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| GET | `/health` | Liveness and safety-relevant settings |
+| GET | `/audit/head` | Current chain head |
+| GET | `/audit/records` | Filtered history (never a verification claim) |
+| GET | `/audit/verify` | Verify the chain |
+
+The audit surface is **read-only by design**. Records are appended by the
+services that perform the actions, never by an HTTP caller.
+
+## Verifying the audit log
+
+```bash
+python scripts/verify_audit_chain.py          # 0 ok · 1 failed · 2 unreadable
+python scripts/verify_audit_chain.py --json
+make verify-audit
+```
+
+The verifier imports no web framework, so integrity can be checked without
+trusting — or even running — the interface it polices.
+
+> **Tamper-evident, not tamper-proof.** The chain detects record modification,
+> deletion, reordering, broken links and accidental corruption. It does *not*
+> detect an attacker with unrestricted database write access who recomputes the
+> complete unkeyed chain. See `docs/adr/0008-chain-authenticity-limits.md`.
 
 ---
 

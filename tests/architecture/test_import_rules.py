@@ -26,6 +26,9 @@ FORBIDDEN_EDGES: list[tuple[str, str, str]] = [
     ("comply", "parse", "Rule 1 — no vendor syntax may reach a compliance verdict"),
     ("remediate", "learn", "Rule 4 — no model output may reach a remediation command"),
     ("learn", "comply", "Rule 1 — the suggestion layer must not see verdict logic"),
+    ("audit", "comply", "the audit layer records events; it does not judge them"),
+    ("audit", "learn", "the audit layer must not depend on the suggestion layer"),
+    ("audit", "parse", "the audit layer must not depend on vendor syntax"),
 ]
 
 
