@@ -1,0 +1,16 @@
+# Deliberately-violating sample used by tests/architecture/test_no_device_libraries.py
+# to prove the import detector actually fires.
+#
+# Stored with a .txt suffix so pytest never collects it and ruff never lints it.
+# This file is NOT part of the application and must never be imported.
+
+import netmiko
+import napalm.base
+from paramiko import SSHClient
+
+
+def connect(host, username, password):
+    """The exact shape of code R1 exists to keep out of this repository."""
+    client = SSHClient()
+    client.connect(host, username=username, password=password)
+    return netmiko.ConnectHandler(device_type="cisco_ios", host=host)

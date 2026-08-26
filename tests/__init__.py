@@ -1,0 +1,1 @@
+"""NIRIKSHAK test suite."""

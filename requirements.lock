@@ -1,0 +1,66 @@
+# NIRIKSHAK — locked dependency environment
+#
+# Generated at P0 step 7 from the resolved project-local .venv.
+# Python 3.11.9 · Windows x86_64 · generated 2026-08-26
+#
+# Exact versions actually installed, produced by:
+#     .venv/Scripts/pip freeze --exclude-editable
+#
+# The nirikshak package itself is deliberately NOT pinned here: it is
+# installed from this working tree with 'pip install -e .', so a path
+# pin would be machine-specific. Reproduce the environment with:
+#
+#     py -3.11 -m venv .venv
+#     .venv/Scripts/pip install -r requirements.lock
+#     .venv/Scripts/pip install -e . --no-deps
+#
+# Groups [ai] and [report] are NOT included — they are installed at
+# P10 and P8 respectively and will be locked separately.
+
+annotated-types==0.8.0
+anyio==4.14.2
+attrs==26.1.0
+certifi==2026.7.22
+cffi==2.1.1
+click==8.4.2
+colorama==0.4.6
+coverage==7.15.4
+cryptography==44.0.3
+fastapi==0.115.14
+future==1.0.0
+h11==0.16.0
+httpcore==1.0.9
+httptools==0.8.0
+httpx==0.28.1
+idna==3.19
+iniconfig==2.3.0
+Jinja2==3.1.6
+jsonpath-ng==1.8.0
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+lxml==5.4.0
+MarkupSafe==3.0.3
+ntc_templates==9.2.0
+packaging==26.3
+pluggy==1.6.0
+pycparser==3.0
+pydantic==2.13.4
+pydantic-settings==2.15.0
+pydantic_core==2.46.4
+Pygments==2.21.0
+pytest==8.4.2
+pytest-cov==6.3.0
+python-dotenv==1.2.3
+python-multipart==0.0.32
+PyYAML==6.0.3
+referencing==0.37.0
+rpds-py==2026.6.3
+ruff==0.16.4
+six==1.17.0
+starlette==0.46.2
+textfsm==1.1.3
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+uvicorn==0.32.1
+watchfiles==1.2.0
+websockets==17.0.1

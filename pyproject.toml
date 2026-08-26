@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nirikshak"
+version = "0.1.0"
+description = "Self-learning, vendor-agnostic network security compliance auditor"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+
+# ---------------------------------------------------------------------------
+# Core dependencies — installed at P0.
+# Deliberately absent: any device-connection library (R1), ORM, migration
+# framework, task queue, message broker, or cloud AI client.
+# ---------------------------------------------------------------------------
+dependencies = [
+    "fastapi>=0.115,<0.116",
+    "uvicorn[standard]>=0.32,<0.33",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "PyYAML>=6.0,<7",
+    "jsonschema>=4.23,<5",
+    "python-multipart>=0.0.12",
+    "textfsm>=1.1.3,<2",
+    "ntc-templates>=7.0",
+    "lxml>=5.3,<6",
+    "jsonpath-ng>=1.7,<2",
+    "Jinja2>=3.1,<4",
+    "cryptography>=43,<45",
+]
+
+[project.optional-dependencies]
+# Machine-learning stack — NOT installed until P10, so the first nine phases
+# stay fast to set up and the 8 GB target stays honest for as long as possible.
+ai = [
+    "sentence-transformers>=3.2,<4",
+    "torch>=2.4,<3",
+    "faiss-cpu>=1.9,<2",
+    "numpy>=1.26,<3",
+    "httpx>=0.27,<0.29",
+]
+
+# PDF rendering — installed at P8. WeasyPrint additionally requires the GTK3
+# runtime, which is a system installer and not a Python package. See
+# docs/adr/0006-weasyprint-gtk-probe.md.
+report = [
+    "weasyprint>=63,<64",
+]
+
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-cov>=6,<7",
+    "ruff>=0.7",
+    "httpx>=0.27,<0.29",
+]
+
+[tool.setuptools.packages.find]
+include = ["api*"]
+
+# ---------------------------------------------------------------------------
+# Lint
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "TID"]
+
+# R1 — NIRIKSHAK is configuration-file-only. These bans fail in the editor,
+# before CI is ever reached. tests/architecture/test_no_device_libraries.py
+# enforces the same rule against the source tree and the resolved environment.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"netmiko".msg = "R1: NIRIKSHAK is configuration-file-only. No live device access."
+"napalm".msg = "R1: no device connections."
+"paramiko".msg = "R1: no SSH client in this codebase."
+"scrapli".msg = "R1: no device connections."
+"ncclient".msg = "R1: no NETCONF sessions."
+"pysnmp".msg = "R1: no SNMP polling."
+"telnetlib".msg = "R1: no device connections."
+"asyncssh".msg = "R1: no SSH client in this codebase."
+
+# ---------------------------------------------------------------------------
+# Test
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

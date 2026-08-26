@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Project-local virtual environment (R2)
+.venv/
+
+# Local database and uploaded configuration files.
+# Configuration files are sensitive data (DEVELOPER_GUIDE.md §9) and must never be
+# committed, even from the sample corpus workflow.
+*.db
+*.db-journal
+uploads/
+
+# Environment
+.env
+
+# Frontend (scaffolded at P13)
+ui/node_modules/
+ui/dist/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

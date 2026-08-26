@@ -1,0 +1,1 @@
+"""NIRIKSHAK — analyse package."""
