@@ -72,7 +72,7 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "version": "0.1.0",
-        "phase": "P5",
+        "phase": "P6",
         "schema_version": versions["audit"],
         "schema_versions": versions,
         "airgap": settings.airgap,

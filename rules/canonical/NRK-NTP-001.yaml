@@ -1,0 +1,13 @@
+rule_id: NRK-NTP-001
+title: At least one time source configured
+severity: low
+rationale: >-
+  Every log line, certificate check and correlation across devices depends on the
+  clock. A device with no configured time source will drift, and drifted
+  timestamps make an incident timeline unreconstructable across a fleet even when
+  every individual log is intact. Low severity in isolation; its cost is paid
+  later, by the investigation.
+check:
+  field: ntp_servers
+  condition: { op: non_empty }
+frameworks: []

@@ -1,0 +1,13 @@
+# Thresholds here are NIRIKSHAK's own position, not a benchmark's (see README).
+rule_id: NRK-SSH-001
+title: SSH protocol version 2 only
+severity: high
+rationale: >-
+  SSH protocol version 1 has known cryptographic weaknesses in its integrity
+  checking and key exchange, and a device configured to accept it can be
+  downgraded to it. Requiring version 2 explicitly is checkable from the
+  configuration, which a statement about which versions are compiled in is not.
+check:
+  field: ssh_version
+  condition: { op: equals, value: 2 }
+frameworks: []

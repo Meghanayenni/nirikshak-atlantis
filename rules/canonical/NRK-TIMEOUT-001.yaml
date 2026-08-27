@@ -1,0 +1,14 @@
+rule_id: NRK-TIMEOUT-001
+title: Management sessions time out within ten minutes
+severity: medium
+rationale: >-
+  An idle administrative session left open on an unattended terminal is a working
+  authenticated session for whoever reaches it next. Ten minutes (600 seconds) is
+  NIRIKSHAK's own operational default, chosen as a balance between that exposure
+  and interrupting legitimate work; it is data, and an operator with a different
+  policy edits it. A timeout of zero means the session never expires and is
+  therefore the worst case, not the best.
+check:
+  field: idle_timeout_seconds
+  condition: { op: lte, value: 600 }
+frameworks: []

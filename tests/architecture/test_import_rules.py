@@ -41,6 +41,10 @@ FORBIDDEN_EDGES: list[tuple[str, str, str]] = [
     ("normalise", "learn", "Rule 1 — no model output may reach the canonical model"),
     ("normalise", "remediate", "normalisation has nothing to do with remediation"),
     ("normalise", "report", "the canonical model does not know how it will be rendered"),
+    ("comply", "ingest", "Rule 1 — the engine judges a model, not a file"),
+    ("comply", "normalise", "Rule 1 — the engine receives a CSM, it does not build one"),
+    ("comply", "remediate", "a verdict is decided before anything is proposed to fix it"),
+    ("comply", "report", "the engine does not know how its findings will be rendered"),
 ]
 
 

@@ -115,6 +115,7 @@ from api.models.rule import (
     ComplianceRule,
     Condition,
     FrameworkRef,
+    Rulepack,
 )
 from api.models.snippet import ImpactAssessment, RemediationSnippet
 from api.models.training import Suggestion, TrainingExample
@@ -174,6 +175,7 @@ __all__ = [
     "AbsencePolicy",
     "AppliesTo",
     "FrameworkRef",
+    "Rulepack",
     "MAX_RATIONALE_CHARS",
     # finding
     "Finding",

@@ -21,10 +21,11 @@ administrator, and permanently learns the answer.
 
 ## Status
 
-**Phase P5 — normalisation and absence-aware evaluation.** The eleven data
-contracts (P1), the hash-chained audit log on SQLite (P2), configuration
-ingestion with deterministic vendor detection (P3), the structural parser (P4)
-and normalisation into the Canonical Security Model (P5) are in place.
+**Phase P6 — the deterministic compliance engine.** The eleven data contracts
+(P1), the hash-chained audit log on SQLite (P2), configuration ingestion with
+deterministic vendor detection (P3), the structural parser (P4), normalisation
+into the Canonical Security Model (P5) and the rule engine that evaluates it (P6)
+are in place.
 
 The parser turns configuration text into a `ConfigTree` and applies a vendor pack
 to it, producing canonical fields that each carry a value, a confidence and
@@ -37,16 +38,30 @@ The Cisco IOS pack reads eight canonical fields; every other pack is still
 detection-only, which is an honest state rather than a placeholder — the platform
 is recognised, and every field it cannot read says UNKNOWN.
 
-**No platform defaults ship yet, deliberately.** Absence-aware evaluation is
-entirely data-driven, and no vendor documentation has been sourced, so every
-absent field currently resolves to UNKNOWN rather than to a manufactured default.
-The engine is built and tested; populating it is a data change requiring a real
-citation. See `docs/adr/0012-normalisation-and-absence.md`.
+The compliance engine reads only the canonical model and produces PASS, FAIL,
+UNKNOWN or NOT_APPLICABLE, each carrying the exact line it rests on or the reason
+it abstained.
 
-The deterministic compliance engine is P6. See `docs/adr/` for the decisions taken
-so far, and `docs/CORPUS_PREREQUISITES.md` for work the corpus does not yet
-support — including access control lists, of which the corpus currently contains
-none.
+### What is deliberately not claimed
+
+**No platform defaults ship.** Absence-aware evaluation is entirely data-driven,
+and no vendor documentation has been sourced, so every absent field resolves to
+UNKNOWN rather than to a manufactured default. The engine is built and tested
+against synthetic packs; populating it is a data change requiring a real citation.
+
+**No framework control mappings ship.** Every rule has `frameworks: []`. Writing
+a CIS, NIST, DISA STIG or ISO/IEC 27001 identifier without having read the
+benchmark would be inventing it, so NIRIKSHAK currently evaluates its own checks
+and maps them to nothing. **No claim of coverage against any of those four
+frameworks is made or supported by this repository.**
+
+**The corpus is synthetic and small.** Two Cisco development devices are enough to
+validate the *evaluator*; they are not enough to validate a *rule*. See
+`docs/CORPUS_PREREQUISITES.md`, which also records that the corpus contains no
+access control lists at all.
+
+Exposure-aware prioritisation is P7 and remediation is P8. See `docs/adr/` for the
+decisions taken so far.
 
 ---
 

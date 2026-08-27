@@ -33,7 +33,7 @@ def test_health_returns_ok(client: TestClient) -> None:
 
     body = response.json()
     assert body["status"] == "ok"
-    assert body["phase"] == "P5"
+    assert body["phase"] == "P6"
 
     # Rule 3 — the abstention threshold must be present and be a real
     # probability, not a placeholder.

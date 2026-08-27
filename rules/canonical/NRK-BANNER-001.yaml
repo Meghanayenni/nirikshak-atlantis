@@ -1,0 +1,13 @@
+rule_id: NRK-BANNER-001
+title: Login banner present
+severity: low
+rationale: >-
+  A banner shown before authentication is the device's notice that access is
+  restricted and monitored. Its value is procedural rather than technical: it
+  removes an "I did not know this was private" defence and is commonly required
+  by organisational policy. It prevents no attack, which is why severity is low.
+  NIRIKSHAK checks that a banner exists and does not evaluate its wording.
+check:
+  field: banner_present
+  condition: { op: is_true }
+frameworks: []

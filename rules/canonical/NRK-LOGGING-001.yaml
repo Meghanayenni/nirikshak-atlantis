@@ -1,0 +1,13 @@
+rule_id: NRK-LOGGING-001
+title: At least one remote logging destination configured
+severity: medium
+rationale: >-
+  Logs held only on the device are lost when the device is reset, replaced, or
+  compromised by someone with enough access to clear them. A remote destination
+  is what makes the log evidence rather than a convenience. This checks that a
+  destination exists; whether it is reachable is not something a configuration
+  file can establish.
+check:
+  field: logging_hosts
+  condition: { op: non_empty }
+frameworks: []

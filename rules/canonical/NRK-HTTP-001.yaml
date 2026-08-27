@@ -1,0 +1,13 @@
+rule_id: NRK-HTTP-001
+title: Plaintext HTTP management server disabled
+severity: high
+rationale: >-
+  The unencrypted HTTP management server exposes administrative credentials and
+  session state to anyone on the path. A device that needs web management should
+  offer it over TLS only; a device that does not need it should not run the
+  server at all. This check covers the plaintext listener specifically, and takes
+  no position on whether web management is used.
+check:
+  field: http_server_enabled
+  condition: { op: is_false }
+frameworks: []

@@ -1,0 +1,13 @@
+rule_id: NRK-TELNET-001
+title: Telnet not accepted for management access
+severity: critical
+rationale: >-
+  Telnet carries credentials and session content in plaintext, so anyone able to
+  observe the management path can read both. Severity is critical rather than
+  high because the exposure is not conditional on any further weakness: the
+  protocol offers no confidentiality at all, and a single captured session yields
+  working credentials.
+check:
+  field: telnet_enabled
+  condition: { op: is_false }
+frameworks: []

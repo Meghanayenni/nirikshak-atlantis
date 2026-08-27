@@ -101,6 +101,18 @@ class UnknownReason(StrEnum):
     UNPARSED_BLOCK = "unparsed_block"
     NO_EVIDENCE = "no_evidence"
 
+    RULE_TYPE_MISMATCH = "rule_type_mismatch"
+    """A rule's operand could not be compared with the field's value (D18).
+
+    A rule declaring `lte: "600"` against an integer field, or `contains` against
+    a boolean. Its own reason rather than `no_match`, because the two say
+    opposite things about where the fault lies: `no_match` means the vendor packs
+    cannot read this control and it belongs in the training queue, while this
+    means the packs read it fine and the *rule* is wrong. Collapsing them would
+    hide a broken rule inside a legitimate abstention, where it would abstain on
+    every device forever while looking like a coverage gap.
+    """
+
 
 # ---------------------------------------------------------------------------
 # Sources and structure

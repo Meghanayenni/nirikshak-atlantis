@@ -60,7 +60,10 @@ unconstructable.
 | A snippet without a vetter cannot be built | `RemediationSnippet` | Rule 4 |
 | A service-affecting snippet needs a rollback | `RemediationSnippet` | §8 |
 | A rule carrying framework prose is rejected | `extra="forbid"` | R16 |
-| A capability claim without a citation is rejected | `PlatformCapability` | §7 |
+| A capability claim without sourced provenance is rejected | `PlatformCapability` | D11 |
+| An unsourced platform default is unconstructable | `PlatformProvenance` | D11 |
+| `on_capability_unknown` may only abstain | `AbsencePolicy` validator | Rule 3, DEF-4 |
+| A rule condition that can never evaluate is refused at load | `load_rulepack` self-check | D18 |
 | An audit record whose hash disagrees with its payload raises | `AuditRecord` | §9 |
 | A model actor may only perform `ai_suggested` | `AuditRecord` | Rule 1 |
 | Every source line is a node or unplaced, never dropped | `ConfigTree` | R4 |
@@ -420,11 +423,53 @@ similarity scores when fitting the calibrator (R7).
 
 ---
 
+## 14. Rulepack — P6, decision D17
+
+`rulepack_id · version · status · created_by · rules`
+
+`FindingProvenance.rulepack_version` existed from P1 with nothing to fill it. A
+report read six months later has to be able to say which rules ran, for the same
+reason `CsmSource.pack_versions` records which vendor pack read the line: a
+verdict is reproducible only if the data that produced it is identified.
+
+Modelled on `VendorPack` but **deliberately without its `checksum` field**. Pack
+checksums are declared and never verified against file bytes — found at P4,
+deferred to P11 — and replicating an unverified integrity mechanism into a second
+contract would double the problem rather than solve it.
+
+`applicable_to()` selects rules whose `AppliesTo` admits a device. A rule that
+does not apply produces **no finding at all**, rather than an UNKNOWN one: *this
+check was never relevant here* and *we could not determine this check* are
+different statements, and only the second belongs in an operator's queue.
+
+### AbsencePolicy — `on_capability_unknown` is not configurable
+
+It accepts **only** `UNKNOWN` (DEF-4). Until P6 the class merely *claimed* this in
+prose while nothing enforced it, so a rulepack could set
+`on_capability_unknown: pass` and be accepted. With no platform defaults shipped,
+`capability_unknown` is the reason behind every absent field on every device — one
+line of YAML would have turned that whole surface into passes.
+
+Not PASS or FAIL, which are verdicts on evidence we do not have. Not
+NOT_APPLICABLE, which asserts the control does not apply to this platform, and not
+knowing whether a platform supports a control is precisely not knowing that. Not
+EVALUATE, which needs a documented default that by definition is absent. The other
+two branches remain configurable.
+
+### `frameworks` ships empty (D16)
+
+`FrameworkRef` is fully specified and no rule uses it. Writing a control
+identifier without having read the benchmark would be inventing it. The field
+exists structurally; it stays empty until a benchmark edition is obtained and
+cited.
+
+---
+
 ## What is not here yet
 
-The evaluator that consumes a CSM (P6) and the resolver that reads snippets
-(P7–P8). Those consume these contracts; none of them may weaken one.
+The resolver that reads snippets (P7–P8) and the prioritisation that scores
+exposure (P7/P12). Those consume these contracts; none of them may weaken one.
 
-Chain-walking verification (P2), the block parser that builds a `ConfigTree` (P4)
-and the normaliser that builds a CSM (P5) are now built, in `api/audit/`,
-`api/parse/` and `api/normalise/` respectively.
+Chain-walking verification (P2), the block parser (P4), the normaliser that builds
+a CSM (P5) and the rule engine that evaluates one (P6) are now built, in
+`api/audit/`, `api/parse/`, `api/normalise/` and `api/comply/` respectively.
