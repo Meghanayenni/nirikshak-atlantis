@@ -1,0 +1,282 @@
+{#
+  NIRIKSHAK compliance report.
+
+  Layout follows docs/ui_reference.html, which is the design specification for
+  the P13 React interface. It is followed for tokens, hierarchy and the evidence
+  block. It is deliberately NOT followed in three places, because the reference
+  draws data this build does not have (see ADR 0015):
+
+    * no framework column      - every rule ships frameworks: [] (D16)
+    * no exposure rank         - priority_rank is unset until P12
+    * no populated remediation - the vetted library is empty (D27)
+
+  Each is omitted rather than rendered blank or filled with an example. A column
+  of empty cells reads as missing data about the device; the absence of the
+  column, plus a disclosure saying why, reads as what it is.
+
+  Autoescaping is on. Every evidence line below is verbatim text from an
+  uploaded configuration, and must render as characters rather than as markup.
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIRIKSHAK compliance report &mdash; {{ report.audit_id[:12] }}</title>
+<style>
+{{ stylesheet }}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+{% set glyph = {'fail': '✗', 'pass': '✓', 'unknown': '?', 'not_applicable': '–'} %}
+
+<div class="doc-h">
+  <h1>NIRIKSHAK &mdash; compliance report</h1>
+  <p class="sub">
+    Configuration file <span class="num">{{ report.config_file_id[:16] }}</span>
+    &middot; {{ report.platform_label }}
+    &middot; {{ report.total }} check{{ '' if report.total == 1 else 's' }} evaluated
+    {% if report.evaluated_at %}&middot; audited <span class="num">{{ report.evaluated_at }}</span>{% endif %}
+  </p>
+</div>
+
+<!-- SUMMARY -->
+<div class="sec">
+  <h2>Summary</h2>
+  <div class="tally">
+    {% for key, label in [('fail', 'Fail'), ('unknown', 'Unknown'), ('pass', 'Pass'), ('not_applicable', 'Not applicable')] %}
+    <div class="t">
+      <b>{{ report.verdict_counts.get(key, 0) }}</b>
+      <span>{{ label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="note" style="margin-top:14px">{{ report.ordering_basis }}</p>
+</div>
+
+<!-- SUBJECT -->
+<div class="sec">
+  <h2>Subject</h2>
+  <div class="card"><div class="pad">
+    <dl class="kv">
+      <dt>Configuration file</dt>
+      <dd>
+        <span class="num">{{ report.config_file_id }}</span>
+        <div style="color:var(--muted);font-size:11.5px;margin-top:2px">
+          SHA-256 of the uploaded file's content. This identifies the file, not the
+          device it came from &mdash; editing the configuration produces a different
+          identifier.
+        </div>
+      </dd>
+      {% if report.config_file_path %}
+      <dt>Stored as</dt><dd class="num">{{ report.config_file_path }}</dd>
+      {% endif %}
+      <dt>Platform</dt>
+      <dd>
+        {{ report.platform_label }}
+        {% if not report.vendor or not report.os_family %}
+        <div style="color:var(--muted);font-size:11.5px;margin-top:2px">
+          The platform was not identified, so no vendor pack applied and no
+          remediation could be looked up.
+        </div>
+        {% endif %}
+      </dd>
+      <dt>Audit run</dt><dd class="num">{{ report.audit_id }}</dd>
+      <dt>Report</dt><dd class="num">{{ report.report_id }}</dd>
+    </dl>
+  </div></div>
+</div>
+
+<!-- FINDINGS -->
+<div class="sec">
+  <h2>Findings</h2>
+
+  {% if not report.findings %}
+  <div class="card"><div class="pad">
+    <p class="note">This run recorded no findings.</p>
+  </div></div>
+  {% endif %}
+
+  {% for item in report.findings %}
+  {% set f = item.finding %}
+  <div class="finding">
+    <div class="head">
+      <span class="v v-{{ f.status.value }}">
+        <span class="g">{{ glyph[f.status.value] }}</span>{{ f.status.value | upper | replace('_', ' ') }}
+      </span>
+      <span class="title">{{ f.expected }}</span>
+      <span class="rid">{{ f.rule_id }}</span>
+      <span class="sev s-{{ f.base_severity.value }}"><i></i>{{ f.base_severity.value | upper }}</span>
+    </div>
+
+    <div class="pad">
+
+      <div class="block">
+        <p class="label">Observed</p>
+        <dl class="kv">
+          <dt>Value</dt>
+          <dd class="num">{{ f.observed.value if f.observed.value is not none else 'none' }}</dd>
+          <dt>Field state</dt>
+          <dd class="num">{{ f.observed.state.value }}</dd>
+          <dt>Confidence</dt>
+          <dd>
+            <span class="num">{{ '%.2f' | format(f.observed.confidence) }}</span>
+            &mdash; {{ f.observed.confidence_method.value | replace('_', ' ') }}
+            {% if not f.observed.confidence_is_probability %}
+            <div style="color:var(--muted);font-size:11.5px;margin-top:2px">
+              Not a probability. This number ranks and gates; it does not estimate
+              the likelihood that the value is correct.
+            </div>
+            {% endif %}
+          </dd>
+        </dl>
+      </div>
+
+      {% if f.unknown_reason %}
+      <div class="block">
+        <p class="label">Why this check abstained</p>
+        <p class="note">
+          <span class="num">{{ f.unknown_reason.value | replace('_', ' ') }}</span>
+          &mdash; the system could not establish this field's value to the standard a
+          verdict requires, so it reports UNKNOWN rather than guessing.
+        </p>
+      </div>
+      {% endif %}
+
+      {% if f.absence_reason %}
+      <div class="block">
+        <p class="label">Absence citation</p>
+        <p class="note">{{ f.absence_reason }}</p>
+      </div>
+      {% endif %}
+
+      <div class="block">
+        <p class="label">Evidence</p>
+        {% if f.evidence %}
+        {% for e in f.evidence %}
+        <div class="file">{{ e.file_path }}</div>
+        <div class="ev">
+          <div class="row">
+            <div class="ln">{{ e.line_start }}{% if e.line_end != e.line_start %}&ndash;{{ e.line_end }}{% endif %}</div>
+            <div class="code">{{ e.raw_line }}</div>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="note">
+          No line is cited. This verdict does not rest on an observed configuration
+          line &mdash; see the abstention reason or absence citation above.
+        </p>
+        {% endif %}
+      </div>
+
+      <div class="block">
+        <p class="label">Remediation
+          {% if item.remediation.snippet %}
+          <span class="plain">&mdash; vetted snippet
+            {{ item.remediation.snippet.vendor }} / {{ item.remediation.snippet.os_family }}
+            {%- if item.remediation.snippet.os_version_range %} {{ item.remediation.snippet.os_version_range }}{% endif %}
+          </span>
+          {% endif %}
+        </p>
+
+        {% if item.remediation.snippet %}
+        {% set s = item.remediation.snippet %}
+        {% if s.preconditions %}
+        <p class="note" style="margin-bottom:8px">
+          Before applying: {{ s.preconditions | join('; ') }}
+        </p>
+        {% endif %}
+        <pre class="cmd">{% for c in s.commands %}{{ c }}{{ '\n' if not loop.last }}{% endfor %}</pre>
+        {% if s.rollback %}
+        <p class="label" style="margin:14px 0 6px">Rollback</p>
+        <pre class="cmd">{% for c in s.rollback %}{{ c }}{{ '\n' if not loop.last }}{% endfor %}</pre>
+        {% endif %}
+        {% if s.verification %}
+        <p class="note" style="margin-top:12px">
+          Verify with: {{ s.verification | join('; ') }}
+        </p>
+        {% endif %}
+        <p class="note" style="margin-top:12px">
+          <b>Impact:</b>
+          {{ 'service-affecting' if s.impact.service_affecting else 'not service-affecting' }},
+          {{ 'requires a reload' if s.impact.requires_reload else 'no reload required' }},
+          lockout risk {{ s.impact.lockout_risk.value }}.
+          {% if s.impact.notes %}{{ s.impact.notes }}{% endif %}
+          <br>{{ item.remediation.statement }}
+          NIRIKSHAK does not execute these commands; an operator applies them.
+        </p>
+        {% else %}
+        <div class="none">
+          <b>{{ item.remediation.statement }}</b>
+          <div class="why">
+            {% if item.remediation.outcome.value == 'no_snippet' %}
+            Commands are read only from the vetted snippet library and are never
+            generated, so no command is offered here rather than a suggested one.
+            {% elif item.remediation.outcome.value == 'platform_unknown' %}
+            A remediation is looked up by vendor, OS family and rule. This file's
+            platform was not identified, so there was nothing to look up.
+            {% elif item.remediation.outcome.value == 'not_actionable' %}
+            Nothing is proposed because nothing was found to be failing.
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- DISCLOSURES -->
+{% if report.disclosures %}
+<div class="sec">
+  <h2>What this report does not claim</h2>
+  <div class="disclose">
+    <ul>
+      {% for line in report.disclosures %}
+      <li>{{ line }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<!-- PROVENANCE -->
+<div class="foot">
+  <dl class="kv">
+    <dt>Engine</dt><dd class="num">{{ report.provenance.engine_version }}</dd>
+    <dt>Rulepack</dt>
+    <dd class="num">
+      {{ report.provenance.rulepack_id or 'unknown' }}
+      {{ report.provenance.rulepack_version or '' }}
+    </dd>
+    {% if report.provenance.pack_versions %}
+    <dt>Vendor packs</dt>
+    <dd class="num">
+      {% for name, version in report.provenance.pack_versions.items() %}
+      {{ name }} {{ version }}{{ ', ' if not loop.last }}
+      {% endfor %}
+    </dd>
+    {% endif %}
+    <dt>Snippet library</dt>
+    <dd class="num">
+      {{ report.provenance.snippet_library_version }}
+      ({{ report.provenance.snippet_count }} snippet{{ '' if report.provenance.snippet_count == 1 else 's' }})
+    </dd>
+    <dt>Generated</dt>
+    <dd class="num">{{ report.provenance.generated_at.isoformat() }}</dd>
+  </dl>
+  <p style="margin-top:12px">
+    Remediation was resolved when this report was generated, against the snippet
+    library version named above. The compliance verdicts were decided when the
+    audit ran and are reproduced here unchanged.
+  </p>
+</div>
+
+</div>
+</body>
+</html>

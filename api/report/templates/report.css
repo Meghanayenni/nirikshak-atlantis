@@ -1,0 +1,429 @@
+/* NIRIKSHAK report stylesheet.
+ *
+ * Tokens and treatments are taken from docs/ui_reference.html, which is the
+ * design specification for the P13 React interface. Two of its decisions carry
+ * meaning rather than taste and are reproduced deliberately:
+ *
+ *   UNKNOWN is slate and dashed, never amber. Abstention is off the severity
+ *   axis; rendering it as a warning colour makes it read as a weaker FAIL.
+ *
+ *   Every verdict carries a glyph as well as a colour, so the report survives
+ *   greyscale printing and colour-blind readers with its meaning intact.
+ *
+ * Print rules exist because this same HTML is what the PDF path renders.
+ */
+
+:root {
+  --ink: #17191c;
+  --ink-2: #3d444d;
+  --muted: #6b7280;
+  --paper: #ffffff;
+  --surface: #f6f7f9;
+  --surface-2: #edeff3;
+  --border: #e1e5ea;
+  --border-strong: #c8ced6;
+
+  --pass: #1e6b4f;
+  --pass-bg: #edf5f1;
+  --pass-br: #bedbcc;
+  --fail: #9e2b2b;
+  --fail-bg: #faedec;
+  --fail-br: #e6c6c3;
+  --unk: #4a5666;
+  --unk-bg: #eff2f5;
+  --unk-br: #cfd6de;
+  --na: #6b7280;
+  --na-bg: #f3f4f6;
+  --na-br: #dcdfe4;
+  --accent: #23527c;
+
+  --r: 4px;
+  --f: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --m: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--f);
+  font-size: 13.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+}
+
+/* ---------- masthead ---------- */
+
+.doc-h {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+  margin-bottom: 6px;
+}
+.doc-h h1 {
+  font-size: 19px;
+  margin: 0 0 3px;
+  letter-spacing: -0.01em;
+}
+.doc-h .sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.doc-h .sub .num {
+  font-family: var(--m);
+}
+
+.sec {
+  margin-top: 30px;
+}
+.sec > h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+
+.card {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+.card-h {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  justify-content: space-between;
+}
+.card-h h3 {
+  font-size: 14px;
+  margin: 0;
+  font-weight: 600;
+}
+.card-h .sub {
+  color: var(--muted);
+  font-size: 12px;
+}
+.pad {
+  padding: 16px;
+}
+
+/* ---------- verdict chips ---------- */
+
+.v {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  padding: 2px 8px 2px 7px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.v .g {
+  font-family: var(--m);
+  font-size: 11px;
+  line-height: 1;
+}
+.v-fail {
+  background: var(--fail);
+  color: #fff;
+  border-color: var(--fail);
+}
+.v-pass {
+  background: var(--pass-bg);
+  color: var(--pass);
+  border-color: var(--pass-br);
+}
+.v-unknown {
+  background: var(--unk-bg);
+  color: var(--unk);
+  border-color: var(--unk-br);
+  border-style: dashed;
+}
+.v-not_applicable {
+  background: var(--na-bg);
+  color: var(--na);
+  border-color: var(--na-br);
+}
+
+.sev {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.sev i {
+  display: inline-block;
+  width: 3px;
+  height: 11px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  background: var(--ink);
+}
+.sev.s-high i {
+  opacity: 0.72;
+}
+.sev.s-medium i {
+  opacity: 0.5;
+}
+.sev.s-low i,
+.sev.s-info i {
+  opacity: 0.3;
+}
+
+/* ---------- summary ---------- */
+
+.tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.tally .t {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  min-width: 108px;
+  background: var(--paper);
+}
+.tally .t b {
+  display: block;
+  font-family: var(--m);
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.tally .t span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 7px 14px;
+  font-size: 13px;
+  margin: 0;
+}
+.kv dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.kv dd {
+  margin: 0;
+}
+.num {
+  font-family: var(--m);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+}
+
+/* ---------- findings ---------- */
+
+.finding {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: 12px;
+  break-inside: avoid;
+}
+.finding > .head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.finding > .head .title {
+  font-weight: 600;
+  font-size: 13.5px;
+  flex: 1;
+  min-width: 240px;
+}
+.finding > .head .rid {
+  font-family: var(--m);
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.label .plain {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.block + .block {
+  margin-top: 16px;
+}
+
+/* ---------- evidence ---------- */
+
+.ev {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  font-family: var(--m);
+  font-size: 12.5px;
+  overflow: hidden;
+}
+.ev .row {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.ev .row:last-child {
+  border-bottom: none;
+}
+.ev .ln {
+  flex: 0 0 58px;
+  padding: 5px 10px;
+  text-align: right;
+  color: var(--muted);
+  background: var(--surface-2);
+  font-size: 11.5px;
+  user-select: none;
+}
+.ev .code {
+  padding: 5px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--ink);
+  flex: 1;
+}
+.file {
+  font-family: var(--m);
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+
+.note {
+  border-left: 2px solid var(--border-strong);
+  padding: 2px 0 2px 12px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  margin: 0;
+}
+
+/* ---------- remediation ---------- */
+
+.cmd {
+  background: var(--ink);
+  color: #e8eaed;
+  border-radius: var(--r);
+  padding: 11px 13px;
+  font-family: var(--m);
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.none {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r);
+  padding: 11px 13px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  background: var(--surface);
+}
+.none b {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.none .why {
+  color: var(--muted);
+  font-size: 11.5px;
+  margin-top: 4px;
+}
+
+/* ---------- disclosures and footer ---------- */
+
+.disclose {
+  background: var(--paper);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r);
+  padding: 4px 16px 14px;
+}
+.disclose ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.disclose li {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.foot {
+  margin-top: 30px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.foot .kv {
+  grid-template-columns: 190px 1fr;
+  font-size: 11.5px;
+}
+
+/* ---------- print / PDF ---------- */
+
+@page {
+  size: A4;
+  margin: 16mm 14mm 18mm;
+}
+
+@media print {
+  body {
+    background: var(--paper);
+    font-size: 10.5pt;
+  }
+  .wrap {
+    max-width: none;
+    padding: 0;
+  }
+  .finding,
+  .card,
+  .disclose {
+    break-inside: avoid;
+  }
+  .sec > h2 {
+    break-after: avoid;
+  }
+  .v-fail {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

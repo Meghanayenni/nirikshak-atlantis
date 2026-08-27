@@ -200,8 +200,12 @@ def _finding(
         # author citations, it carries them.
         absence_reason=field.default_ref,
         frameworks=rule.frameworks,
-        # Remediation is P8. RemediationRef points into a vetted snippet library
-        # that does not exist yet, and a pointer to nothing is worse than None.
+        # Always None, and not because P8 is unfinished (decision D26).
+        # `comply` may not import `remediate` — a verdict is decided before
+        # anything is proposed to fix it — so the engine has no way to resolve a
+        # snippet and must not acquire one. Remediation is resolved downstream,
+        # in `api/report/` and at the API edge, against a library whose version
+        # the report then records.
         remediation=None,
         provenance=_provenance(csm, rulepack, evaluated_at),
     )

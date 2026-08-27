@@ -274,7 +274,16 @@ generated. `vetted_by` is mandatory: an unvetted snippet is not a snippet.
 
 A service-affecting snippet without a rollback is rejected; the operator must be
 able to get back. `lockout_risk` drives dependency ordering at P8, not just
-presentation.
+presentation: `order_snippets` applies a high-risk change **last**, after the
+snippets it depends on, because disabling an insecure management protocol before
+its replacement is verified is how an operator is stranded outside their own
+device.
+
+**The shipped library is empty** (decision D27). `vetted_by` and `reference` are
+both mandatory, in the contract and in `snippets/schema/snippet.schema.json`, so a
+snippet cannot exist without naming the person who checked it and the document
+they checked it against. No vendor documentation has been sourced, so none has
+been written — see `docs/SOURCING_BACKLOG.md` gap 6.
 
 ## 10. TrainingExample
 
@@ -518,10 +527,18 @@ admin-only — rows predating ownership have no owner, and defaulting those to
 
 ## What is not here yet
 
-The resolver that reads snippets (P8) and the prioritisation that scores exposure
-(P12). Those consume these contracts; none of them may weaken one.
+The prioritisation that scores exposure (P12). It consumes these contracts; it may
+not weaken one.
 
 Chain-walking verification (P2), the block parser (P4), the normaliser that builds
-a CSM (P5), the rule engine that evaluates one (P6) and the ACL analyser (P7) are
-now built, in `api/audit/`, `api/parse/`, `api/normalise/`, `api/comply/` and
-`api/analyse/` respectively.
+a CSM (P5), the rule engine that evaluates one (P6), the ACL analyser (P7) and the
+remediation resolver (P8) are now built, in `api/audit/`, `api/parse/`,
+`api/normalise/`, `api/comply/`, `api/analyse/` and `api/remediate/` respectively.
+
+**`Finding.remediation` is `None` everywhere, by construction** (decision D26).
+`comply → remediate` is a forbidden import edge — a verdict is decided before
+anything is proposed to fix it — so the engine has no way to resolve a snippet and
+must not acquire one. Remediation is resolved downstream, in `api/report/` and at
+the API edge, against a library whose version the report then records. The field
+stays in the contract because a *stored* finding may one day carry the reference
+that was resolved for it; nothing writes it today.

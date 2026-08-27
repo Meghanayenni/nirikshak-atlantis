@@ -21,11 +21,15 @@ administrator, and permanently learns the answer.
 
 ## Status
 
-**Phase P7 — ACL analysis and a protected API.** The eleven data contracts (P1),
-the hash-chained audit log on SQLite (P2), configuration ingestion with
-deterministic vendor detection (P3), the structural parser (P4), normalisation
-into the Canonical Security Model (P5), the rule engine that evaluates it (P6),
-and semantic ACL analysis with an authenticated findings API (P7) are in place.
+**Phase P8 — remediation resolution and evidence-linked reporting.** The eleven
+data contracts (P1), the hash-chained audit log on SQLite (P2), configuration
+ingestion with deterministic vendor detection (P3), the structural parser (P4),
+normalisation into the Canonical Security Model (P5), the rule engine that
+evaluates it (P6), semantic ACL analysis with an authenticated findings API (P7),
+and the remediation resolver with the report an operator reads (P8) are in place.
+
+The pipeline now runs end to end: a configuration file goes in, and an
+evidence-linked HTML report comes out, citing the exact lines it rests on.
 
 The parser turns configuration text into a `ConfigTree` and applies a vendor pack
 to it, producing canonical fields that each carry a value, a confidence and
@@ -63,12 +67,26 @@ so the semantic ACL analyser — shadowed, redundant and overly permissive entri
 by interval logic — is tested against constructed model objects and has never seen
 a parsed one. No detection rate against real access lists is claimed.
 
+**No remediation commands ship.** The vetted snippet library is **empty**. Rule 4
+requires commands come from that library, and `docs/CONTENT_POLICY.md` requires
+each one cite the vendor document it was checked against — so a snippet cannot
+exist without a person who read a document and checked the commands. No vendor
+documentation has been sourced. Every failing finding in every report therefore
+reads *"No vetted remediation is available for this platform and rule."* The
+loader, resolver, dependency ordering and report integration are built and tested
+against constructed fixtures; **none has ever handled a real snippet.**
+
+**PDF rendering does not work on the development machine.** HTML reporting is
+complete and has no native dependency. The PDF endpoint needs the WeasyPrint/GTK
+stack, which is absent here, and answers 503 naming the missing libraries rather
+than substituting another engine or returning the HTML document under a `.pdf`
+name. See `docs/adr/0006-weasyprint-gtk-probe.md`.
+
 See `docs/CORPUS_PREREQUISITES.md` and `docs/SOURCING_BACKLOG.md`.
 
-Remediation and PDF reporting are P8; exposure-aware prioritisation and
-peer-baseline detection are P12. See `docs/adr/` for the decisions taken so far,
-and `docs/SOURCING_BACKLOG.md` for the five gaps that cannot be closed by writing
-code.
+Exposure-aware prioritisation and peer-baseline detection are P12. See
+`docs/adr/` for the decisions taken so far, and `docs/SOURCING_BACKLOG.md` for the
+six gaps that cannot be closed by writing code.
 
 ---
 
@@ -77,8 +95,10 @@ code.
 - **Python 3.11** (3.11.9 verified). The project uses a local `.venv` and does
   not modify the system Python installation.
 - **Node 18+** for the interface, from P13 onward. Not needed before then.
-- **GTK3 runtime** for PDF reporting, from P8 onward. Not needed before then —
-  see `docs/adr/0006-weasyprint-gtk-probe.md`.
+- **GTK3 runtime** for PDF reporting only. **Not required for HTML reporting**,
+  which is the complete report and needs nothing beyond the core dependencies.
+  Without GTK the `.pdf` endpoint answers 503 and names what is missing — see
+  `docs/adr/0006-weasyprint-gtk-probe.md`.
 
 ---
 
@@ -106,7 +126,7 @@ Dependency groups are installed as the phases need them:
 | ---------- | ------------ | ----------------------------------------------- |
 | *(core)*   | P0           | FastAPI, parsing, YAML, schema validation       |
 | `[dev]`    | P0           | pytest, ruff                                    |
-| `[report]` | P8           | WeasyPrint (plus the system GTK3 runtime)       |
+| `[report]` | P8, optional | WeasyPrint (plus the system GTK3 runtime)       |
 | `[ai]`     | P10          | sentence-transformers, torch (CPU), FAISS       |
 
 The machine-learning stack is deliberately deferred so the first nine phases
@@ -133,6 +153,9 @@ Endpoints so far:
 | GET | `/compliance/audits` | Your audit runs (admins: all) | user |
 | GET | `/compliance/audits/{id}` | One run's summary | user |
 | GET | `/compliance/audits/{id}/findings` | Findings with evidence | user |
+| GET | `/compliance/audits/{id}/report.html` | Evidence-linked report | user |
+| GET | `/compliance/audits/{id}/report.pdf` | The same, or 503 (see below) | user |
+| GET | `/compliance/audits/{id}/remediation` | Plan, in application order | user |
 | GET | `/audit/head` · `/audit/records` · `/audit/verify` | The hash chain | user |
 | GET · POST | `/users`, `/users/{id}/disable` | Account management | **admin** |
 | GET | `/users/me` | Who you are | user |
@@ -144,6 +167,20 @@ not see answers 404, not 403 — 403 would confirm the id exists.
 The `/audit/*` chain surface is **read-only by design**. Records are appended by
 the services that perform the actions, never by an HTTP caller. `/compliance/audits`
 is a different resource and does accept POST.
+
+### Reports
+
+`report.html` is one self-contained file — no external stylesheet, script or web
+font — so it can be saved, mailed, or opened on a machine with no network.
+
+`report.pdf` requires WeasyPrint and the system GTK3 runtime. Where either is
+absent it returns **503** listing the missing native libraries. It never falls
+back to HTML under a `.pdf` name and never substitutes a different PDF engine;
+`GET /health` reports whether this machine can render one.
+
+Every failing finding carries either a vetted command or the sentence *"No vetted
+remediation is available for this platform and rule."* There is no third
+possibility: commands are read from `snippets/` and never generated.
 
 Create the first administrator out-of-band:
 
@@ -196,7 +233,8 @@ These come from `DEVELOPER_GUIDE.md` and are enforced by tests in
 3. **Low confidence abstains.** Below threshold, the answer is UNKNOWN and the
    field is routed to training. Never a guessed PASS or FAIL.
 4. **Remediation is never AI-generated.** Commands come only from the vetted
-   snippet library, keyed by vendor, OS family and rule ID.
+   snippet library, keyed by vendor, OS family and rule ID. That library is
+   currently empty, so no command is offered for anything.
 5. **Rules and vendor packs are data.** Adding a vendor, framework or OS version
    is a data change.
 6. **Offline-first.** Local CPU inference, secrets scrubbed before any model

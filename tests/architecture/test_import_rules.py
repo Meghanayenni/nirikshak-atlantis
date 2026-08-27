@@ -53,6 +53,19 @@ FORBIDDEN_EDGES: list[tuple[str, str, str]] = [
     ("analyse", "normalise", "analysis receives a CSM; it does not build one"),
     ("analyse", "remediate", "analysis reports; it does not propose fixes"),
     ("analyse", "report", "analysis does not know how it will be rendered"),
+    # P8 — the reporting and remediation layers (decision D26).
+    ("remediate", "comply", "Rule 4 — a snippet is keyed by rule id, not by a verdict"),
+    ("remediate", "parse", "remediation reads a vetted library, never vendor syntax"),
+    ("remediate", "normalise", "remediation has nothing to do with the canonical model"),
+    ("remediate", "ingest", "remediation has no business with uploaded files"),
+    ("remediate", "analyse", "remediation is resolved from a rule, not from an observation"),
+    ("remediate", "report", "a snippet does not know how it will be rendered"),
+    ("report", "comply", "a report renders persisted findings; it must not re-evaluate (D23)"),
+    ("report", "parse", "a report renders findings, never raw vendor syntax"),
+    ("report", "normalise", "a report receives findings; it does not build a model"),
+    ("report", "ingest", "the renderer has no route to an uploaded file"),
+    ("report", "learn", "Rule 1 — no model output may reach a document a human acts on"),
+    ("report", "db", "the router performs the I/O; the renderer stays free of storage"),
 ]
 
 

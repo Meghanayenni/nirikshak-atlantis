@@ -68,6 +68,17 @@ Each snippet cites the document it was checked against. Commands are short
 factual instructions; the surrounding `impact`, `preconditions` and `notes` are
 our own words.
 
+**Enforced from P8** by `tests/architecture/test_rule_content_policy.py`: every
+file under `snippets/` must name a `vetted_by` and a `reference`, must carry no
+field shaped to hold vendor prose, and must load through
+`api/remediate/library.py` — which validates it against
+`snippets/schema/snippet.schema.json` and then against the contract. A
+`vetted_by` that looks automated is refused: the field exists to name the person
+accountable for the commands.
+
+The library is currently **empty**, because no vendor documentation has been
+sourced. See `snippets/README.md`.
+
 ## Vendor packs
 
 `packs/` holds parsing patterns. Pattern examples are configuration lines —

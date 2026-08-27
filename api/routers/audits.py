@@ -18,6 +18,7 @@ that ran rather than a fresh one that happens to agree with it.
 
 from __future__ import annotations
 
+import sqlite3
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
@@ -34,17 +35,41 @@ from api.ingest.packs import find_pack
 from api.models.finding import Finding
 from api.normalise.service import build_csm
 from api.parse.service import parse_configuration
+from api.remediate.library import load_active_library
+from api.remediate.resolver import RemediationResolution, resolve
 from api.routers.deps import Conn, CurrentUser, owner_filter, require_access
 
 router = APIRouter(prefix="/compliance/audits", tags=["compliance"])
 
 
-def _finding_json(finding: Finding) -> dict[str, Any]:
+def _platform(conn: sqlite3.Connection, file_id: str) -> tuple[str | None, str | None]:
+    """The detected vendor and OS family for one ingested file, or `(None, None)`.
+
+    A snippet key is `(vendor, os_family, rule_id)`. Without the first two there
+    is nothing to look up, and the resolver says so rather than guessing which
+    platform a command should be written for.
+    """
+    row = conn.execute(
+        "SELECT detected_vendor, detected_os_family FROM config_file WHERE file_id = ?",
+        (file_id,),
+    ).fetchone()
+    if row is None:
+        return None, None
+    return row["detected_vendor"], row["detected_os_family"]
+
+
+def _finding_json(finding: Finding, resolution: RemediationResolution) -> dict[str, Any]:
     """One finding, as the UI will consume it.
 
     Evidence is included in full — an operator reading a FAIL needs the line that
     caused it, and a report that says "telnet is enabled" without showing where
     is not evidence of anything (Rule 2).
+
+    Remediation arrives already resolved rather than being looked up here. It is
+    resolved **downstream of the engine** — `comply` may not import `remediate`,
+    because a verdict is decided before anything is proposed to fix it — so
+    `finding.remediation` is `None` on every finding the engine emits and on
+    every finding read back from storage (decision D26).
     """
     return {
         "finding_id": finding.finding_id,
@@ -79,7 +104,19 @@ def _finding_json(finding: Finding) -> dict[str, Any]:
         "frameworks": [
             {"framework": f.framework.value, "control_id": f.control_id} for f in finding.frameworks
         ],
-        "remediation": None,  # P8
+        # Rule 4 — a command here was read from `snippets/`, or there is no
+        # command. `outcome` says which case this is and `statement` carries the
+        # sentence an operator should read; `commands` is present only when a
+        # vetted snippet was found, and is never a suggestion.
+        "remediation": {
+            "outcome": resolution.outcome.value,
+            "statement": resolution.statement,
+            "snippet_id": resolution.snippet.snippet_id if resolution.snippet else None,
+            "commands": list(resolution.snippet.commands) if resolution.snippet else [],
+            "rollback": list(resolution.snippet.rollback) if resolution.snippet else [],
+            "vetted_by": resolution.snippet.vetted_by if resolution.snippet else None,
+            "reference": resolution.snippet.reference if resolution.snippet else None,
+        },
     }
 
 
@@ -190,8 +227,30 @@ def get_findings(
     require_access(user, exists=exists, owner_id=owner_id)
 
     results = finding_store.read_findings(conn, audit_id, status=status, severity=severity)
+
+    # Remediation is resolved per response, against the library as it is now,
+    # because the audit that produced these findings was forbidden from doing it
+    # (decision D26). The library version is reported alongside so a caller can
+    # tell which library the answer came from.
+    run = finding_store.read_run(conn, audit_id)
+    vendor, os_family = _platform(conn, run["device_id"]) if run else (None, None)
+    library = load_active_library()
+
     return {
         "audit_id": audit_id,
         "count": len(results),
-        "findings": [_finding_json(f) for f in results],
+        "snippet_library_version": library.version,
+        "findings": [
+            _finding_json(
+                f,
+                resolve(
+                    library,
+                    rule_id=f.rule_id,
+                    vendor=vendor,
+                    os_family=os_family,
+                    actionable=f.is_actionable,
+                ),
+            )
+            for f in results
+        ],
     }

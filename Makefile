@@ -17,7 +17,7 @@ RUFF   := $(VENV_BIN)/ruff
 help:
 	@echo "venv            Create the project-local Python 3.11 virtual environment"
 	@echo "install         Install core + dev dependencies (P0)"
-	@echo "install-report  Add the PDF reporting group (P8, needs system GTK3)"
+	@echo "install-report  Optional PDF rendering (needs system GTK3; HTML needs neither)"
 	@echo "install-ai      Add the machine-learning group (P10, large download)"
 	@echo "test            Run the test suite"
 	@echo "lint            Run ruff checks"

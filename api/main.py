@@ -1,8 +1,12 @@
 """NIRIKSHAK API entry point.
 
-P0 scaffolding. The only endpoint is a health check; every other router is
-introduced by the phase that needs it (uploads at P3, findings at P6, training
-and packs at P11, reports at P8).
+Each router is introduced by the phase that needs it: the audit chain at P2,
+uploads at P3, findings at P6, reports at P8, training and packs at P11.
+
+`/health` is the one public route, and it is a readout rather than a ping. It
+reports the two Rule 3 abstention floors, the airgap flag, whether this machine
+can render a PDF, and how many vetted snippets exist — the last two so an
+operator can tell a missing capability from a broken one.
 """
 
 from collections.abc import AsyncIterator
@@ -13,9 +17,12 @@ from fastapi import FastAPI
 from api.config import settings
 from api.db.connection import connect
 from api.db.migrate import AUDIT_MIGRATIONS, OPERATIONAL_MIGRATIONS, current_version, migrate
+from api.remediate.library import load_active_library
+from api.report.pdf import availability as pdf_availability
 from api.routers import audit as audit_router
 from api.routers import audits as audits_router
 from api.routers import ingest as ingest_router
+from api.routers import reports as reports_router
 from api.routers import users as users_router
 
 
@@ -59,12 +66,16 @@ app = FastAPI(
 app.include_router(audit_router.router)
 app.include_router(audits_router.router)
 app.include_router(ingest_router.router)
+app.include_router(reports_router.router)
 app.include_router(users_router.router)
 
 
 @app.get("/health")
 def health() -> dict[str, object]:
     """Liveness check, and a readout of the safety-relevant settings."""
+    pdf_state = pdf_availability()
+    library = load_active_library()
+
     versions = {}
     for name, path in (("operational", settings.db_path), ("audit", settings.audit_db_path)):
         conn = connect(path)
@@ -76,7 +87,7 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "version": "0.1.0",
-        "phase": "P7",
+        "phase": "P8",
         "schema_version": versions["audit"],
         "schema_versions": versions,
         "airgap": settings.airgap,
@@ -89,4 +100,21 @@ def health() -> dict[str, object]:
         # from the floor above it must clear. Reported because an operator
         # checking why a control passed on an absent directive needs both.
         "platform_default_confidence": settings.platform_default_confidence,
+        # P8 — whether the PDF path can serve, probed live rather than assumed
+        # (ADR 0006). HTML reporting has no native dependency and is always
+        # available; the PDF endpoint answers 503 when this says otherwise, and
+        # never substitutes the HTML document for the PDF it could not make.
+        "pdf_reporting": {
+            "available": pdf_state.available,
+            "weasyprint_installed": pdf_state.weasyprint_installed,
+            "missing_libraries": list(pdf_state.missing_libraries),
+            "detail": pdf_state.summary,
+        },
+        # Rule 4 — an empty library resolves nothing, which is the honest state
+        # while no vendor documentation has been sourced. Reported so an operator
+        # can tell "no remediation available" from "reporting is broken".
+        "remediation_library": {
+            "snippets": len(library.snippets),
+            "version": library.version,
+        },
     }

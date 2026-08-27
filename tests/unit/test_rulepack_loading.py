@@ -106,10 +106,29 @@ def test_every_rule_carries_its_own_rationale() -> None:
 
 
 def test_no_rule_references_a_snippet_that_does_not_exist() -> None:
-    """Remediation is P8; the vetted snippet library is empty."""
-    pack = load_rulepack()
+    """A `remediation_ref` must resolve, or it points at nothing.
 
-    assert all(r.remediation_ref is None for r in pack.rules)
+    Strengthened at P8. The library now exists, so this checks the property that
+    matters rather than the state that happens to hold: every rule either names
+    no snippet, or names one the library can produce. A dangling reference would
+    render as a remediation section with nothing in it, which reads as a fault in
+    the report rather than as a rule pointing somewhere it should not.
+
+    It is still true that every rule ships `remediation_ref: None`, because the
+    library is empty (decision D27) - and that is asserted separately in
+    `tests/architecture/test_remediate_boundaries.py`.
+    """
+    from api.remediate.library import load_library
+
+    pack = load_rulepack()
+    library = load_library()
+
+    dangling = [
+        f"{rule.rule_id} references snippet {rule.remediation_ref!r}, which is not in the library"
+        for rule in pack.rules
+        if rule.remediation_ref is not None and library.by_id(rule.remediation_ref) is None
+    ]
+    assert dangling == [], "\n".join(dangling)
 
 
 # ---------------------------------------------------------------------------

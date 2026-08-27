@@ -33,7 +33,7 @@ def test_health_returns_ok(client: TestClient) -> None:
 
     body = response.json()
     assert body["status"] == "ok"
-    assert body["phase"] == "P7"
+    assert body["phase"] == "P8"
 
     # Rule 3 — the abstention threshold must be present and be a real
     # probability, not a placeholder.
@@ -50,6 +50,21 @@ def test_health_returns_ok(client: TestClient) -> None:
 
     # Rule 6 — airgap must be an explicit boolean, never absent or ambiguous.
     assert isinstance(body["airgap"], bool)
+
+    # P8 / ADR 0006 — whether a PDF can be produced here is probed, not assumed,
+    # and reported so an operator can tell "unavailable on this machine" from
+    # "reporting is broken". HTML reporting needs none of it.
+    pdf = body["pdf_reporting"]
+    assert isinstance(pdf["available"], bool)
+    assert isinstance(pdf["weasyprint_installed"], bool)
+    assert isinstance(pdf["missing_libraries"], list)
+    assert pdf["available"] == (pdf["weasyprint_installed"] and not pdf["missing_libraries"])
+
+    # Rule 4 — an empty snippet library is the honest state while no vendor
+    # documentation has been sourced, and the readout says so rather than
+    # leaving an operator to infer it from findings that carry no commands.
+    assert body["remediation_library"]["snippets"] >= 0
+    assert body["remediation_library"]["version"]
 
 
 def test_startup_applies_migrations(client: TestClient) -> None:

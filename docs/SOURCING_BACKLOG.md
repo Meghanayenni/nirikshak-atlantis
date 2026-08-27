@@ -1,15 +1,16 @@
 # Sourcing backlog
 
-**Five gaps that cannot be closed by writing code.** Each is blocking a capability
+**Six gaps that cannot be closed by writing code.** Each is blocking a capability
 the Concept Report promises, each needs material obtained from outside this
 repository, and none may be closed by inventing data.
 
-This document exists because three consecutive phases have now shipped correct,
+This document exists because four consecutive phases have now shipped correct,
 well-tested machinery that produces nothing observable — an absence engine with
 no platform defaults (P5), a compliance engine with no framework mappings (P6),
-and an ACL analyser with no ACLs (P7). Every one of those refusals was right. The
-cumulative effect is still a gap between what the system can do and what it can be
-*shown* doing, and closing it is a sourcing task, not an engineering one.
+an ACL analyser with no ACLs (P7), and a remediation resolver with no snippets
+(P8). Every one of those refusals was right. The cumulative effect is still a gap
+between what the system can do and what it can be *shown* doing, and closing it is
+a sourcing task, not an engineering one.
 
 **Nothing here is assigned.** That is the point of writing it down.
 
@@ -144,6 +145,45 @@ make the fleet-cache and peer-baseline numbers look better than the data support
 
 ---
 
+## 6. Vendor remediation documentation
+
+**Blocks:** every remediation command in the product. Added at P8.
+
+**State.** `snippets/` contains a JSON schema and a README. It contains **zero**
+snippets, so the resolver returns `NO_SNIPPET` for every rule on every device and
+every failing finding in every report reads:
+
+> No vetted remediation is available for this platform and rule.
+
+The loader, schema, resolver, dependency ordering, lockout-risk sequencing and
+report integration are all built and tested against constructed fixtures
+(decision D27). None of them has ever handled a real snippet.
+
+**Why it cannot be closed by writing YAML.** `RemediationSnippet` requires
+`vetted_by` and `reference`, in the contract and in the JSON schema, and
+`tests/architecture/test_rule_content_policy.py` refuses a vetter whose name
+looks automated. A snippet therefore cannot exist without a **person** who read a
+**document** and checked the commands against it.
+
+**What would close it.** For one platform, one rule at a time: a vendor
+configuration guide, command reference or hardening guide — obtained and read —
+with the exact commands, their rollback, their preconditions and their service
+impact checked against it. `reference` records the document identifier and a
+locator; per `CONTENT_POLICY.md` that is identifiers and locators only, never
+transcribed vendor prose.
+
+**Smallest useful step.** Two vetted snippets for the two rules that fail on
+`corpus/cisco/dev/sw-access-02.cfg` would make the remediation path fire on real
+data for the first time, and would let a report show a command end to end.
+
+**What must not happen.** Writing `transport input ssh` from general knowledge.
+The command would probably be correct, attributed to nobody, checked against
+nothing — and pasted into a production device on NIRIKSHAK's authority. Nor may
+`vetted_by` name a model, a placeholder or the project generically: the field
+exists to name the person who is accountable for the commands.
+
+---
+
 ## What P9 may claim today
 
 Written here so the evaluation report inherits it rather than re-deriving it:
@@ -155,6 +195,8 @@ Written here so the evaluation report inherits it rather than re-deriving it:
 - **May not** claim absence-aware evaluation accuracy — the branch never fires on
   real data.
 - **May not** claim ACL detection rates — no real access list has been seen.
+- **May not** claim remediation coverage, or that NIRIKSHAK produces
+  device-specific remediation for any platform — no snippet has ever resolved.
 - **May not** claim coverage against CIS, NIST, DISA STIG or ISO/IEC 27001.
 - **May not** claim universal vendor coverage, or present any result from the
   synthetic corpus as real-world accuracy.

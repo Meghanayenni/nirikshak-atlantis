@@ -1,10 +1,10 @@
 # ADR 0006 — WeasyPrint requires a GTK runtime that this machine lacks
 
-- **Status:** Accepted — environment requirement recorded
-- **Date:** 2026-08-26
-- **Decision reference:** R5 (open)
+- **Status:** Accepted — environment requirement recorded; **R5 closed at P8**
+- **Date:** 2026-08-26 (resolution appended 2026-08-27)
+- **Decision reference:** R5 (closed — see *Resolution at P8* below)
 - **Affects:** P8 (reporting), `README.md`, developer setup
-- **Probe run at:** P0 step 8
+- **Probe run at:** P0 step 8; **re-run at P8, unchanged**
 
 ## Context
 
@@ -105,3 +105,52 @@ P8 rather than P0.
 **Judge-environment note.** Whatever is chosen must be reproducible from the
 README on a clean machine, since a reviewer may well try. That constraint argues
 for option 1 or 2 and against anything improvised.
+
+---
+
+## Resolution at P8 — R5 closed
+
+**Appended 2026-08-27.** The probe above was re-run at P8, read-only, on the same
+machine. **Nothing has changed:** all eight native libraries still resolve to
+`MISSING`, none of the four conventional GTK directories exists, and `weasyprint`
+is still not installed. The QEMU DLL bundle is still present and still rejected.
+
+### What was decided
+
+**None of the three options was taken as a precondition.** The engine was **not**
+substituted — option 3 is explicitly not exercised, and an architecture test now
+fails if `reportlab`, `fpdf`, `pdfkit`, `wkhtmltopdf`, `xhtml2pdf` or
+`playwright` appears anywhere in `api/report/`.
+
+Instead P8 was built so the choice between options 1 and 2 determines **when the
+PDF endpoint returns bytes**, not whether reporting exists:
+
+- **HTML reporting is complete and needs no GTK at all.** One self-contained
+  document, no external stylesheet, script or web font. It works on this machine,
+  on a judge's machine, and air-gapped.
+- **PDF is a thin adapter behind a live probe.** `api/report/pdf.py` runs the
+  same check this ADR ran, on every request, and raises
+  `PdfBackendUnavailableError` naming the specific missing libraries and pointing
+  back at this document.
+
+`GET /compliance/audits/{id}/report.pdf` therefore answers **503** here, with a
+message an operator can act on. It never returns the HTML document under a
+`.pdf` name: `render_pdf` returns bytes or raises, and a test parses its AST to
+require exactly one `return` statement.
+
+The probe is deliberately **not cached** — GTK can be installed while the service
+is running, and `/health` now carries a `pdf_reporting` block so the state is
+visible without reading logs.
+
+### What still has to happen for a PDF
+
+Options 1 and 2 remain exactly as written above, and either will work
+unmodified — installing the GTK3 runtime and restarting is sufficient, with no
+code change and no configuration flag. The `[report]` extra is still uninstalled;
+`make install-report` adds it.
+
+Until then, the honest statement is: **NIRIKSHAK produces the report; this
+machine cannot render it to PDF.** That is an environment gap, recorded here,
+and not a missing capability in the product.
+
+See ADR 0015 (decision D28) for the reporting design this resolution sits inside.
