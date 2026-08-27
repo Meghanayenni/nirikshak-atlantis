@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIRIKSHAK — UI Reference</title>
+<style>
+:root{
+  --ink:#17191C; --ink-2:#3D444D; --muted:#6B7280;
+  --paper:#FFFFFF; --surface:#F6F7F9; --surface-2:#EDEFF3;
+  --border:#E1E5EA; --border-strong:#C8CED6;
+
+  --pass:#1E6B4F; --pass-bg:#EDF5F1; --pass-br:#BEDBCC;
+  --fail:#9E2B2B; --fail-bg:#FAEDEC; --fail-br:#E6C6C3;
+  --unk:#4A5666;  --unk-bg:#EFF2F5;  --unk-br:#CFD6DE;
+  --infer:#7A5B12; --infer-bg:#FAF3E3; --infer-br:#E6D6AE;
+  --accent:#23527C;
+
+  --r:4px;
+  --f: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+       "Helvetica Neue", Arial, sans-serif;
+  --m: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+       "Liberation Mono", monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--f);
+     font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 24px 64px}
+
+.doc-h{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:8px}
+.doc-h h1{font-size:20px;margin:0 0 2px;letter-spacing:-.01em}
+.doc-h p{margin:0;color:var(--muted);font-size:13px}
+
+.sec{margin-top:34px}
+.sec>h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+        color:var(--muted);font-weight:600;margin:0 0 10px}
+.card{background:var(--paper);border:1px solid var(--border);border-radius:var(--r)}
+.card-h{padding:12px 16px;border-bottom:1px solid var(--border);
+        display:flex;align-items:baseline;gap:10px}
+.card-h h3{font-size:14px;margin:0;font-weight:600}
+.card-h .sub{color:var(--muted);font-size:12px}
+.pad{padding:16px}
+
+/* ---------- tokens ---------- */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+.sw{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--paper)}
+.sw .chip{height:40px}
+.sw .lbl{padding:6px 8px;font-size:11px;line-height:1.35}
+.sw .lbl b{display:block;font-weight:600}
+.sw .lbl span{color:var(--muted);font-family:var(--m);font-size:10.5px}
+
+/* ---------- verdict chips ---------- */
+.v{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:650;
+   letter-spacing:.04em;padding:2px 8px 2px 7px;border-radius:3px;
+   border:1px solid transparent;white-space:nowrap}
+.v .g{font-family:var(--m);font-size:11px;line-height:1}
+.v-fail{background:var(--fail);color:#fff;border-color:var(--fail)}
+.v-pass{background:var(--pass-bg);color:var(--pass);border-color:var(--pass-br)}
+.v-unk {background:var(--unk-bg);color:var(--unk);border-color:var(--unk-br);
+        border-style:dashed}
+.v-infer{background:var(--infer-bg);color:var(--infer);border-color:var(--infer-br);
+        font-weight:600}
+
+.sev{font-size:11px;font-weight:600;letter-spacing:.03em;color:var(--ink-2)}
+.sev i{display:inline-block;width:3px;height:11px;margin-right:6px;
+       vertical-align:-1px;background:var(--ink)}
+.sev.s2 i{opacity:.62} .sev.s3 i{opacity:.34}
+
+/* ---------- tables ---------- */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
+   color:var(--muted);font-weight:600;padding:9px 16px;border-bottom:1px solid var(--border)}
+td{padding:11px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface)}
+.num{font-family:var(--m);font-variant-numeric:tabular-nums;font-size:12.5px}
+.rank{font-family:var(--m);font-size:12px;color:var(--muted);width:28px}
+.dev{font-weight:600}
+.dev small{display:block;font-weight:400;color:var(--muted);font-size:11.5px}
+.bar{display:inline-block;width:64px;height:5px;background:var(--surface-2);
+     border-radius:2px;overflow:hidden;vertical-align:middle;margin-right:8px}
+.bar i{display:block;height:100%;background:var(--ink-2)}
+
+/* ---------- evidence ---------- */
+.ev{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+    font-family:var(--m);font-size:12.5px;overflow:hidden}
+.ev .row{display:flex;gap:0;border-bottom:1px solid var(--border)}
+.ev .row:last-child{border-bottom:none}
+.ev .ln{flex:0 0 52px;padding:5px 10px;text-align:right;color:var(--muted);
+        background:var(--surface-2);font-size:11.5px;user-select:none}
+.ev .code{padding:5px 12px;white-space:pre-wrap;color:var(--ink-2)}
+.ev .row.hit .code{color:var(--ink)}
+.ev mark{background:#E4EAF0;color:var(--accent);padding:0 2px;border-radius:2px;
+         font-weight:600;box-shadow:inset 0 -2px 0 var(--accent)}
+.file{font-family:var(--m);font-size:11.5px;color:var(--muted);margin-bottom:6px}
+
+.kv{display:grid;grid-template-columns:120px 1fr;gap:7px 14px;font-size:13px}
+.kv dt{color:var(--muted);font-size:12px}
+.kv dd{margin:0}
+
+.cmd{background:var(--ink);color:#E8EAED;border-radius:var(--r);padding:11px 13px;
+     font-family:var(--m);font-size:12.5px;white-space:pre-wrap;line-height:1.6}
+.cmd .c{color:#9AA4B2}
+
+.note{border-left:2px solid var(--border-strong);padding:2px 0 2px 12px;
+      color:var(--ink-2);font-size:12.5px}
+
+/* ---------- training ---------- */
+.train{max-width:760px}
+.train .line{font-family:var(--m);font-size:15px;background:var(--surface);
+             border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;
+             margin-bottom:18px}
+.opt{display:flex;align-items:center;gap:12px;border:1px solid var(--border);
+     border-radius:var(--r);padding:12px 14px;margin-bottom:8px;background:var(--paper)}
+.opt.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.opt .f{font-weight:600;font-size:13px;flex:1}
+.opt .f small{display:block;font-weight:400;color:var(--muted);font-family:var(--m);
+              font-size:11.5px;margin-top:2px}
+.opt .s{font-family:var(--m);font-size:12px;color:var(--muted)}
+.btn{font:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:var(--r);
+     border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer}
+.btn.sec{background:var(--paper);color:var(--ink);border-color:var(--border-strong)}
+.gen{font-family:var(--m);font-size:12.5px;width:100%;padding:9px 12px;
+     border:1px solid var(--border-strong);border-radius:var(--r);color:var(--ink);
+     background:var(--paper)}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.rule-note{font-size:12px;color:var(--muted);border-top:1px solid var(--border);
+           margin-top:14px;padding-top:12px}
+.crumb{font-size:12px;color:var(--muted);margin-bottom:8px}
+.crumb span{color:var(--border-strong);margin:0 6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="doc-h">
+  <h1>NIRIKSHAK — UI Reference</h1>
+  <p>Neutral base, restrained semantic colour. Static reference for translation into React + Tailwind. Not shipping code.</p>
+</div>
+
+<!-- TOKENS -->
+<div class="sec">
+  <h2>1 · Tokens</h2>
+  <div class="card"><div class="pad">
+    <div class="swatches">
+      <div class="sw"><div class="chip" style="background:#17191C"></div><div class="lbl"><b>ink</b><span>#17191C</span></div></div>
+      <div class="sw"><div class="chip" style="background:#3D444D"></div><div class="lbl"><b>ink-2</b><span>#3D444D</span></div></div>
+      <div class="sw"><div class="chip" style="background:#6B7280"></div><div class="lbl"><b>muted</b><span>#6B7280</span></div></div>
+      <div class="sw"><div class="chip" style="background:#F6F7F9;border-bottom:1px solid #E1E5EA"></div><div class="lbl"><b>surface</b><span>#F6F7F9</span></div></div>
+      <div class="sw"><div class="chip" style="background:#E1E5EA"></div><div class="lbl"><b>border</b><span>#E1E5EA</span></div></div>
+      <div class="sw"><div class="chip" style="background:#1E6B4F"></div><div class="lbl"><b>pass</b><span>#1E6B4F</span></div></div>
+      <div class="sw"><div class="chip" style="background:#9E2B2B"></div><div class="lbl"><b>fail</b><span>#9E2B2B</span></div></div>
+      <div class="sw"><div class="chip" style="background:#4A5666"></div><div class="lbl"><b>unknown</b><span>#4A5666</span></div></div>
+      <div class="sw"><div class="chip" style="background:#7A5B12"></div><div class="lbl"><b>inferred</b><span>#7A5B12</span></div></div>
+      <div class="sw"><div class="chip" style="background:#23527C"></div><div class="lbl"><b>accent</b><span>#23527C</span></div></div>
+    </div>
+    <p class="hint" style="margin-top:14px">Semantic colour appears only on verdict chips, the inferred marker, evidence highlight, and focus. Never on table rows or large fills.</p>
+  </div></div>
+</div>
+
+<!-- COMPONENTS -->
+<div class="sec">
+  <h2>2 · Verdict and severity</h2>
+  <div class="card"><div class="pad">
+    <table style="font-size:13px">
+      <tr>
+        <td style="width:150px;border:none;padding-left:0"><span class="v v-fail"><span class="g">&#10007;</span>FAIL</span></td>
+        <td style="border:none">Heaviest treatment, solid fill. Draws the eye first. Glyph plus label survive greyscale printing.</td>
+      </tr>
+      <tr>
+        <td style="border:none;padding-left:0"><span class="v v-pass"><span class="g">&#10003;</span>PASS</span></td>
+        <td style="border:none">Lightest treatment. Present but recessive — a compliant control needs no attention.</td>
+      </tr>
+      <tr>
+        <td style="border:none;padding-left:0"><span class="v v-unk"><span class="g">?</span>UNKNOWN</span></td>
+        <td style="border:none">Dashed border, neutral slate. Deliberately <b>not</b> amber — abstention is off the severity axis, not a weaker FAIL.</td>
+      </tr>
+      <tr>
+        <td style="border:none;padding-left:0"><span class="v v-infer">INFERRED</span></td>
+        <td style="border:none"><span class="num">platform_default</span> — asserted from documented default, not observed. Always shown, never suppressible.</td>
+      </tr>
+      <tr>
+        <td style="border:none;padding-left:0">
+          <span class="sev"><i></i>CAT I</span>&nbsp;
+          <span class="sev s2"><i></i>CAT II</span>&nbsp;
+          <span class="sev s3"><i></i>CAT III</span>
+        </td>
+        <td style="border:none">Severity uses ink weight, not colour — otherwise two colour scales compete and the screen turns into a rainbow.</td>
+      </tr>
+    </table>
+  </div></div>
+</div>
+
+<!-- FLEET -->
+<div class="sec">
+  <h2>3 · Fleet — which devices need attention</h2>
+  <div class="card">
+    <div class="card-h"><h3>Fleet</h3><span class="sub">6 devices · last audit 27 Aug 2026, 09:14</span></div>
+    <table>
+      <thead><tr>
+        <th>Device</th><th>Vendor / OS</th><th style="width:150px">Compliance</th>
+        <th style="width:70px">Fail</th><th style="width:96px">Unknown</th><th style="width:110px">Top severity</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="dev">rtr-core-01<small>10.20.0.1</small></td><td>Cisco IOS 15.7</td>
+            <td><span class="bar"><i style="width:62%"></i></span><span class="num">62%</span></td>
+            <td class="num">9</td><td class="num">3</td><td><span class="sev"><i></i>CAT I</span></td></tr>
+        <tr><td class="dev">rtr-edge-02<small>10.20.0.2</small></td><td>Cisco IOS 15.7</td>
+            <td><span class="bar"><i style="width:71%"></i></span><span class="num">71%</span></td>
+            <td class="num">6</td><td class="num">2</td><td><span class="sev"><i></i>CAT I</span></td></tr>
+        <tr><td class="dev">sw-dist-01<small>10.20.1.10</small></td><td>Arista EOS 4.29</td>
+            <td><span class="bar"><i style="width:88%"></i></span><span class="num">88%</span></td>
+            <td class="num">2</td><td class="num">1</td><td><span class="sev s2"><i></i>CAT II</span></td></tr>
+        <tr><td class="dev">fw-dmz-01<small>10.20.9.4</small></td><td>Juniper SRX 22.4</td>
+            <td><span class="bar"><i style="width:79%"></i></span><span class="num">79%</span></td>
+            <td class="num">4</td><td class="num">6</td><td><span class="sev s2"><i></i>CAT II</span></td></tr>
+        <tr><td class="dev">sw-acc-14<small>10.20.4.14</small></td><td>Arista EOS 4.29</td>
+            <td><span class="bar"><i style="width:94%"></i></span><span class="num">94%</span></td>
+            <td class="num">1</td><td class="num">0</td><td><span class="sev s3"><i></i>CAT III</span></td></tr>
+        <tr><td class="dev">sw-acc-15<small>10.20.4.15</small></td><td>Arista EOS 4.29</td>
+            <td><span class="bar"><i style="width:96%"></i></span><span class="num">96%</span></td>
+            <td class="num">0</td><td class="num">1</td><td><span class="sev s3"><i></i>CAT III</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="hint">One separation mechanism: hairlines only. No banding, no shadows. Numbers are tabular so columns align on the digit.</p>
+</div>
+
+<!-- DEVICE -->
+<div class="sec">
+  <h2>4 · Device — what is wrong with this one</h2>
+  <div class="card">
+    <div class="card-h">
+      <h3>rtr-core-01</h3>
+      <span class="sub">Cisco IOS 15.7(3)M · ISR4331 · 24 checks · ranked by exposure, not severity alone</span>
+    </div>
+    <table>
+      <thead><tr>
+        <th class="rank">#</th><th style="width:104px">Verdict</th><th>Control</th>
+        <th style="width:200px">Frameworks</th><th style="width:92px">Severity</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="rank">1</td><td><span class="v v-fail"><span class="g">&#10007;</span>FAIL</span></td>
+            <td><b>Telnet enabled on VTY lines</b><br><span class="num" style="color:var(--muted)">telnet_enabled = true</span></td>
+            <td class="num" style="font-size:11.5px">CIS 1.2.3 · AC-17 · V-215807</td>
+            <td><span class="sev"><i></i>CAT I</span></td></tr>
+        <tr><td class="rank">2</td><td><span class="v v-fail"><span class="g">&#10007;</span>FAIL</span></td>
+            <td><b>SNMP community string in use</b><br><span class="num" style="color:var(--muted)">snmp_v3_only = false</span></td>
+            <td class="num" style="font-size:11.5px">CIS 2.1.1 · IA-5 · V-215812</td>
+            <td><span class="sev"><i></i>CAT I</span></td></tr>
+        <tr><td class="rank">3</td><td><span class="v v-fail"><span class="g">&#10007;</span>FAIL</span></td>
+            <td><b>No remote logging host configured</b><br><span class="num" style="color:var(--muted)">logging_hosts = []</span></td>
+            <td class="num" style="font-size:11.5px">CIS 3.1.1 · AU-4 · A.8.15</td>
+            <td><span class="sev s2"><i></i>CAT II</span></td></tr>
+        <tr><td class="rank">4</td><td><span class="v v-unk"><span class="g">?</span>UNKNOWN</span></td>
+            <td><b>Minimum password length</b><br><span class="num" style="color:var(--muted)">min_password_length — no pattern matched; queued for training</span></td>
+            <td class="num" style="font-size:11.5px">CIS 1.1.4 · IA-5</td>
+            <td><span class="sev s2"><i></i>CAT II</span></td></tr>
+        <tr><td class="rank">5</td><td><span class="v v-pass"><span class="g">&#10003;</span>PASS</span></td>
+            <td><b>SSH version 2 enforced</b><br><span class="num" style="color:var(--muted)">ssh_version = 2</span></td>
+            <td class="num" style="font-size:11.5px">CIS 1.2.1 · AC-17 · V-215805</td>
+            <td><span class="sev s2"><i></i>CAT II</span></td></tr>
+        <tr><td class="rank">6</td><td><span class="v v-pass"><span class="g">&#10003;</span>PASS</span>
+              <span class="v v-infer" style="margin-left:4px">INFERRED</span></td>
+            <td><b>HTTP server disabled</b><br><span class="num" style="color:var(--muted)">http_server_enabled = false — platform default, not observed</span></td>
+            <td class="num" style="font-size:11.5px">CIS 1.3.2 · CM-7</td>
+            <td><span class="sev s3"><i></i>CAT III</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- FINDING -->
+<div class="sec">
+  <h2>5 · Finding — why you claim that, and what to type</h2>
+  <div class="card" style="max-width:840px">
+    <div class="card-h" style="justify-content:space-between">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <h3>Telnet enabled on VTY lines</h3>
+        <span class="sub">rtr-core-01</span>
+      </div>
+      <div><span class="v v-fail"><span class="g">&#10007;</span>FAIL</span></div>
+    </div>
+    <div class="pad">
+      <div class="crumb">Fleet <span>/</span> rtr-core-01 <span>/</span> telnet_enabled</div>
+
+      <dl class="kv" style="margin:0 0 18px">
+        <dt>Field</dt><dd class="num">telnet_enabled = true</dd>
+        <dt>Confidence</dt><dd class="num">1.00 — deterministic match, builtin pack <span style="color:var(--muted)">cisco-ios v3</span></dd>
+        <dt>Frameworks</dt><dd class="num">CIS 1.2.3 · NIST AC-17 · STIG V-215807 · ISO A.8.20</dd>
+        <dt>Severity</dt><dd><span class="sev"><i></i>CAT I</span> <span style="color:var(--muted);font-size:12px">— management plane reachable from user VLAN</span></dd>
+      </dl>
+
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin:0 0 6px">Evidence</p>
+      <div class="file">corpus/cisco-ios/rtr-core-01.cfg</div>
+      <div class="ev">
+        <div class="row"><div class="ln">40</div><div class="code">line vty 0 4</div></div>
+        <div class="row"><div class="ln">41</div><div class="code"> exec-timeout 10 0</div></div>
+        <div class="row hit"><div class="ln">42</div><div class="code"> transport input <mark>telnet</mark> ssh</div></div>
+        <div class="row"><div class="ln">43</div><div class="code"> login authentication default</div></div>
+      </div>
+      <p class="note" style="margin:14px 0 18px">Telnet transmits credentials in cleartext. Any host on the path between an administrator and this device can recover the login. The control requires SSH as the only permitted transport on VTY lines.</p>
+
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin:0 0 6px">Remediation <span style="text-transform:none;letter-spacing:0;font-weight:400">— vetted snippet, cisco-ios / 15.x</span></p>
+      <div class="cmd"><span class="c">! verify SSH reachability before applying — removing telnet
+! without a working SSH session will strand remote access</span>
+configure terminal
+ line vty 0 4
+  transport input ssh
+ end
+write memory</div>
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin:16px 0 6px">Rollback</p>
+      <div class="cmd">configure terminal
+ line vty 0 4
+  transport input telnet ssh
+ end</div>
+      <p class="rule-note"><b>Impact:</b> existing Telnet sessions terminate immediately. <b>Order:</b> apply after ssh_version and AAA findings on this device. Commands are supplied from the snippet library and applied by an operator — NIRIKSHAK does not execute them.</p>
+    </div>
+  </div>
+</div>
+
+<!-- TRAINING -->
+<div class="sec">
+  <h2>6 · Training — one judgement, given room</h2>
+  <div class="card train">
+    <div class="card-h"><h3>Unrecognised line</h3><span class="sub">18 of 24 remaining · fw-dmz-01 · juniper-srx</span></div>
+    <div class="pad">
+      <div class="line">set system services ssh protocol-version v2</div>
+
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin:0 0 8px">Suggested mapping</p>
+
+      <div class="opt sel">
+        <div class="f">SSH version<small>ssh_version · int</small></div>
+        <div class="s">0.83</div>
+      </div>
+      <div class="opt">
+        <div class="f">Weak ciphers permitted<small>weak_ciphers · list</small></div>
+        <div class="s">0.54</div>
+      </div>
+      <div class="opt">
+        <div class="f">Idle timeout<small>idle_timeout_sec · int</small></div>
+        <div class="s">0.41</div>
+      </div>
+      <p class="hint">Similarity scores, not probabilities. They rank candidates; they do not establish confidence.</p>
+
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin:20px 0 6px">Generated pattern</p>
+      <input class="gen" value="^set system services ssh protocol-version v(\S+)">
+      <p class="hint">Literal tokens escaped, captured token generalised, anchored. Edit before confirming.</p>
+
+      <div style="display:flex;gap:8px;margin-top:20px">
+        <button class="btn">Confirm mapping</button>
+        <button class="btn sec">Choose another field</button>
+        <button class="btn sec">Skip</button>
+      </div>
+      <p class="rule-note">Confirming writes this pattern into <span class="num">packs/juniper-srx.yaml</span> and adds the example to the similarity index. It becomes deterministic for every future audit.</p>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

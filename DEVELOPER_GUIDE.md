@@ -1,515 +1,316 @@
 # NIRIKSHAK — Project Instructions
 
-## Project Identity
+Self-learning, vendor-agnostic network security compliance auditor.
+Smart India Hackathon 2026 · PS 26155 · NTRO · Team Atlantis.
 
-NIRIKSHAK is a self-learning, vendor-agnostic network security
-compliance auditor.
-
-Smart India Hackathon 2026
-Problem Statement: 26155
-Organisation: National Technical Research Organisation (NTRO)
-Team: Atlantis
-
-The detailed product specification is available at:
-
-docs/NIRIKSHAK_Concept_Report.pdf
-
-Read and follow that document before making major architectural decisions.
+Specification: `docs/NIRIKSHAK_Concept_Report.pdf`. Read it before any major
+architectural decision.
 
 ---
 
-# 1. Core Product
+## 1. Core Product
 
-NIRIKSHAK ingests network device configuration files, normalises
-vendor-specific syntax into a vendor-neutral security schema,
-evaluates the schema against compliance frameworks, and produces
-evidence-linked findings and vetted device-specific remediation.
+NIRIKSHAK ingests network device configuration files, normalises vendor-specific
+syntax into a vendor-neutral security schema, evaluates that schema against
+compliance frameworks, and produces evidence-linked findings with vetted,
+device-specific remediation.
 
-The primary workflow is:
+`Ingest → Parse → Normalise → Comply → Prioritise → Remediate → Report`
 
-Ingest → Parse → Normalise → Comply → Prioritise → Remediate → Report
-
-The central differentiator is the administrator-driven learning
-loop for previously unsupported vendor/configuration syntax.
+The central differentiator is the administrator-driven learning loop for
+previously unsupported vendor syntax.
 
 ---
 
-# 2. Non-Negotiable Architecture Rules
+## 2. Non-Negotiable Architecture Rules
 
-These rules MUST NOT be relaxed for convenience.
+These must not be relaxed for convenience.
 
-## Rule 1 — AI never issues a compliance verdict
+**Rule 1 — AI never issues a compliance verdict.** A deterministic rule engine
+reading the canonical model decides PASS, FAIL or UNKNOWN. AI may only suggest
+mappings for unknown configuration lines and explain deterministic findings.
 
-A deterministic rule engine reading the canonical model decides
-PASS, FAIL, or UNKNOWN.
+**Rule 2 — Evidence is mandatory.** Every security-relevant field carries
+`value`, `confidence`, `evidence`. Evidence points to file, line number and raw
+line. No evidence, no claim. Commented-out directives and literal block bodies
+(banners, keys, certificates) must never produce a PRESENT field — a security
+fact that is not in effect, carrying a citation, is the worst output this system
+can generate.
 
-AI may only:
+**Rule 3 — Low confidence abstains.** Below threshold, produce UNKNOWN and route
+to the training workflow. Never convert uncertainty into a guessed PASS or FAIL.
+Confidence populations are not comparable and each is floored separately:
+deterministic and admin-confirmed matches produce a field or nothing;
+`platform_default` has its own floor and is always visibly marked as inferred
+rather than observed; only calibrated similarity is compared against
+`confidence_threshold`.
 
-- suggest mappings for unknown configuration lines
-- provide explanations of deterministic findings
+**Rule 4 — Remediation is never AI-generated.** Commands come only from the
+vetted snippet library, keyed by vendor, OS family and rule ID.
 
-AI must never directly decide compliance.
-
----
-
-## Rule 2 — Evidence is mandatory
-
-Every parsed security-relevant field must contain:
-
-- value
-- confidence
-- evidence
-
-Evidence must point to the exact source:
-
-- file
-- line number
-- raw configuration line
-
-If the system cannot provide evidence, it must not make the
-corresponding security claim.
-
----
-
-## Rule 3 — Low confidence must abstain
-
-If confidence is below the configured threshold:
-
-UNKNOWN
-
-must be produced.
-
-Never convert uncertain information into a guessed PASS or FAIL.
-
-Unknown fields should be routed to the administrator training workflow.
-
----
-
-## Rule 4 — Remediation is never AI-generated
-
-Remediation commands must come only from a vetted snippet library.
-
-Snippets are keyed by:
-
-- vendor
-- OS family
-- rule ID
-
-Never generate production remediation CLI commands using an AI model.
-
----
-
-## Rule 5 — Rules and vendor packs are DATA
-
-Compliance rules and vendor parsing packs must be represented as
-data, primarily YAML.
-
-Adding:
-
-- a vendor
-- a framework
-- an OS version
-
-should not require modifying application code wherever the
+**Rule 5 — Rules and vendor packs are data.** Primarily YAML. Adding a vendor,
+framework or OS version must not require application code changes wherever the
 architecture permits.
 
----
-
-## Rule 6 — Offline-first
-
-The system must be capable of operating without paid cloud APIs.
-
-Preferred architecture:
-
-- CPU-based local embeddings
-- FAISS similarity search
-- local LLM through Ollama where an LLM is required
-- secrets scrubbed before model inference
-- configuration data does not need to leave the operator network
-- encryption at rest
-- complete audit trail
-
-Target hardware is a standard 8 GB laptop with no GPU.
+**Rule 6 — Offline-first.** CPU embeddings, FAISS, local LLM via Ollama where an
+LLM is needed. Secrets scrubbed before inference, encryption at rest, complete
+audit trail. Configuration data never needs to leave the operator network.
+Target hardware: a standard 8 GB laptop, no GPU.
 
 ---
 
-# 3. Canonical Security Model
+## 3. Canonical Security Model
 
-Vendor-specific configuration syntax must ultimately map to a
-vendor-neutral canonical model.
+All vendor syntax maps to a vendor-neutral model. Every security-relevant field
+carries value, confidence and evidence.
 
-Security-relevant fields should carry:
+Fields include: SSH version · Telnet enabled · HTTP server enabled · minimum
+password length · idle timeout · logging enabled · logging host · NTP servers ·
+SNMP v3 only · banner present · AAA enabled · weak ciphers.
 
-value
-confidence
-evidence
+ACLs use a structured vendor-neutral representation. Vendor-specific syntax must
+never leak into the compliance rule engine.
 
-The canonical model includes fields such as:
-
-- SSH version
-- Telnet enabled
-- HTTP server enabled
-- minimum password length
-- idle timeout
-- logging enabled
-- logging host
-- NTP servers
-- SNMP v3 only
-- banner present
-- AAA enabled
-- weak ciphers
-
-ACLs must use a structured vendor-neutral representation.
-
-Do not allow vendor-specific syntax to leak into the compliance
-rule engine.
+Do not add a field to the schema until a pattern for it can be verified against
+a real corpus file. A field that is present in the schema but never matches
+looks supported while producing UNKNOWN forever.
 
 ---
 
-# 4. Vendor Packs
+## 4. Vendor Packs
 
-Vendor packs describe how vendor-specific syntax maps to the
-canonical model.
+Packs describe how one platform's syntax maps to the canonical model, and are
+versioned.
 
-Example structure:
-
+```yaml
 vendor: acme-os
 version: 1
-
 patterns:
   - field: ssh_version
-    match:
-      type: regex
-      pattern: "^set ssh proto-version (\\d+)"
-    capture:
-      value: "$1"
-      cast: int
+    match: {type: regex, pattern: "^set ssh proto-version (\\d+)"}
+    capture: {value: "$1", cast: int}
     source: admin-trained
-    examples:
-      - "set ssh proto-version 2"
+    examples: ["set ssh proto-version 2"]
+```
 
-Vendor packs must be versioned.
+Generated patterns must be predictable and boring: tokenise the confirmed line,
+replace the captured token with `(\S+)`, escape the rest, anchor with `^`, show
+it to the administrator, allow editing before activation. Block scope selectors
+are anchored regexes, defaulting to the literal-escaped header — numeric-range
+generalisation is an explicit opt-in the administrator sees.
 
-Admin-trained patterns must be editable and deterministic.
-
-Generated patterns should be predictable and boring:
-
-1. Tokenise the confirmed line.
-2. Replace the captured token with `(\S+)`.
-3. Escape the remaining tokens.
-4. Anchor the pattern with `^`.
-5. Show the generated pattern to the administrator.
-6. Allow the administrator to edit it before activation.
-
-Do not generate unnecessarily clever regexes.
+Do not generate clever regexes. A pattern an administrator cannot read is one
+they cannot verify.
 
 ---
 
-# 5. Adaptive Learning
+## 5. Adaptive Learning
 
-When an unknown configuration line is encountered:
+On an unknown configuration line: do not guess. Cluster unknown lines, search
+the shared labelled-example index, produce up to three candidate mappings, and
+present them to the administrator. On confirmation or correction, compile the
+mapping into the vendor pack, add the example to the similarity index, version
+the pack, and allow re-evaluation.
 
-1. Do not guess.
-2. Cluster unknown lines where appropriate.
-3. Search the shared labelled-example similarity index.
-4. Produce up to three candidate mappings.
-5. Present them to the administrator.
-6. Allow the administrator to confirm or correct the mapping.
-7. Compile the confirmed mapping into the vendor pack.
-8. Add the confirmed example to the similarity index.
-9. Version the vendor pack.
-10. Allow the configuration to be re-evaluated.
-
-The AI/model does not become the authority.
-
-Administrator confirmation creates the trusted mapping.
-
-The goal is for vendor coverage to expand through data changes
-rather than backend code changes.
+The model is never the authority. Administrator confirmation creates the trusted
+mapping. Vendor coverage expands through data changes, not backend code changes.
 
 ---
 
-# 6. Compliance Engine
+## 6. Compliance Engine
 
-Compliance decisions must be deterministic.
-
-Rules should be declarative YAML.
-
-Initial framework support:
-
-- CIS
-- NIST SP 800-53
-- DISA STIG
-- ISO/IEC 27001
-
-One canonical security check may map to multiple framework
-control IDs.
-
-The compliance engine must produce:
-
-- PASS
-- FAIL
-- UNKNOWN
-
-with evidence and severity.
+Deterministic decisions from declarative YAML rules. Frameworks: CIS, NIST
+SP 800-53, DISA STIG, ISO/IEC 27001. One canonical check may map to multiple
+framework control IDs. Output is PASS, FAIL or UNKNOWN with evidence and
+severity.
 
 ---
 
-# 7. Important Analysis Features
+## 7. Analysis Capabilities
 
-Where feasible, preserve the following capabilities from the
-project specification:
+**Absence-aware evaluation.** A missing directive is not automatically FAIL.
+Consider whether the platform supports the control, its documented default, and
+whether the absence is determinable at all. If support or default behaviour is
+unknown, abstain.
 
-### Absence-aware evaluation
+**Peer-baseline outlier detection.** Compare devices against their own peer group
+to surface unusual configuration states.
 
-A missing configuration directive must not automatically mean
-FAIL.
+**Semantic ACL analysis.** Structural representation with deterministic interval
+logic to detect shadowed, redundant and overly permissive rules. Not an LLM.
 
-Consider:
+**Exposure-aware prioritisation.** Rank using the canonical model together with
+ACL and exposure information. Severity alone must not determine remediation
+order.
 
-- whether the platform supports the control
-- documented platform defaults
-- whether the absence is actually determinable
-
-If support/default behaviour is unknown, abstain.
-
-### Peer-baseline outlier detection
-
-Compare devices against their own peer group to identify unusual
-configuration states.
-
-### Semantic ACL analysis
-
-Represent ACLs structurally and detect:
-
-- shadowed rules
-- redundant rules
-- overly permissive rules
-
-Use deterministic interval/logic analysis rather than an LLM.
-
-### Exposure-aware prioritisation
-
-Prioritise findings using the canonical security model together
-with ACL/exposure information.
-
-Severity alone should not determine the remediation order.
-
-### Calibrated confidence
-
-Similarity scores must not automatically be treated as confidence.
-
-Confidence should eventually be calibrated against labelled
-ground truth.
+**Calibrated confidence.** Similarity scores are not confidence. Calibrate
+against labelled ground truth before treating any score as a probability.
 
 ---
 
-# 8. Remediation
+## 8. Remediation
 
-Remediation commands must come from the vetted snippet library.
+Commands come from the vetted snippet library and include, where applicable:
+exact command, vendor, OS family and version, rule ID, rollback command, impact
+assessment, and dependency or ordering information.
 
-Each remediation should include, where applicable:
-
-- exact command
-- vendor
-- OS family/version
-- rule ID
-- rollback command
-- impact assessment
-- dependency/ordering information
-
-Never automatically apply remediation to a live device.
-
-The system only generates recommendations.
-
-A human operator applies them.
+Remediation is never applied automatically. The system recommends; a human
+operator applies. Ordering must account for lockout risk — never sequence a
+change that strands the operator outside their own device.
 
 ---
 
-# 9. Security Restrictions
+## 9. Security Restrictions
 
-DO NOT implement:
+Do not implement: live device access · active network scanning · automatic
+remediation · model-generated production CLI · configuration chatbot · model
+fine-tuning · unnecessary cloud AI dependencies.
 
-- live device access
-- active network scanning
-- automatic remediation
-- model-generated production CLI
-- configuration chatbot
-- model fine-tuning
-- unnecessary cloud AI dependencies
-
-Configuration files may contain sensitive information.
-
-Treat them as sensitive data.
-
-Scrub secrets and credential-adjacent strings before external
-inference.
-
-Maintain an audit trail for:
-
-- AI suggestions
-- administrator corrections
-- vendor pack changes
-- audit results
-
-Use hash chaining for audit integrity.
+Configuration files are sensitive data. Scrub secrets and credential-adjacent
+strings before any external inference. Maintain a hash-chained audit trail of AI
+suggestions, administrator corrections, vendor pack changes and audit results.
 
 ---
 
-# 10. Technology Stack
+## 10. Interface Principles
 
-Preferred stack:
+Applies to the web UI (`ui/`) and report templates (`api/report/templates/`).
+Both share one visual vocabulary; neither invents its own. A static reference
+implementation lives at `docs/ui-reference.html` — translate from it rather than
+inventing component styling per screen.
 
-Backend:
-- Python 3.11
-- FastAPI
-- SQLite
+**Structure.** Three levels of zoom, one question each: fleet (which devices need
+attention) → device (what is wrong with this one) → finding (why do you claim
+that, and what do I type). A screen shows what serves its own question and links
+down for the rest. Build the finding detail view before any dashboard — it is
+the atom of the product; everything else is composition.
 
-Parsing:
-- TextFSM
-- ntc-templates
-- Netmiko / NAPALM
-- lxml for XML/JSON exports
+**Palette.** Neutral base, restrained semantic colour.
 
-AI:
-- sentence-transformers
-- all-MiniLM-L6-v2
-- FAISS
-- Ollama for local LLM functionality
+```
+ink       #17191C    primary text, solid fills
+ink-2     #3D444D    secondary text, severity bars
+muted     #6B7280    metadata, column headers
+paper     #FFFFFF    cards, tables
+surface   #F6F7F9    page background, hover
+border    #E1E5EA    hairlines
 
-Rules:
-- YAML
+pass      #1E6B4F  on #EDF5F1     fail    #9E2B2B  (solid, reversed text)
+unknown   #4A5666  on #EFF2F5     inferred #7A5B12  on #FAF3E3
+accent    #23527C    links, focus, evidence highlight
+```
 
-Frontend:
-- React
-- Tailwind CSS
+Semantic colour appears only on verdict chips, the inferred marker, evidence
+highlight, and focus states. Never on table rows, never as a large fill. If a
+screen is more than roughly a tenth colour, something is being decorated rather
+than communicated.
 
-Reporting:
-- Jinja2
-- WeasyPrint
+**Colour accelerates recognition; it never carries meaning alone.** Reports print
+in greyscale and a meaningful share of engineers have colour vision deficiency,
+so every state pairs its colour with a text label and a distinct weight or
+border treatment. FAIL is heaviest (solid fill, reversed) and draws the eye
+first. PASS is lightest — a compliant control needs no attention. UNKNOWN is
+dashed and neutral slate, deliberately **not** amber: abstention sits off the
+severity axis, not at the bottom of it. If the interface makes abstention look
+like a weaker failure, operators learn to filter it out and Rule 3 is defeated
+at the presentation layer.
 
-Do not introduce a new major technology without explaining why
-it is necessary and how it fits the architecture.
+Severity uses ink weight, not colour. Two competing colour scales on one screen
+produce a rainbow and destroy the verdict signal.
 
----
+**Evidence is always one interaction away.** Any finding traces to its source
+line without leaving context — show surrounding lines with the matched span
+marked. Fields asserted from `platform_default` carry a visible INFERRED marker
+that cannot be suppressed. An operator always knows the difference between
+observed and inferred. Remediation displays with its rollback and its impact
+note; never the command alone.
 
-# 11. Repository Structure
+**Density.** The audience is network and security engineers; dense is correct,
+cluttered is not. One separation mechanism per table — hairlines or banding or
+spacing, not all three. Numerals are tabular so columns align. Restraint in
+borders and shadows, not in information.
 
-Target structure:
+The training interface is the exception: it is a focused judgement task and
+should be spacious, one line at a time. A cramped training screen produces
+careless confirmations, and a careless confirmation enters a vendor pack
+permanently. Similarity scores are labelled as rankings, not probabilities.
 
-corpus/
-  <vendor>/
-  labels/
+**Restraint.** No chart that a sentence or a sorted table would carry better. No
+decorative visualisation of pass/fail ratios. Prioritisation is computed and
+presented as an ordered list — do not offload ranking onto filters the operator
+must drive themselves.
 
-packs/
-
-rules/
-  cis/
-  nist/
-  stig/
-  iso/
-
-snippets/
-
-api/
-
-ui/
-
-eval/
-
-docs/
-
-Keep configuration data, rules, vendor packs and remediation
-snippets separate from application logic.
-
----
-
-# 12. Evaluation
-
-Evaluation is part of the product, not an afterthought.
-
-The evaluation harness must measure:
-
-- precision per canonical field
-- recall per canonical field
-- correct-abstention rate
-- wrong-confident rate
-- held-out vendor generalisation
-- top-3 mapping accuracy
-
-The wrong-confident rate should be treated as a critical safety
-metric and kept near zero.
-
-One vendor should be held out entirely for the generalisation
-experiment.
+Spacing scales, type scales and component styling are implementation choices
+living in the frontend as tokens. They may be revised without amending these
+principles.
 
 ---
 
-# 13. Development Rules
+## 11. Technology Stack
 
-Before implementing a large feature:
+Backend: Python 3.11, FastAPI, SQLite.
+Parsing: TextFSM, ntc-templates, lxml for XML/JSON exports.
+AI: sentence-transformers (`all-MiniLM-L6-v2`), FAISS, Ollama.
+Rules: YAML. Frontend: React, Tailwind. Reporting: Jinja2, WeasyPrint.
 
-1. Understand the existing architecture.
-2. Explain the implementation plan.
-3. Identify affected components.
-4. Identify risks.
-5. Implement incrementally.
-6. Test the implementation.
-7. Do not silently replace architectural decisions.
-
-Do not:
-
-- delete working functionality unnecessarily
-- rewrite the entire project to solve a small problem
-- add dependencies without justification
-- hard-code vendor-specific logic into the rule engine
-- put compliance decisions inside AI prompts
-- hide uncertainty
-- fake evaluation results
-
-If a requirement is ambiguous, identify the ambiguity rather than
-inventing a convenient interpretation.
-
-Prefer boring, deterministic, testable solutions over impressive
-but unverifiable implementations.
+Do not introduce a new major technology without explaining why it is necessary
+and how it fits the architecture.
 
 ---
 
-# 14. Development Workflow
+## 12. Repository Structure
 
-Before coding:
+```
+corpus/<vendor>/ , corpus/labels/    packs/    rules/{cis,nist,stig,iso}/
+snippets/    api/    ui/    eval/    docs/
+```
 
-- inspect the repository
-- read this file
-- read docs/NIRIKSHAK_Concept_Report.pdf
-- understand the current implementation state
-
-For major changes:
-
-Plan → Review → Implement → Test → Verify
-
-Do not begin the full application implementation merely because
-the project is empty.
-
-Build the system incrementally from the core data contracts
-outward.
+Configuration data, rules, vendor packs and remediation snippets stay separate
+from application logic.
 
 ---
 
-# 15. Source of Truth
+## 13. Evaluation
 
-The project specification is:
+Evaluation is part of the product, not an afterthought. The harness measures:
+precision and recall per canonical field · correct-abstention rate ·
+wrong-confident rate · held-out vendor generalisation · top-3 mapping accuracy.
 
-docs/NIRIKSHAK_Concept_Report.pdf
+Wrong-confident rate is the critical safety metric and must stay near zero. One
+vendor is held out entirely for the generalisation experiment and its files are
+never opened during development.
 
-These project instructions define implementation constraints.
+---
 
-When a conflict appears:
+## 14. Development Rules and Workflow
 
-1. Identify the conflict.
-2. Explain it.
-3. Do not silently choose a solution.
-4. Ask for a decision when it affects architecture.
+Before coding: inspect the repository, read this file and the Concept Report, and
+understand the current implementation state.
 
-The repository must remain consistent with the NIRIKSHAK
-architecture and SIH Problem Statement 26155.
+For major changes: Plan → Review → Implement → Test → Verify. Identify affected
+components and risks in the plan. Implement incrementally. Never silently
+replace an architectural decision.
+
+Do not: delete working functionality unnecessarily · rewrite the project to solve
+a small problem · add dependencies without justification · hard-code
+vendor-specific logic into the rule engine · put compliance decisions inside AI
+prompts · hide uncertainty · fake evaluation results.
+
+A deferred capability must raise, never degrade. A mode that silently returns
+empty output is indistinguishable from a clean result and is a mis-parse
+arriving dressed as a fact.
+
+If a requirement is ambiguous, identify the ambiguity rather than inventing a
+convenient interpretation. Prefer boring, deterministic, testable solutions over
+impressive but unverifiable ones.
+
+---
+
+## 15. Source of Truth
+
+`docs/NIRIKSHAK_Concept_Report.pdf` is the specification; this file defines
+implementation constraints. On conflict: identify it, explain it, do not silently
+choose — ask for a decision when it affects architecture.
+
+The repository must remain consistent with the NIRIKSHAK architecture and SIH
+Problem Statement 26155.
