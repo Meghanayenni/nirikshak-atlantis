@@ -5,7 +5,8 @@
 # platform is recognised and device identity is read, while every canonical
 # security field stays UNKNOWN because nothing here claims to parse one yet.
 #
-# P4 adds parsing patterns as a new pack version.
+# Superseded by 1.1.0, which adds parsing patterns. Kept on disk so the
+# version lineage the audit chain records is a real one.
 #
 # Patterns use single-quoted YAML scalars: double quotes would process
 # backslashes as escapes and mangle every regex.
@@ -13,7 +14,7 @@
 vendor: cisco
 os_family: ios
 pack_version: 1.0.0
-status: active
+status: deprecated
 created_by: team-atlantis
 checksum: sha256:3a3bc0394fa93fcb28f6b33e4412e9337ca764bce176f4720e8d565b0c9d0009
 

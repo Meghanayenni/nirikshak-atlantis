@@ -33,6 +33,10 @@ FORBIDDEN_EDGES: list[tuple[str, str, str]] = [
     ("ingest", "normalise", "ingestion does not build the canonical model"),
     ("ingest", "learn", "vendor identity is decided by data, never by a model"),
     ("ingest", "remediate", "ingestion has nothing to do with remediation"),
+    ("parse", "learn", "parsing is deterministic; no model may reach a fact"),
+    ("parse", "comply", "the parser produces facts; it does not judge them"),
+    ("parse", "remediate", "parsing has nothing to do with remediation"),
+    ("parse", "normalise", "the canonical model is built downstream, at P5"),
 ]
 
 

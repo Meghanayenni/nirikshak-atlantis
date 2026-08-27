@@ -23,9 +23,15 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Rule 3 — abstention threshold. Provisional until the calibrator is fitted
-    # against labelled ground truth at P9. See R7 and R8.
+    # Rule 3 — abstention threshold for the CALIBRATED SIMILARITY population
+    # only (decision D6). Provisional until the calibrator is fitted against
+    # labelled ground truth at P9. See R7 and R8.
     confidence_threshold: float = 0.85
+
+    # D6 — platform defaults are their own population with their own floor.
+    # A documented default is either sourced and trusted or it is not used;
+    # borrowing the similarity threshold here would compare incomparable numbers.
+    platform_default_min_confidence: float = 0.90
 
     # Rule 6 — when true, no outbound network call is permitted, including
     # model downloads.

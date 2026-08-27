@@ -72,9 +72,13 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "version": "0.1.0",
-        "phase": "P3",
+        "phase": "P4",
         "schema_version": versions["audit"],
         "schema_versions": versions,
         "airgap": settings.airgap,
+        # Rule 3 has two abstention floors from P4 onward (decision D6), and a
+        # readout naming only one would suggest a single threshold governs every
+        # population — which is the misreading D6 exists to prevent.
         "confidence_threshold": settings.confidence_threshold,
+        "platform_default_min_confidence": settings.platform_default_min_confidence,
     }

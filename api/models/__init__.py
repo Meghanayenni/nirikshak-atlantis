@@ -12,6 +12,12 @@ happens to call them:
   * A snippet without a vetter cannot be built                    (Rule 4)
   * An audit record whose hash disagrees with its payload raises
   * A rule carrying framework prose is rejected by extra="forbid" (R16)
+
+`FieldMatch` and `ParseResult` (P4) sit alongside the eleven rather than among
+them: they are the parse layer's own carriers, not claims the whole system is
+built on. They live here because `api/models/` is the one package every layer
+may import, which is what keeps the parser from having to be imported to read
+what it produced.
 """
 
 from api.models.acl import (
@@ -82,6 +88,7 @@ from api.models.pack import (
     CaptureSpec,
     DetectSignature,
     IdentityPattern,
+    LiteralBlock,
     MatchSpec,
     PatternDef,
     PatternProvenance,
@@ -90,6 +97,7 @@ from api.models.pack import (
     PlatformDefault,
     VendorPack,
 )
+from api.models.parsing import FieldMatch, ParseResult
 from api.models.rule import (
     MAX_RATIONALE_CHARS,
     AbsencePolicy,
@@ -140,9 +148,13 @@ __all__ = [
     "PatternProvenance",
     "DetectSignature",
     "IdentityPattern",
+    "LiteralBlock",
     "IDENTITY_FIELDS",
     "PlatformDefault",
     "PlatformCapability",
+    # parsing (P4)
+    "FieldMatch",
+    "ParseResult",
     # rule
     "ComplianceRule",
     "CheckSpec",

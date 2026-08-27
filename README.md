@@ -21,9 +21,20 @@ administrator, and permanently learns the answer.
 
 ## Status
 
-**Phase P2 — audit hash chain.** The eleven data contracts (P1) and the
-hash-chained audit log on SQLite (P2) are in place. Parsing begins at P4.
-See `docs/adr/` for the decisions taken so far.
+**Phase P4 — structural parsing.** The eleven data contracts (P1), the
+hash-chained audit log on SQLite (P2), configuration ingestion with
+deterministic vendor detection (P3) and the structural parser (P4) are in place.
+
+The parser turns configuration text into a `ConfigTree` and applies a vendor
+pack to it, producing canonical fields that each carry a value, a confidence and
+evidence citing an exact line. The Cisco IOS pack reads eight canonical fields;
+every other pack is still detection-only, which is an honest state rather than a
+placeholder — the platform is recognised, and every field it cannot read says
+UNKNOWN.
+
+Normalisation into the Canonical Security Model is P5; the deterministic
+compliance engine is P6. See `docs/adr/` for the decisions taken so far, and
+`docs/CORPUS_PREREQUISITES.md` for work the corpus does not yet support.
 
 ---
 

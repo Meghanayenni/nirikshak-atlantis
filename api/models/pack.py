@@ -86,10 +86,45 @@ class PatternScope(BaseModel):
     block: tuple[str, ...] | None = Constraint(
         default=None,
         description=(
-            "Required enclosing chain prefix. Without this, 'exec-timeout 10 0' "
-            "under 'line con 0' would be read as a management idle timeout."
+            "Enclosing block headers as ANCHORED regular expressions, matched in "
+            "full against each element of a node's block_path (decision D9). "
+            "None means root level only; an empty tuple means any depth."
         ),
     )
+
+    @model_validator(mode="after")
+    def _check_anchored(self) -> PatternScope:
+        """D9 — a scope matches a whole block header, never a substring.
+
+        Unanchored matching cannot distinguish `line vty 0 4` from `line vty 0 15`,
+        and a scope that quietly matches more blocks than its author intended is
+        how a console timeout ends up reported as a management idle timeout.
+        Matching uses `re.fullmatch`; requiring the leading `^` keeps the intent
+        visible in the YAML rather than buried in the engine.
+        """
+        for entry in self.block or ():
+            if not entry.startswith("^"):
+                raise ValueError(
+                    f"scope block pattern {entry!r} is not anchored. Write the full "
+                    "block header, e.g. '^line vty 0 4$'. Numeric generalisation is "
+                    "allowed but must be written deliberately, never assumed (D9)."
+                )
+            try:
+                re.compile(entry)
+            except re.error as exc:
+                raise ValueError(f"invalid scope regex {entry!r}: {exc}") from exc
+        return self
+
+    def matches(self, block_path: tuple[str, ...]) -> bool:
+        """Does a node at `block_path` fall inside this scope?"""
+        if self.block is None:
+            return len(block_path) == 0
+        if len(block_path) < len(self.block):
+            return False
+        return all(
+            re.fullmatch(pattern, actual) is not None
+            for pattern, actual in zip(self.block, block_path[: len(self.block)], strict=True)
+        )
 
 
 class PatternProvenance(BaseModel):
@@ -145,6 +180,17 @@ class PatternDef(BaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def _confidence_is_exact(self) -> PatternDef:
+        """D6 — a deterministic match is worth exactly 1.0, and YAML cannot say otherwise."""
+        if self.confidence != 1.0:
+            raise ValueError(
+                "deterministic confidence must be exactly 1.0; a pattern either "
+                "matched or it did not. Fractional deterministic confidence needs "
+                "a new ADR, not a YAML value (D6)."
+            )
+        return self
+
     def self_check(self) -> list[str]:
         """Verify the pattern against its own examples. Used by the P11 validator.
 
@@ -190,12 +236,74 @@ class IdentityPattern(BaseModel):
     )
     examples: tuple[str, ...] = ()
 
+    @model_validator(mode="after")
+    def _confidence_is_exact(self) -> IdentityPattern:
+        """D6 — a deterministic match is worth exactly 1.0, and YAML cannot say otherwise."""
+        if self.confidence != 1.0:
+            raise ValueError(
+                "deterministic confidence must be exactly 1.0; a pattern either "
+                "matched or it did not. Fractional deterministic confidence needs "
+                "a new ADR, not a YAML value (D6)."
+            )
+        return self
+
 
 IDENTITY_FIELDS: frozenset[str] = frozenset(
     {"hostname", "model", "os_version", "serial", "domain_name"}
 )
 """Recognised identity fields. Reference rather than enforcement — the mapping
 stays open so a platform exposing something else is a data change."""
+
+
+class LiteralBlock(BaseModel):
+    """A region whose body is free-form text rather than configuration (D7).
+
+    Banner bodies, certificate blocks, key blocks — anywhere the lines between an
+    opener and a terminator are content rather than commands.
+
+    Two things go wrong when such a body is treated as configuration. It floods
+    the training queue with prose, and — much worse — it becomes reachable by
+    pattern matching, so a banner reading "ip ssh version 1 is prohibited" would
+    produce a security fact that is not in effect. Declaring the block keeps its
+    body preserved and citable while putting it beyond the engine's reach.
+
+    Deliberately not banner-specific: a terminator is either a fixed literal
+    (`quit` closing a certificate) or a delimiter captured from the opener
+    (`^C` in `banner motd ^C`).
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name: str = Constraint(min_length=1, description="e.g. 'banner', 'certificate'")
+    open: str = Constraint(min_length=1, description="Anchored regex opening the block")
+    terminator: str | None = Constraint(default=None, description="Fixed closing line, e.g. 'quit'")
+    terminator_group: int | None = Constraint(
+        default=None,
+        ge=1,
+        description="Capture group in `open` holding the delimiter, e.g. '^C'",
+    )
+
+    @model_validator(mode="after")
+    def _check(self) -> LiteralBlock:
+        if not self.open.startswith("^"):
+            raise ValueError(f"literal block opener {self.open!r} must be anchored with ^")
+        try:
+            compiled = re.compile(self.open)
+        except re.error as exc:
+            raise ValueError(f"invalid literal block regex {self.open!r}: {exc}") from exc
+
+        if (self.terminator is None) == (self.terminator_group is None):
+            raise ValueError(
+                f"literal block {self.name!r} must declare exactly one of terminator "
+                "(a fixed closing line) or terminator_group (a delimiter captured "
+                "from the opener)"
+            )
+        if self.terminator_group is not None and compiled.groups < self.terminator_group:
+            raise ValueError(
+                f"literal block {self.name!r} names capture group "
+                f"{self.terminator_group} but {self.open!r} has {compiled.groups}"
+            )
+        return self
 
 
 class PlatformDefault(BaseModel):
@@ -255,6 +363,16 @@ class VendorPack(BaseModel):
     detect: tuple[DetectSignature, ...] = ()
     identity: tuple[IdentityPattern, ...] = Constraint(
         default=(), description="Device-identity extraction (D3)"
+    )
+    literal_blocks: tuple[LiteralBlock, ...] = Constraint(
+        default=(), description="Regions whose bodies are text, not commands (D7)"
+    )
+    comment_prefixes: tuple[str, ...] = Constraint(
+        default=(),
+        description=(
+            "Line prefixes marking a comment. A commented-out directive must never "
+            "produce a PRESENT field, so these never become nodes."
+        ),
     )
     patterns: tuple[PatternDef, ...] = ()
     defaults: tuple[PlatformDefault, ...] = ()

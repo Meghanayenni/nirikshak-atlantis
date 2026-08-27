@@ -173,31 +173,76 @@ def test_hostnames_use_reserved_domains(path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_packs_are_not_authored_from_evaluation_files(manifest: dict) -> None:
-    """Memorisation dressed as accuracy is what this prevents.
-
-    Every pattern and identity example is a literal configuration line. If one
-    appears verbatim in an eval or holdout file, that file informed the pack and
-    can no longer measure it.
-    """
-    protected: list[tuple[str, set[str]]] = []
-    for entry in manifest["files"]:
-        if entry["split"] in ("eval", "holdout"):
-            text = (CORPUS / entry["path"]).read_text(encoding="utf-8", errors="replace")
-            protected.append(
-                (entry["path"], {ln.strip() for ln in text.splitlines() if ln.strip()})
-            )
-
-    violations: list[str] = []
+def _pack_examples() -> list[tuple[str, str, str]]:
+    """(pack_id, source_id, example) for every literal example a pack declares."""
+    out: list[tuple[str, str, str]] = []
     for pack in load_active_packs(use_cache=False):
-        examples = [ex for p in pack.patterns for ex in p.examples]
-        examples += [ex for i in pack.identity for ex in i.examples]
-        for example in examples:
-            for path, lines_in_file in protected:
-                if example.strip() in lines_in_file:
-                    violations.append(f"{pack.pack_id} example {example!r} appears in {path}")
+        for pattern in pack.patterns:
+            out += [(pack.pack_id, pattern.id, ex) for ex in pattern.examples]
+        for identity in pack.identity:
+            out += [(pack.pack_id, f"identity:{identity.field}", ex) for ex in identity.examples]
+    return out
+
+
+def _lines_in_split(manifest: dict, *splits: str) -> set[str]:
+    lines: set[str] = set()
+    for entry in manifest["files"]:
+        if entry["split"] in splits:
+            text = (CORPUS / entry["path"]).read_text(encoding="utf-8", errors="replace")
+            lines |= {ln.strip() for ln in text.splitlines() if ln.strip()}
+    return lines
+
+
+def test_every_pack_example_comes_from_the_development_split(manifest: dict) -> None:
+    """The rule that keeps a pattern honest.
+
+    An example is the evidence a pattern was authored from. Requiring every one
+    to appear verbatim in a development file catches two different failures with
+    one check:
+
+      * an example found only in eval or holdout means the pattern was authored
+        from data reserved for measuring it — memorisation dressed as accuracy;
+      * an example found nowhere at all means the pattern was written from
+        general vendor knowledge and verified against nothing.
+
+    The second is not hypothetical. It caught five invented Cisco patterns at P4.
+    """
+    dev_lines = _lines_in_split(manifest, "dev")
+
+    violations = [
+        f"{pack_id} {source_id}: {example!r} appears in no development file"
+        for pack_id, source_id, example in _pack_examples()
+        if example.strip() not in dev_lines
+    ]
+
+    assert not violations, (
+        "every pattern example must be a line someone actually read in "
+        "corpus/*/dev/:\n" + "\n".join(violations)
+    )
+
+
+def test_no_example_is_unique_to_a_protected_file(manifest: dict) -> None:
+    """The original check, kept explicit for the message it gives.
+
+    Subsumed by the test above, but stated separately so a failure says
+    'authored from evaluation data' rather than the more general
+    'not found in development data'.
+    """
+    dev_lines = _lines_in_split(manifest, "dev")
+    protected_lines = _lines_in_split(manifest, "eval", "holdout")
+
+    violations = [
+        f"{pack_id} {source_id}: {example!r} appears only in eval/holdout"
+        for pack_id, source_id, example in _pack_examples()
+        if example.strip() in protected_lines and example.strip() not in dev_lines
+    ]
 
     assert not violations, "packs were authored from protected files:\n" + "\n".join(violations)
+
+
+def test_pack_examples_exist_at_all() -> None:
+    """Guard against both tests above passing because no pack declares examples."""
+    assert len(_pack_examples()) >= 15
 
 
 def test_held_out_vendor_has_no_pack(manifest: dict) -> None:

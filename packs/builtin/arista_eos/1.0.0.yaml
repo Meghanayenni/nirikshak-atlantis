@@ -15,7 +15,7 @@ os_family: eos
 pack_version: 1.0.0
 status: active
 created_by: team-atlantis
-checksum: sha256:308e69078ab9f2def898c2098486c25b444a82b4f6f10de66b04cb00ee8a2aa3
+checksum: sha256:48ebe2a26f86e10467a1254da120deee0398721aa9908a902b509a1ce9bb06e0
 
 detect:
   - { type: regex, pattern: '^! device: \S+ \(', weight: 0.35 }
@@ -32,6 +32,6 @@ identity:
   - field: os_version
     match:   { type: regex, pattern: '^! device: \S+ \([^,]+, EOS-(\S+)\)' }
     capture: { value: '$1', cast: str }
-    examples: ['! device: sw-leaf-01 (DCS-7050, EOS-4.29.2F)']
+    examples: ['! device: sw-leaf-01 (DCS-7050SX3-48YC8, EOS-4.29.2F)']
 
 patterns: []

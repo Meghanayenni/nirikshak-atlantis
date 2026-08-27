@@ -33,11 +33,15 @@ def test_health_returns_ok(client: TestClient) -> None:
 
     body = response.json()
     assert body["status"] == "ok"
-    assert body["phase"] == "P3"
+    assert body["phase"] == "P4"
 
     # Rule 3 — the abstention threshold must be present and be a real
     # probability, not a placeholder.
     assert 0.0 < body["confidence_threshold"] <= 1.0
+
+    # D6 — both Rule 3 floors are reported. Naming only one would imply a single
+    # threshold governs every confidence population, which it does not.
+    assert 0.0 < body["platform_default_min_confidence"] <= 1.0
 
     # Rule 6 — airgap must be an explicit boolean, never absent or ambiguous.
     assert isinstance(body["airgap"], bool)

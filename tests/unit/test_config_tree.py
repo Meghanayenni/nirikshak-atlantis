@@ -1,14 +1,10 @@
 """ConfigTree / ConfigNode contract — the four R4 invariants.
 
-The real block parser arrives at P4. What is tested here is that the *contract*
-enforces its invariants, using a deliberately simple indent-mode tree builder
-local to this module.
-
-That helper is a test fixture, not a preview of the parser: it handles only
-indentation, has no vendor knowledge and makes no attempt at brace or set-path
-syntax. Its purpose is to produce well-formed and deliberately malformed trees
-so the contract's validators can be exercised — and, incidentally, to give P4 a
-conformance suite that already exists before the parser is written.
+Written at P1, before any parser existed, to exercise the contract's own
+validators. At P4 the helper below was repointed at the real
+`api.parse.block_parser` and **not one assertion was changed**, so this module
+became the parser's conformance suite without ever having been written with the
+parser in view.
 """
 
 from __future__ import annotations
@@ -23,8 +19,8 @@ from api.models import (
     ConfigTree,
     SourceType,
     SyntaxMode,
-    UnplacedLine,
 )
+from api.parse.block_parser import build_tree
 
 # ---------------------------------------------------------------------------
 # test-local tree builder (indent mode only)
@@ -32,64 +28,23 @@ from api.models import (
 
 
 def build_indent_tree(text: str, file_id: str = "f1", path: str = "d.cfg") -> ConfigTree:
-    """Build a ConfigTree from indentation. Test fixture only — not the P4 parser."""
-    lines = text.replace("\r\n", "\n").split("\n")
-    if lines and lines[-1] == "":
-        lines.pop()
+    """Build a ConfigTree using the REAL P4 parser.
 
-    nodes: dict[str, ConfigNode] = {}
-    unplaced: list[UnplacedLine] = []
-    roots: list[str] = []
-    stack: list[tuple[int, str]] = []  # (indent, node_id)
-    children: dict[str, list[str]] = {}
+    At P1 this was a test-local fixture, written before any parser existed. P4
+    replaced its body with a call to `block_parser.build_tree` and changed
+    nothing else: every assertion in this module now runs against the real
+    implementation.
 
-    for n, raw in enumerate(lines, start=1):
-        if not raw.strip():
-            unplaced.append(UnplacedLine(line_number=n, raw_line=raw, reason="blank line"))
-            continue
+    That ordering is the point. These checks could not have been shaped to fit
+    the parser, because the parser did not exist when they were written — which
+    is the usual failure of a conformance suite authored afterwards.
 
-        indent = len(raw) - len(raw.lstrip())
-        while stack and stack[-1][0] >= indent:
-            stack.pop()
-
-        parent_id = stack[-1][1] if stack else None
-        node_id = f"n{n}"
-        block_path = tuple(nodes[pid].text for _, pid in stack)
-
-        nodes[node_id] = ConfigNode(
-            node_id=node_id,
-            file_id=file_id,
-            line_number=n,
-            raw_line=raw,
-            text=raw.strip(),
-            depth=len(stack),
-            parent_id=parent_id,
-            children=(),
-            block_path=block_path,
-            syntax_mode=SyntaxMode.INDENT,
-        )
-        children.setdefault(node_id, [])
-        if parent_id is None:
-            roots.append(node_id)
-        else:
-            children.setdefault(parent_id, []).append(node_id)
-        stack.append((indent, node_id))
-
-    # attach children (nodes are frozen, so rebuild)
-    nodes = {
-        nid: node.model_copy(update={"children": tuple(children.get(nid, []))})
-        for nid, node in nodes.items()
-    }
-
-    return ConfigTree(
-        file_id=file_id,
-        file_path=path,
-        syntax_mode=SyntaxMode.INDENT,
-        roots=tuple(roots),
-        nodes=nodes,
-        unplaced=tuple(unplaced),
-        source_line_count=len(lines),
-    )
+    No comment prefixes or literal blocks are declared here, so the parser
+    behaves exactly as the original fixture did: only blank lines are unplaced.
+    Comment and literal-block handling has its own tests in
+    tests/unit/test_block_parser.py.
+    """
+    return build_tree(text, file_id=file_id, file_path=path, mode=SyntaxMode.INDENT)
 
 
 SAMPLE = """hostname rtr-core-01

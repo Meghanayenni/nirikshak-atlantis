@@ -1,0 +1,174 @@
+# NIRIKSHAK vendor pack — cisco ios
+#
+# P4: the first real PARSING pack. Detection and identity are carried forward
+# from 1.0.0 unchanged; `patterns` now populates eight canonical security fields.
+#
+# AUTHORING PROVENANCE (decision R9)
+# Every pattern was authored from corpus/cisco/dev/ only:
+#     rtr-core-01.cfg   42 lines
+#     sw-access-02.cfg  20 lines
+# corpus/cisco/eval/rtr-edge-09.cfg was not opened; the PAN-OS holdout was not
+# touched. A canonical field with no occurrence in those two files has no
+# pattern here — an unverifiable pattern that silently never matches is worse
+# than an absent one, because the field looks supported while producing UNKNOWN
+# forever.
+#
+# Patterns match node.text (trimmed), never raw_line: indentation is structure,
+# already carried by depth and block_path.
+#
+# Scopes are ANCHORED full block headers (decision D9). '^line vty \d+ \d+$' is
+# deliberate numeric generalisation, written out rather than assumed, and it
+# excludes 'line con 0' — which is the whole point, since a console timeout is
+# not a management idle timeout.
+#
+# Single-quoted YAML scalars throughout: double quotes would treat backslashes
+# as escapes and mangle every regex.
+
+vendor: cisco
+os_family: ios
+pack_version: 1.1.0
+parent_version: 1.0.0
+status: active
+created_by: team-atlantis
+checksum: sha256:b23481b9c1f2fdc5d8580531541f4e25834fe280ae98d308cea964d129b00ac1
+
+comment_prefixes: ['!']
+
+literal_blocks:
+  # The body of a banner is prose, not configuration. Left as nodes it would
+  # flood the training queue and — far worse — be reachable by pattern matching,
+  # so a banner reading 'ip ssh version 1 is prohibited' would produce a fact
+  # that is not in effect. The opener stays a node so banner_present can cite it.
+  - name: banner
+    open: '^banner \S+ (\S+)$'
+    terminator_group: 1
+
+detect:
+  - { type: regex, pattern: '^version \d+\.\d+', weight: 0.25 }
+  - { type: regex, pattern: '^service timestamps ', weight: 0.25 }
+  - { type: regex, pattern: '^line vty \d+', weight: 0.2 }
+  - { type: regex, pattern: '^interface (GigabitEthernet|FastEthernet)\d', weight: 0.2 }
+  - { type: regex, pattern: '^ip ssh version ', weight: 0.15 }
+
+identity:
+  - field: hostname
+    match:   { type: regex, pattern: '^hostname (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['hostname rtr-core-01']
+  - field: os_version
+    match:   { type: regex, pattern: '^version (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['version 17.9']
+  - field: model
+    match:   { type: regex, pattern: '^! model (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['! model ISR4331']
+
+patterns:
+
+  # --- ssh_version --------------------------------------------------------
+  # rtr-core-01 line 12. Absent from sw-access-02, which is the abstention case.
+  - id: p-ssh-version-001
+    field: ssh_version
+    scope: { block: null }
+    match:   { type: regex, pattern: '^ip ssh version (\d+)$' }
+    capture: { value: '$1', cast: int }
+    examples: ['ip ssh version 2']
+    negative_examples: ['ip ssh version', 'no ip ssh version 2', 'ip ssh version 2 extra']
+
+  # --- telnet_enabled -----------------------------------------------------
+  # The sharpest pair in the corpus: rtr-core-01 line 38 'transport input ssh'
+  # against sw-access-02 line 17 'transport input telnet ssh'. A pattern with
+  # the sense backwards fails immediately rather than passing on uniform data.
+  #
+  # 'transport input all' and 'transport input none' are real IOS forms but
+  # appear in neither development file, so no pattern claims them. Such a line
+  # becomes residue — visible in the training queue — rather than a fact.
+  - id: p-telnet-enabled-001
+    field: telnet_enabled
+    scope: { block: ['^line vty \d+ \d+$'] }
+    match:   { type: regex, pattern: '^transport input (?=.*\btelnet\b).*$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['transport input telnet ssh']
+    negative_examples: ['transport input ssh', 'transport input none']
+
+  - id: p-telnet-enabled-002
+    field: telnet_enabled
+    scope: { block: ['^line vty \d+ \d+$'] }
+    match:   { type: regex, pattern: '^transport input (?:ssh|none)$' }
+    capture: { value: 'false', cast: bool }
+    examples: ['transport input ssh']
+    negative_examples: ['transport input telnet ssh', 'transport input all']
+
+  # --- http_server_enabled -------------------------------------------------
+  # rtr-core-01 line 13 and sw-access-02 line 7. Negation form: nothing to
+  # capture, so the pattern declares the literal value.
+  #
+  # There is deliberately no '^ip http server$' pattern: the affirmative form
+  # appears nowhere in the development corpus, so it could be written from
+  # general Cisco knowledge but not verified. A device that enables the HTTP
+  # server therefore reports UNKNOWN rather than a value we cannot stand
+  # behind — which is the correct answer until the corpus contains one.
+  - id: p-http-server-001
+    field: http_server_enabled
+    scope: { block: null }
+    match:   { type: regex, pattern: '^no ip http server$' }
+    capture: { value: 'false', cast: bool }
+    examples: ['no ip http server']
+    negative_examples: ['ip http server', 'no ip http secure-server']
+
+  # --- https_server_enabled ------------------------------------------------
+  # rtr-core-01 line 14. Absent from sw-access-02, which abstains.
+  #
+  # No '^no ip http secure-server$' pattern for the same reason as above:
+  # the negated form has no occurrence in the development corpus.
+  - id: p-https-server-001
+    field: https_server_enabled
+    scope: { block: null }
+    match:   { type: regex, pattern: '^ip http secure-server$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['ip http secure-server']
+    negative_examples: ['no ip http secure-server', 'ip http server']
+
+  # --- idle_timeout_seconds ------------------------------------------------
+  # rtr-core-01 line 39 (vty, 10 0 -> 600) and sw-access-02 line 18 (30 0 ->
+  # 1800). The scope is what keeps rtr-core-01 line 36 'exec-timeout 0 0' under
+  # 'line con 0' from being read as a management idle timeout.
+  - id: p-idle-timeout-001
+    field: idle_timeout_seconds
+    scope: { block: ['^line vty \d+ \d+$'] }
+    match:   { type: regex, pattern: '^exec-timeout (\d+) (\d+)$' }
+    capture: { value: '$1 $2', cast: duration }
+    examples: ['exec-timeout 10 0', 'exec-timeout 30 0']
+    negative_examples: ['exec-timeout', 'exec-timeout ten zero']
+
+  # --- logging_hosts -------------------------------------------------------
+  # Multi-valued: repetition accumulates rather than conflicts.
+  - id: p-logging-host-001
+    field: logging_hosts
+    scope: { block: null }
+    match:   { type: regex, pattern: '^logging host (\S+)$' }
+    capture: { value: '$1', cast: list }
+    examples: ['logging host 192.0.2.10']
+    negative_examples: ['logging trap informational', 'logging host']
+
+  # --- ntp_servers ---------------------------------------------------------
+  # rtr-core-01 lines 19-20 carry two, which is what exercises accumulation.
+  - id: p-ntp-server-001
+    field: ntp_servers
+    scope: { block: null }
+    match:   { type: regex, pattern: '^ntp server (\S+)$' }
+    capture: { value: '$1', cast: list }
+    examples: ['ntp server 192.0.2.20', 'ntp server 192.0.2.21']
+    negative_examples: ['ntp server', 'ntp authenticate']
+
+  # --- banner_present ------------------------------------------------------
+  # rtr-core-01 line 22. Matches the opener only; the body is a literal block
+  # and never reaches the pattern engine at all.
+  - id: p-banner-present-001
+    field: banner_present
+    scope: { block: null }
+    match:   { type: regex, pattern: '^banner motd (\S+)$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['banner motd ^C']
+    negative_examples: ['banner motd', 'no banner motd']

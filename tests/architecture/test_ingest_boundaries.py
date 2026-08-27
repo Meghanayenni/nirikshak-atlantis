@@ -157,3 +157,59 @@ def test_detection_never_uses_a_model() -> None:
     source = (INGEST / "vendor_detect.py").read_text(encoding="utf-8")
     for banned in ("sentence_transformers", "torch", "faiss", "ollama", "openai"):
         assert banned not in source
+
+
+# ---------------------------------------------------------------------------
+# Parse layer (P4)
+# ---------------------------------------------------------------------------
+
+PARSE = REPO_ROOT / "api" / "parse"
+
+ML_MODULES = ["sentence_transformers", "torch", "faiss", "sklearn", "transformers", "ollama"]
+
+
+def _offending_imports(root: Path, module: str) -> list[str]:
+    return [
+        f"{path.relative_to(REPO_ROOT)} imports {imported}"
+        for path in _sources(root)
+        for imported in _imports(path)
+        if imported == module or imported.startswith(f"{module}.")
+    ]
+
+
+def test_parse_package_is_populated() -> None:
+    """Guard against every test below passing because the package is empty."""
+    modules = [p for p in _sources(PARSE) if p.name != "__init__.py"]
+    assert len(modules) >= 6, f"expected the parse modules, found {len(modules)}"
+
+
+@pytest.mark.parametrize("module", ML_MODULES)
+def test_parse_uses_no_machine_learning(module: str) -> None:
+    """Parsing is deterministic. A model has no route into a parsed fact."""
+    assert _offending_imports(PARSE, module) == []
+
+
+@pytest.mark.parametrize("module", NETWORK_MODULES)
+def test_parse_has_no_network_capability(module: str) -> None:
+    assert _offending_imports(PARSE, module) == []
+
+
+@pytest.mark.parametrize("layer", ["api.comply", "api.learn", "api.remediate", "api.normalise"])
+def test_parse_does_not_reach_downstream_layers(layer: str) -> None:
+    assert _offending_imports(PARSE, layer) == []
+
+
+def test_parse_makes_no_compliance_decision() -> None:
+    """No verdict vocabulary anywhere in the package.
+
+    The parser produces facts. Whether a fact is secure is decided at P6 by an
+    engine that cannot import this package.
+    """
+    forbidden = ("Verdict", "ComplianceRule", "Finding", "AbsenceAction")
+    offenders = [
+        f"{path.relative_to(REPO_ROOT)} references {name}"
+        for path in _sources(PARSE)
+        for name in forbidden
+        if name in path.read_text(encoding="utf-8")
+    ]
+    assert offenders == []
