@@ -33,7 +33,7 @@ def test_health_returns_ok(client: TestClient) -> None:
 
     body = response.json()
     assert body["status"] == "ok"
-    assert body["phase"] == "P6"
+    assert body["phase"] == "P7"
 
     # Rule 3 — the abstention threshold must be present and be a real
     # probability, not a placeholder.
@@ -58,5 +58,20 @@ def test_startup_applies_migrations(client: TestClient) -> None:
 
 
 def test_audit_endpoints_are_mounted(client: TestClient) -> None:
-    assert client.get("/audit/head").json()["empty"] is True
-    assert client.get("/audit/verify").json()["ok"] is True
+    """Mounted, and protected from P7 onward (decision D25)."""
+    from api.db import users as user_store
+    from api.db.connection import connect
+
+    conn = connect(settings.db_path)
+    user_store.create_user(conn, "probe", "a-sufficiently-long-pw")
+    conn.close()
+    who = ("probe", "a-sufficiently-long-pw")
+
+    assert client.get("/audit/head", auth=who).json()["empty"] is True
+    assert client.get("/audit/verify", auth=who).json()["ok"] is True
+
+
+def test_audit_endpoints_reject_anonymous_callers(client: TestClient) -> None:
+    """The chain records who touched whose configuration. Not a public surface."""
+    assert client.get("/audit/head").status_code == 401
+    assert client.get("/audit/verify").status_code == 401

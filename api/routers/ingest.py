@@ -18,6 +18,7 @@ from api.config import settings
 from api.db.connection import connect, table_exists
 from api.ingest import line_cache
 from api.ingest.service import IngestionLimits, IngestionService, UploadedFile
+from api.routers.deps import AdminUser, CurrentUser, owner_filter, require_access
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
@@ -50,7 +51,7 @@ Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
 
 
 @router.post("/upload")
-async def upload(conn: Conn, files: list[UploadFile]) -> dict[str, Any]:
+async def upload(conn: Conn, user: CurrentUser, files: list[UploadFile]) -> dict[str, Any]:
     """Ingest one or more configuration files, or a ZIP of them.
 
     Returns a per-file result. A malformed or binary file is reported alongside
@@ -78,6 +79,7 @@ async def upload(conn: Conn, files: list[UploadFile]) -> dict[str, Any]:
             AuditChain(audit_conn),
             blob_root=settings.blob_root,
             limits=limits_from_settings(),
+            owner_id=user.user_id,
         )
         batch = service.ingest_batch(uploads)
     finally:
@@ -122,17 +124,31 @@ async def upload(conn: Conn, files: list[UploadFile]) -> dict[str, Any]:
 @router.get("/files")
 def list_files(
     conn: Conn,
+    user: CurrentUser,
     vendor: str | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> dict[str, Any]:
-    clause, params = "", []
+    # A user sees only files they uploaded; an admin sees the fleet. The join is
+    # through `ingestion`, because config_file is content-addressed and shared:
+    # two people uploading the same configuration share one row.
+    conditions, params = [], []
     if vendor is not None:
-        clause = "WHERE detected_vendor = ?"
+        conditions.append("cf.detected_vendor = ?")
         params.append(vendor)
+
+    owner = owner_filter(user)
+    if owner is not None:
+        conditions.append(
+            "EXISTS (SELECT 1 FROM ingestion i WHERE i.file_id = cf.file_id AND i.owner_id = ?)"
+        )
+        params.append(owner)
+
+    clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     params.append(limit)
 
     rows = conn.execute(
-        f"SELECT * FROM config_file {clause} ORDER BY first_seen_at DESC LIMIT ?", params
+        f"SELECT cf.* FROM config_file cf {clause} ORDER BY cf.first_seen_at DESC LIMIT ?",
+        params,
     ).fetchall()
     return {
         "count": len(rows),
@@ -156,11 +172,21 @@ def list_files(
 @router.get("/files/{file_id}/lines")
 def file_lines(
     conn: Conn,
+    user: CurrentUser,
     file_id: str,
     start: Annotated[int, Query(ge=1)] = 1,
     count: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> dict[str, Any]:
     """Lines with their exact numbers — the same numbers evidence cites."""
+    # Authorised before a single line is read: raw configuration is the most
+    # sensitive thing this API serves, and the Concept Report separates access to
+    # it from access to findings.
+    owned = conn.execute(
+        "SELECT owner_id FROM ingestion WHERE file_id = ? ORDER BY received_at LIMIT 1",
+        (file_id,),
+    ).fetchone()
+    require_access(user, exists=owned is not None, owner_id=owned["owner_id"] if owned else None)
+
     records = line_cache.read_lines(conn, file_id)
     if not records:
         raise HTTPException(status_code=404, detail="no such file, or it has no lines")
@@ -175,8 +201,17 @@ def file_lines(
 
 
 @router.get("/devices")
-def list_devices(conn: Conn) -> dict[str, Any]:
-    rows = conn.execute("SELECT * FROM device ORDER BY hostname IS NULL, hostname").fetchall()
+def list_devices(conn: Conn, user: CurrentUser) -> dict[str, Any]:
+    owner = owner_filter(user)
+    if owner is None:
+        rows = conn.execute("SELECT * FROM device ORDER BY hostname IS NULL, hostname").fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT d.* FROM device d WHERE EXISTS ("
+            "  SELECT 1 FROM ingestion i WHERE i.file_id = d.file_id AND i.owner_id = ?"
+            ") ORDER BY d.hostname IS NULL, d.hostname",
+            (owner,),
+        ).fetchall()
     return {
         "count": len(rows),
         "devices": [
@@ -194,6 +229,10 @@ def list_devices(conn: Conn) -> dict[str, Any]:
 
 
 @router.get("/stats")
-def stats(conn: Conn) -> dict[str, Any]:
-    """Fleet-wide line-cache effectiveness — the deduplication claim, measured."""
+def stats(conn: Conn, admin: AdminUser) -> dict[str, Any]:
+    """Fleet-wide line-cache effectiveness — the deduplication claim, measured.
+
+    Admin-only: the numbers describe the whole estate, so serving them to a user
+    who can see one device would leak the size and shape of everyone else's.
+    """
     return line_cache.cache_stats(conn)

@@ -64,6 +64,9 @@ unconstructable.
 | An unsourced platform default is unconstructable | `PlatformProvenance` | D11 |
 | `on_capability_unknown` may only abstain | `AbsencePolicy` validator | Rule 3, DEF-4 |
 | A rule condition that can never evaluate is refused at load | `load_rulepack` self-check | D18 |
+| An undetermined ACL observation must state why | `AclObservation` validator | D24 |
+| A shadowing claim must name the entries responsible | `AclObservation` validator | D22 |
+| A user object has nowhere to carry a credential | `User`, by omission | D25 |
 | An audit record whose hash disagrees with its payload raises | `AuditRecord` | §9 |
 | A model actor may only perform `ai_suggested` | `AuditRecord` | Rule 1 |
 | Every source line is a node or unplaced, never dropped | `ConfigTree` | R4 |
@@ -465,11 +468,60 @@ cited.
 
 ---
 
+## 15. Structural analysis — P7, decision D22
+
+`AclObservation · AclAnalysis · AclAnalysisResult`, in `api/models/analysis.py`.
+
+**An ACL observation is not a compliance verdict**, and this contract exists so it
+cannot be mistaken for one. `CheckSpec` reads `CSM.fields[name]` and has no path
+to `CSM.acls`, so representing an ACL result as a `Finding` would have meant
+widening the one object the whole Rule 1 argument rests on. Two rails instead:
+
+| Input | Producer | Output | Claim |
+| --- | --- | --- | --- |
+| `CSM.fields` | rule engine (P6) | `Finding` | a device breaches a control |
+| `CSM.acls` | analyser (P7) | `AclObservation` | a list does not do what reading it suggests |
+
+Only the first needs a control to exist. `comply → analyse` is a forbidden import
+edge, so a verdict cannot become influenceable by analysis performed outside the
+canonical model.
+
+Four observation kinds: `shadowed`, `redundant`, `overly_permissive`, and
+`undetermined`. Validators enforce two things — an `undetermined` observation must
+record *why*, and a shadowing or redundancy claim must **name the entries
+responsible**, because an unattributed claim cannot be verified or acted on.
+
+### Unresolved is UNKNOWN, not empty (D24)
+
+`AddrSpec(kind=OBJECT)` may carry no `resolved_cidrs`; its address set is genuinely
+unknown. Containment is therefore three-valued — `True`, `False`, `None` — and
+`None` propagates. Treating unknown as *empty* would make such an entry match
+nothing, so it could neither shadow nor be shadowed, and would drop silently out of
+the analysis while the report looked complete.
+
+## 16. Identity — P7, decision D25
+
+`User · Role`, in `api/models/auth.py`.
+
+**`User` carries no credential field at all** — no hash, no salt, no token. That is
+structural rather than incidental: a user object cannot leak a credential into a
+log line, an API response or an audit payload, because there is nowhere for one to
+be attached. Passwords live only in the store, hashed with `hashlib.scrypt`
+(RFC 7914), and are read only by `authenticate`.
+
+Two roles. `user` sees only resources they own; `admin` sees the fleet.
+`User.may_access(owner_id)` is the whole model, and an **unowned** resource is
+admin-only — rows predating ownership have no owner, and defaulting those to
+"everyone" would silently expose every earlier upload.
+
+---
+
 ## What is not here yet
 
-The resolver that reads snippets (P7–P8) and the prioritisation that scores
-exposure (P7/P12). Those consume these contracts; none of them may weaken one.
+The resolver that reads snippets (P8) and the prioritisation that scores exposure
+(P12). Those consume these contracts; none of them may weaken one.
 
 Chain-walking verification (P2), the block parser (P4), the normaliser that builds
-a CSM (P5) and the rule engine that evaluates one (P6) are now built, in
-`api/audit/`, `api/parse/`, `api/normalise/` and `api/comply/` respectively.
+a CSM (P5), the rule engine that evaluates one (P6) and the ACL analyser (P7) are
+now built, in `api/audit/`, `api/parse/`, `api/normalise/`, `api/comply/` and
+`api/analyse/` respectively.

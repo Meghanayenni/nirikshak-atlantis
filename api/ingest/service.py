@@ -68,6 +68,7 @@ class IngestionService:
         limits: IngestionLimits,
         available_packs: list[VendorPack] | None = None,
         actor: Actor | None = None,
+        owner_id: str | None = None,
     ) -> None:
         self._conn = conn
         self._chain = chain
@@ -75,6 +76,11 @@ class IngestionService:
         self._limits = limits
         self._packs = available_packs if available_packs is not None else packs.load_active_packs()
         self._actor = actor or Actor(type=ActorType.SYSTEM, id="ingest")
+        # Who uploaded this (decision D25). Recorded on the ingestion row rather
+        # than on config_file, because the file is content-addressed: the same
+        # configuration uploaded by two people is one file and two ingestions.
+        # None means an unowned upload, which only an admin may then see.
+        self._owner_id = owner_id
 
     # -- public -----------------------------------------------------------
 
@@ -294,8 +300,8 @@ class IngestionService:
                 """
                 INSERT INTO ingestion (
                     ingestion_id, batch_id, original_filename, file_id,
-                    status, reason, size_bytes, received_at
-                ) VALUES (?,?,?,?,?,?,?,?)
+                    status, reason, size_bytes, received_at, owner_id
+                ) VALUES (?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     uuid.uuid4().hex,
@@ -306,6 +312,7 @@ class IngestionService:
                     None,
                     ingested.size_bytes,
                     now,
+                    self._owner_id,
                 ),
             )
             conn.execute("COMMIT")
@@ -330,8 +337,8 @@ class IngestionService:
                 """
                 INSERT INTO ingestion (
                     ingestion_id, batch_id, original_filename, file_id,
-                    status, reason, size_bytes, received_at
-                ) VALUES (?,?,?,?,?,?,?,?)
+                    status, reason, size_bytes, received_at, owner_id
+                ) VALUES (?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     uuid.uuid4().hex,
@@ -342,6 +349,7 @@ class IngestionService:
                     str(exc.reason),
                     len(upload.data),
                     datetime.now(UTC).isoformat(),
+                    self._owner_id,
                 ),
             )
             self._conn.execute("COMMIT")

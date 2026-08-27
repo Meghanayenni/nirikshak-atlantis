@@ -131,6 +131,15 @@ def test_ai_suggestions_are_distinguishable_from_decisions(conn: sqlite3.Connect
 # ---------------------------------------------------------------------------
 
 
+AUDITOR = ("auditor", "a-sufficiently-long-pw")
+"""The chain surface requires authentication from P7 (decision D25).
+
+An operator reading the audit log is reading a record of who did what to whose
+configuration, so it is not a public surface. The assertions below are unchanged;
+only the credentials are new.
+"""
+
+
 @pytest.fixture
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     db = tmp_path / "audit.db"
@@ -144,20 +153,28 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setattr(settings, "audit_db_path", db)
     monkeypatch.setattr(settings, "db_path", tmp_path / "operational.db")
 
+    from api.db import users as user_store
+    from api.db.migrate import OPERATIONAL_MIGRATIONS
+
+    op = connect(tmp_path / "operational.db")
+    migrate(op, OPERATIONAL_MIGRATIONS)
+    user_store.create_user(op, AUDITOR[0], AUDITOR[1])
+    op.close()
+
     from api.main import app
 
     return TestClient(app)
 
 
 def test_head_endpoint(client: TestClient) -> None:
-    body = client.get("/audit/head").json()
+    body = client.get("/audit/head", auth=AUDITOR).json()
     assert body["empty"] is False
     assert body["last_seq"] == 3
     assert body["record_count"] == 4
 
 
 def test_verify_endpoint(client: TestClient) -> None:
-    body = client.get("/audit/verify").json()
+    body = client.get("/audit/verify", auth=AUDITOR).json()
     assert body["ok"] is True
     assert body["records_checked"] == 4
     assert body["tamper_evident_not_tamper_proof"] is True
@@ -165,15 +182,23 @@ def test_verify_endpoint(client: TestClient) -> None:
 
 def test_records_endpoint_declares_itself_unverifiable(client: TestClient) -> None:
     """A filtered view has no links between its rows, so it carries no claim."""
-    body = client.get("/audit/records?limit=2").json()
+    body = client.get("/audit/records?limit=2", auth=AUDITOR).json()
     assert body["verifiable"] is False
     assert "use /audit/verify" in body["reason"]
     assert body["count"] == 2
 
 
 def test_no_write_route_exists(client: TestClient) -> None:
-    """Records are appended by the services that act, never by an HTTP caller."""
+    """Records are appended by the services that act, never by an HTTP caller.
+
+    Matched on `/audit/` with the separator, not the bare prefix. The chain's
+    surface is what this protects, and `/compliance/audits` is a different
+    resource that legitimately accepts POST — a prefix match without the slash
+    conflates the two.
+    """
     schema = client.get("/openapi.json").json()
-    for path, operations in schema["paths"].items():
-        if path.startswith("/audit"):
-            assert set(operations) <= {"get"}, f"{path} exposes {set(operations)}"
+    chain_paths = [p for p in schema["paths"] if p == "/audit" or p.startswith("/audit/")]
+
+    assert chain_paths, "guard against this passing because the chain routes vanished"
+    for path in chain_paths:
+        assert set(schema["paths"][path]) <= {"get"}, f"{path} exposes {set(schema['paths'][path])}"

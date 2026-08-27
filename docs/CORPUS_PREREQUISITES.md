@@ -3,6 +3,10 @@
 Work that cannot begin until the corpus supports it. Each entry names the phase
 it blocks and what would unblock it.
 
+> **See also `docs/SOURCING_BACKLOG.md`**, which collects the five gaps that
+> cannot be closed by writing code — including the two most consequential ones
+> here — and states plainly what P9 may and may not claim as a result.
+
 The governing principle, from decision R9: **prefer a small auditable corpus over
 a large unverified one**, and never claim accuracy on data that has not been
 properly labelled and separated.

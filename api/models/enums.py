@@ -411,3 +411,76 @@ class AuditAction(StrEnum):
     PACK_ACTIVATED = "pack_activated"
     PACK_ROLLED_BACK = "pack_rolled_back"
     REPORT_GENERATED = "report_generated"
+
+
+# ---------------------------------------------------------------------------
+# ACL semantic analysis (P7)
+# ---------------------------------------------------------------------------
+
+
+class AclObservationKind(StrEnum):
+    """What the interval analysis concluded about one access-list entry.
+
+    These are **structural observations, not compliance verdicts** (decision
+    D22). A shadowed entry is a fact about the list's own logic; whether that
+    breaches a control is a separate question, decided by a separate engine over
+    a separate input.
+    """
+
+    SHADOWED = "shadowed"
+    """Fully covered by an earlier entry with the OPPOSITE action, so it can
+    never fire. The operator believes a rule is in force and it is dead."""
+
+    REDUNDANT = "redundant"
+    """Fully covered by an earlier entry with the SAME action. Removing it
+    changes nothing, which makes the list shorter to reason about."""
+
+    OVERLY_PERMISSIVE = "overly_permissive"
+    """A permit whose match set is unbounded — the `permit ip any any` shape."""
+
+    UNDETERMINED = "undetermined"
+    """The entry could not be analysed, and says so (decision D24).
+
+    Never silence. An entry naming an unresolved object-group has no computable
+    interval, and treating that as "matches nothing" would quietly drop it out of
+    the analysis while the report looked complete — the Rule 3 failure exactly.
+    """
+
+
+class UnresolvedReason(StrEnum):
+    """Why an entry could not be analysed."""
+
+    UNRESOLVED_OBJECT = "unresolved_object"
+    """An address names an object-group whose members are not known here."""
+
+    UNRESOLVED_EARLIER_ENTRY = "unresolved_earlier_entry"
+    """This entry is computable, but an entry above it is not — so whether it is
+    shadowed cannot be decided either way."""
+
+    MIXED_ADDRESS_FAMILY = "mixed_address_family"
+    """IPv4 and IPv6 operands cannot be compared as one interval."""
+
+
+# ---------------------------------------------------------------------------
+# Access control (P7, decision D25)
+# ---------------------------------------------------------------------------
+
+
+class Role(StrEnum):
+    """Who may see what.
+
+    Deliberately two roles. The Concept Report promises that "access to raw
+    files is role-separated from access to findings"; two roles is the smallest
+    thing that makes that true, and a larger permission model is a platform this
+    project does not need.
+    """
+
+    USER = "user"
+    """Sees only their own uploads, audits and findings."""
+
+    ADMIN = "admin"
+    """Sees the fleet, and performs management operations."""
+
+    @property
+    def is_admin(self) -> bool:
+        return self is Role.ADMIN

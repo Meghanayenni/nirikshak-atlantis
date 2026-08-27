@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from api.audit import store
 from api.audit.verify import verify_chain
 from api.db.connection import connect, table_exists
+from api.routers.deps import CurrentUser
 
 router = APIRouter(prefix="/audit", tags=["audit"])
 
@@ -38,7 +39,7 @@ Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
 
 
 @router.get("/head")
-def read_head(conn: Conn) -> dict[str, Any]:
+def read_head(conn: Conn, user: CurrentUser) -> dict[str, Any]:
     """Current chain head."""
     head = store.read_head(conn)
     if head is None:
@@ -55,6 +56,7 @@ def read_head(conn: Conn) -> dict[str, Any]:
 @router.get("/records")
 def list_records(
     conn: Conn,
+    user: CurrentUser,
     action: str | None = None,
     actor_id: str | None = None,
     subject_kind: str | None = None,
@@ -104,6 +106,7 @@ def list_records(
 @router.get("/verify")
 def verify(
     conn: Conn,
+    user: CurrentUser,
     start: Annotated[int, Query(ge=0)] = 0,
     end: int | None = None,
 ) -> dict[str, Any]:

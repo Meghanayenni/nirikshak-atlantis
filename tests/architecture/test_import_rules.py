@@ -45,6 +45,14 @@ FORBIDDEN_EDGES: list[tuple[str, str, str]] = [
     ("comply", "normalise", "Rule 1 — the engine receives a CSM, it does not build one"),
     ("comply", "remediate", "a verdict is decided before anything is proposed to fix it"),
     ("comply", "report", "the engine does not know how its findings will be rendered"),
+    ("comply", "analyse", "Rule 1 — a verdict rests on the canonical model alone (D22)"),
+    ("analyse", "comply", "an ACL observation is a fact, not a verdict (D22)"),
+    ("analyse", "learn", "Rule 1 — no model output may reach an analysis result"),
+    ("analyse", "parse", "analysis reads the canonical model, never vendor syntax"),
+    ("analyse", "ingest", "analysis has no business with files"),
+    ("analyse", "normalise", "analysis receives a CSM; it does not build one"),
+    ("analyse", "remediate", "analysis reports; it does not propose fixes"),
+    ("analyse", "report", "analysis does not know how it will be rendered"),
 ]
 
 

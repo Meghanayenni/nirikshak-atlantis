@@ -21,11 +21,11 @@ administrator, and permanently learns the answer.
 
 ## Status
 
-**Phase P6 — the deterministic compliance engine.** The eleven data contracts
-(P1), the hash-chained audit log on SQLite (P2), configuration ingestion with
+**Phase P7 — ACL analysis and a protected API.** The eleven data contracts (P1),
+the hash-chained audit log on SQLite (P2), configuration ingestion with
 deterministic vendor detection (P3), the structural parser (P4), normalisation
-into the Canonical Security Model (P5) and the rule engine that evaluates it (P6)
-are in place.
+into the Canonical Security Model (P5), the rule engine that evaluates it (P6),
+and semantic ACL analysis with an authenticated findings API (P7) are in place.
 
 The parser turns configuration text into a `ConfigTree` and applies a vendor pack
 to it, producing canonical fields that each carry a value, a confidence and
@@ -56,12 +56,19 @@ and maps them to nothing. **No claim of coverage against any of those four
 frameworks is made or supported by this repository.**
 
 **The corpus is synthetic and small.** Two Cisco development devices are enough to
-validate the *evaluator*; they are not enough to validate a *rule*. See
-`docs/CORPUS_PREREQUISITES.md`, which also records that the corpus contains no
-access control lists at all.
+validate the *evaluator*; they are not enough to validate a *rule*.
 
-Exposure-aware prioritisation is P7 and remediation is P8. See `docs/adr/` for the
-decisions taken so far.
+**No ACL parsing coverage.** The corpus contains no access control lists at all,
+so the semantic ACL analyser — shadowed, redundant and overly permissive entries,
+by interval logic — is tested against constructed model objects and has never seen
+a parsed one. No detection rate against real access lists is claimed.
+
+See `docs/CORPUS_PREREQUISITES.md` and `docs/SOURCING_BACKLOG.md`.
+
+Remediation and PDF reporting are P8; exposure-aware prioritisation and
+peer-baseline detection are P12. See `docs/adr/` for the decisions taken so far,
+and `docs/SOURCING_BACKLOG.md` for the five gaps that cannot be closed by writing
+code.
 
 ---
 
@@ -115,15 +122,34 @@ uvicorn api.main:app --reload
 
 Endpoints so far:
 
-| Method | Path | Purpose |
-| ------ | ---- | ------- |
-| GET | `/health` | Liveness and safety-relevant settings |
-| GET | `/audit/head` | Current chain head |
-| GET | `/audit/records` | Filtered history (never a verification claim) |
-| GET | `/audit/verify` | Verify the chain |
+| Method | Path | Purpose | Auth |
+| ------ | ---- | ------- | ---- |
+| GET | `/health` | Liveness and safety-relevant settings | public |
+| POST | `/ingest/upload` | Upload configurations | user |
+| GET | `/ingest/files` | Files you uploaded (admins: all) | user |
+| GET | `/ingest/devices` | Devices you uploaded (admins: all) | user |
+| GET | `/ingest/stats` | Fleet-wide cache effectiveness | **admin** |
+| POST | `/compliance/audits` | Audit one file; persists the result | user |
+| GET | `/compliance/audits` | Your audit runs (admins: all) | user |
+| GET | `/compliance/audits/{id}` | One run's summary | user |
+| GET | `/compliance/audits/{id}/findings` | Findings with evidence | user |
+| GET | `/audit/head` · `/audit/records` · `/audit/verify` | The hash chain | user |
+| GET · POST | `/users`, `/users/{id}/disable` | Account management | **admin** |
+| GET | `/users/me` | Who you are | user |
 
-The audit surface is **read-only by design**. Records are appended by the
-services that perform the actions, never by an HTTP caller.
+**Everything except `/health` requires authentication** (HTTP Basic). A user sees
+only what they uploaded and audited; an admin sees the fleet. A resource you may
+not see answers 404, not 403 — 403 would confirm the id exists.
+
+The `/audit/*` chain surface is **read-only by design**. Records are appended by
+the services that perform the actions, never by an HTTP caller. `/compliance/audits`
+is a different resource and does accept POST.
+
+Create the first administrator out-of-band:
+
+```bash
+python scripts/create_admin.py --username alice
+```
 
 ## Verifying the audit log
 

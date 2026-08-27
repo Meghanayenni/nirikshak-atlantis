@@ -14,7 +14,9 @@ from api.config import settings
 from api.db.connection import connect
 from api.db.migrate import AUDIT_MIGRATIONS, OPERATIONAL_MIGRATIONS, current_version, migrate
 from api.routers import audit as audit_router
+from api.routers import audits as audits_router
 from api.routers import ingest as ingest_router
+from api.routers import users as users_router
 
 
 @asynccontextmanager
@@ -55,7 +57,9 @@ app = FastAPI(
 )
 
 app.include_router(audit_router.router)
+app.include_router(audits_router.router)
 app.include_router(ingest_router.router)
+app.include_router(users_router.router)
 
 
 @app.get("/health")
@@ -72,7 +76,7 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "version": "0.1.0",
-        "phase": "P6",
+        "phase": "P7",
         "schema_version": versions["audit"],
         "schema_versions": versions,
         "airgap": settings.airgap,
