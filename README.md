@@ -21,20 +21,32 @@ administrator, and permanently learns the answer.
 
 ## Status
 
-**Phase P4 — structural parsing.** The eleven data contracts (P1), the
-hash-chained audit log on SQLite (P2), configuration ingestion with
-deterministic vendor detection (P3) and the structural parser (P4) are in place.
+**Phase P5 — normalisation and absence-aware evaluation.** The eleven data
+contracts (P1), the hash-chained audit log on SQLite (P2), configuration
+ingestion with deterministic vendor detection (P3), the structural parser (P4)
+and normalisation into the Canonical Security Model (P5) are in place.
 
-The parser turns configuration text into a `ConfigTree` and applies a vendor
-pack to it, producing canonical fields that each carry a value, a confidence and
-evidence citing an exact line. The Cisco IOS pack reads eight canonical fields;
-every other pack is still detection-only, which is an honest state rather than a
-placeholder — the platform is recognised, and every field it cannot read says
-UNKNOWN.
+The parser turns configuration text into a `ConfigTree` and applies a vendor pack
+to it, producing canonical fields that each carry a value, a confidence and
+evidence citing an exact line. Normalisation then resolves what every **absent**
+directive means — the platform's documented default, a control the platform
+cannot express, or an honest UNKNOWN — and builds the canonical model the
+compliance engine will consume.
 
-Normalisation into the Canonical Security Model is P5; the deterministic
-compliance engine is P6. See `docs/adr/` for the decisions taken so far, and
-`docs/CORPUS_PREREQUISITES.md` for work the corpus does not yet support.
+The Cisco IOS pack reads eight canonical fields; every other pack is still
+detection-only, which is an honest state rather than a placeholder — the platform
+is recognised, and every field it cannot read says UNKNOWN.
+
+**No platform defaults ship yet, deliberately.** Absence-aware evaluation is
+entirely data-driven, and no vendor documentation has been sourced, so every
+absent field currently resolves to UNKNOWN rather than to a manufactured default.
+The engine is built and tested; populating it is a data change requiring a real
+citation. See `docs/adr/0012-normalisation-and-absence.md`.
+
+The deterministic compliance engine is P6. See `docs/adr/` for the decisions taken
+so far, and `docs/CORPUS_PREREQUISITES.md` for work the corpus does not yet
+support — including access control lists, of which the corpus currently contains
+none.
 
 ---
 

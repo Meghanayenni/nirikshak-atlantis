@@ -37,6 +37,10 @@ FORBIDDEN_EDGES: list[tuple[str, str, str]] = [
     ("parse", "comply", "the parser produces facts; it does not judge them"),
     ("parse", "remediate", "parsing has nothing to do with remediation"),
     ("parse", "normalise", "the canonical model is built downstream, at P5"),
+    ("normalise", "comply", "Rule 1 — the canonical model is built, then judged separately"),
+    ("normalise", "learn", "Rule 1 — no model output may reach the canonical model"),
+    ("normalise", "remediate", "normalisation has nothing to do with remediation"),
+    ("normalise", "report", "the canonical model does not know how it will be rendered"),
 ]
 
 

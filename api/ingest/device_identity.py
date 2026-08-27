@@ -24,7 +24,7 @@ from api.models import (
     SourceType,
     UnknownReason,
 )
-from api.models.ingestion import DeviceIdentity
+from api.models.ingestion import DetectedDeviceIdentity
 from api.models.pack import IdentityPattern, MatchType, VendorPack
 
 IDENTITY_ORDER = ("hostname", "model", "os_version", "serial", "domain_name")
@@ -95,14 +95,14 @@ def extract_identity(
     file_id: str,
     file_path: str,
     source_type: SourceType = SourceType.CLI,
-) -> DeviceIdentity:
+) -> DetectedDeviceIdentity:
     """Extract every identity field the pack knows how to find.
 
     A blank line cannot serve as evidence, so patterns that would match one are
     skipped rather than producing an uncitable claim.
     """
     if pack is None:
-        return DeviceIdentity()
+        return DetectedDeviceIdentity()
 
     extracted: dict[str, Field[str]] = {}
     citable = [line for line in lines]
@@ -120,4 +120,4 @@ def extract_identity(
             pack=pack,
         )
 
-    return DeviceIdentity(**extracted)
+    return DetectedDeviceIdentity(**extracted)

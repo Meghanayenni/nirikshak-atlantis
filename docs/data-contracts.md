@@ -148,6 +148,27 @@ is a data change in a pack and a rule, not an edit to this class (Rule 5).
 produced is not determinable, which is the same conclusion as one produced
 without confidence. Both abstain; neither becomes "no".
 
+**Interface management status is three-valued** (P5, DEF-2). `is_management` is
+`bool | None`, where `None` means undocumented, so there are three accessors:
+`management_interfaces()`, `non_management_interfaces()` and
+`indeterminate_interfaces()`. They test `is True` / `is False` / `is None`
+explicitly. A truthiness test folded `None` into "confirmed not management",
+which converts ignorance into an answer — the exact substitution Rule 3 forbids,
+in the one accessor P12's exposure prioritisation depends on. The indeterminate
+case has its own accessor so a caller must decide what to do about it rather than
+receiving it silently folded into a result.
+
+`DeviceIdentity` here is **not** `api.models.ingestion.DetectedDeviceIdentity`.
+This one is flat resolved strings plus a `device_id`; that one is a bundle of
+`Field[str]` objects, each abstaining independently. Both were called
+`DeviceIdentity` until P5, and only this one was exported — so an ambiguous
+import silently returned the wrong class. `api/normalise/identity.py` converts
+between them.
+
+`device_id` is currently the ingested file's content hash, so it identifies *this
+configuration*, not the physical device across time (DEF-3, deferred). Nothing
+may present it as a stable device identity.
+
 ## 5. ACL
 
 Modelled as **intervals** from the outset, because the P7 analysis is interval
@@ -341,11 +362,69 @@ judgement into a layer that is supposed to have none. That is P5.
 
 ---
 
+## 13. Platform knowledge — P5, decisions D11 and D13
+
+`PlatformProvenance · PlatformDefault · PlatformCapability`, all in
+`api/models/pack.py`. They live on the vendor pack because platform defaults are
+vendor-specific configuration knowledge, versioned with the syntax they
+accompany. **There is exactly one authoritative home for them** (D10).
+
+### PlatformProvenance
+
+`platform · source_type · source_id · locator · status · applies_to_versions`
+
+A platform default is the one security claim NIRIKSHAK makes with **no
+configuration line to cite** — the premise is that the directive is absent — so
+the provenance is the entire justification. It is typed rather than free text
+because the previous contract, `citation: str` with `min_length=1`, was cleared by
+the string `"general knowledge"`.
+
+Three validators make an unsourced claim unconstructable rather than merely
+discouraged: a `sourced` claim must name a document, must carry a locator into it
+(whitespace does not count), and `project_asserted` is a **biconditional** across
+`source_type` and `status` — marking one without the other would let our own
+assertion be presented as externally verified.
+
+`project_asserted` is representable so a claim we cannot yet source can be written
+down and reviewed. It is **not admissible**: `is_admissible` is true only for
+`sourced`, and its `cite()` string says so wherever it is displayed. A field
+resting on one abstains.
+
+Per `CONTENT_POLICY.md` this holds **identifiers and locators only**. There is no
+field for a document's wording, and a test asserts no prose-shaped field name
+exists on the model.
+
+### PlatformDefault and PlatformCapability
+
+`PlatformDefault` has deliberately **no confidence field**, and forbids extras.
+The confidence an accepted default carries is a single configured value (D13),
+not a per-entry choice — otherwise the number becomes a dial for making a weak
+claim look strong, the same failure D6 closed for deterministic patterns.
+
+`PlatformCapability.supported is None` means undocumented, which must abstain
+rather than assume in either direction. It carries the same provenance type, for
+the same reason: `supported: false` resolves to ABSENT_UNSUPPORTED, a
+determinable state a rule may act on, so an unsourced claim that a platform
+*cannot* express a control is as dangerous as an unsourced default.
+
+### The two confidence numbers
+
+| Setting | Value | Meaning |
+| --- | --- | --- |
+| `platform_default_confidence` | 0.95 | What an accepted default is *assigned* |
+| `platform_default_min_confidence` | 0.90 | The *admissibility floor* it must clear |
+
+Deliberately unequal, so the floor stays testable in the failing direction.
+Neither is a calibrated probability — this population is never pooled with
+similarity scores when fitting the calibrator (R7).
+
+---
+
 ## What is not here yet
 
-The evaluator that consumes a CSM (P6), the normaliser that builds one (P5), and
-the resolver that reads snippets (P7–P8). Those consume these contracts; none of
-them may weaken one.
+The evaluator that consumes a CSM (P6) and the resolver that reads snippets
+(P7–P8). Those consume these contracts; none of them may weaken one.
 
-Chain-walking verification (P2) and the block parser that builds a `ConfigTree`
-(P4) are now built, in `api/audit/` and `api/parse/` respectively.
+Chain-walking verification (P2), the block parser that builds a `ConfigTree` (P4)
+and the normaliser that builds a CSM (P5) are now built, in `api/audit/`,
+`api/parse/` and `api/normalise/` respectively.

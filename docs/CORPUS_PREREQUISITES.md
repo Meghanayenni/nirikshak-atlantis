@@ -94,7 +94,55 @@ correspondingly. Until then the corpus is synthetic and says so.
 
 ---
 
-## 4. Further literal-block declarations — affects parse cleanliness
+## 4. An access control list — blocks ACL normalisation
+
+**Blocks:** populating `CanonicalSecurityModel.acls`, and therefore the semantic
+ACL analysis at P7 and exposure-aware prioritisation at P12.
+
+**Why it is blocked.** **The corpus contains no ACL at all.** Searching every
+development *and* evaluation file for `access-list`, `access-group`, `ip access`,
+`firewall`, `filter`, `security-policy`, `policy-map` and `class-map` returns
+nothing. The nearest line in the whole corpus is one Juniper statement —
+
+```
+set security policies from-zone trust to-zone untrust policy allow-web match source-address any
+```
+
+— which carries a source address and no destination, protocol, port or action,
+and belongs to a vendor whose pack is still detection-only.
+
+So `CSM.acls` is an empty tuple at P5, and P5 says so rather than shipping ACL
+patterns written from general vendor knowledge against zero evidence. That is
+precisely what the P4 corpus-provenance test exists to prevent, and it caught five
+invented Cisco patterns when it was introduced.
+
+This one is more consequential than it looks. Three of the five capabilities in
+the Concept Report's "beyond the base idea" section — semantic ACL analysis,
+exposure-aware prioritisation, and a meaningful part of peer-baseline comparison
+— rest on structured ACLs. `api/models/acl.py` models them as intervals precisely
+so the P7 analysis can be computation rather than pattern matching, and none of
+that machinery can be exercised against an empty tuple.
+
+**What would unblock it.** Development-split configurations containing real
+access control lists, sanitised to `docs/CONTENT_POLICY.md` and recorded in the
+manifest, ideally including:
+
+- a list with **shadowed** entries — a later rule unreachable behind an earlier
+  one — since detecting those is the point of interval analysis;
+- a list with a **redundant** entry;
+- an **overly permissive** entry (`permit ip any any`), which `ACLEntry`
+  already has a predicate for;
+- at least one list actually **applied** to an interface with a direction, so
+  `AclApplication` and exposure reasoning have something to consume.
+
+**What must not happen.** Writing those files ourselves and calling the resulting
+analysis validated. A synthetic ACL we authored will contain exactly the shapes we
+thought to include, which is the same trap recorded for XML above: the analysis
+would be right about a shape we invented and untested against the real thing.
+
+---
+
+## 5. Further literal-block declarations — affects parse cleanliness
 
 **Blocks:** nothing. **Affects:** residue quality.
 

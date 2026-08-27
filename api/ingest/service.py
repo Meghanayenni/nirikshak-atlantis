@@ -24,8 +24,8 @@ from api.ingest.device_identity import extract_identity
 from api.ingest.validate import ValidationError, check_size, decode
 from api.models import Actor, ActorType, AuditAction, Subject
 from api.models.ingestion import (
+    DetectedDeviceIdentity,
     DetectionResult,
-    DeviceIdentity,
     IngestedFile,
     IngestionBatch,
     IngestionRejection,
@@ -167,7 +167,7 @@ class IngestionService:
                 source_type=file_format.to_source_type(),
             )
             if pack is not None
-            else DeviceIdentity()
+            else DetectedDeviceIdentity()
         )
 
         already = self._conn.execute(
@@ -207,7 +207,7 @@ class IngestionService:
         batch_id: str,
         ingested: IngestedFile,
         records: list,
-        identity: DeviceIdentity,
+        identity: DetectedDeviceIdentity,
         detection: DetectionResult,
     ) -> None:
         import json

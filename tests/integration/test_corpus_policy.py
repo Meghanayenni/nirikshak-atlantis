@@ -245,6 +245,96 @@ def test_pack_examples_exist_at_all() -> None:
     assert len(_pack_examples()) >= 15
 
 
+# ---------------------------------------------------------------------------
+# Platform knowledge provenance (decision D11)
+# ---------------------------------------------------------------------------
+
+
+def _platform_claims() -> list[tuple[str, str, object]]:
+    """(pack_id, field, provenance) for every default and capability claim shipped."""
+    out: list[tuple[str, str, object]] = []
+    for pack in load_active_packs(use_cache=False):
+        out += [(pack.pack_id, d.field, d.provenance) for d in pack.defaults]
+        out += [
+            (pack.pack_id, c.field, c.provenance)
+            for c in pack.capabilities
+            if c.provenance is not None
+        ]
+    return out
+
+
+def test_the_synthetic_corpus_is_never_cited_for_a_platform_default() -> None:
+    """A platform default is a claim about the PLATFORM, not about a device.
+
+    Every corpus file is synthetic — written by the team to be realistic, not
+    captured from a real network — so no corpus file can establish what a vendor
+    documents as its default. Citing one would dress a fixture up as vendor
+    documentation, which is the most convincing way this system could be wrong.
+    """
+    corpus_markers = ("corpus/", ".cfg", ".conf", "rtr-core", "sw-access", "sw-leaf", "srx-")
+
+    violations = [
+        f"{pack_id} default for {field!r} cites {marker!r} — a synthetic corpus file"
+        for pack_id, field, prov in _platform_claims()
+        for marker in corpus_markers
+        if marker in f"{getattr(prov, 'source_id', '')} {getattr(prov, 'locator', '')}".lower()
+    ]
+
+    assert not violations, "\n".join(violations)
+
+
+def test_every_sourced_platform_claim_is_actually_findable() -> None:
+    """D11 — a 'sourced' claim names a document and a place inside it.
+
+    The contract enforces this at construction. Asserting it again over the
+    shipped packs is what catches a default added later with a plausible-looking
+    but empty citation.
+    """
+    from api.models.enums import ProvenanceStatus
+
+    violations = [
+        f"{pack_id} claim for {field!r}: sourced but names {prov.source_id!r} / {prov.locator!r}"
+        for pack_id, field, prov in _platform_claims()
+        if prov.status is ProvenanceStatus.SOURCED
+        and not (prov.source_id.strip() and prov.locator.strip())
+    ]
+
+    assert not violations, "\n".join(violations)
+
+
+def test_project_asserted_claims_are_labelled_as_such() -> None:
+    """An assertion must never be presented as externally verified."""
+    from api.models.enums import PlatformSourceType, ProvenanceStatus
+
+    violations = [
+        f"{pack_id} claim for {field!r} mixes assertion and sourcing"
+        for pack_id, field, prov in _platform_claims()
+        if (prov.source_type is PlatformSourceType.PROJECT_ASSERTED)
+        != (prov.status is ProvenanceStatus.PROJECT_ASSERTED)
+    ]
+
+    assert not violations, "\n".join(violations)
+
+
+def test_no_platform_defaults_are_shipped_yet() -> None:
+    """P5 ships the absence engine with no authored defaults, deliberately.
+
+    No vendor documentation has been sourced, and the corpus cannot substitute
+    for it. Rather than manufacture defaults to make the pipeline look complete,
+    every absent field abstains — see ADR 0012 and CORPUS_PREREQUISITES.
+
+    **This test is expected to be deleted** by the change that authors the first
+    genuinely sourced default. It fails loudly at that point so the author has to
+    look at the provenance tests above rather than adding data quietly.
+    """
+    packs = load_active_packs(use_cache=False)
+    declared = {p.pack_id: (len(p.defaults), len(p.capabilities)) for p in packs}
+
+    assert all(counts == (0, 0) for counts in declared.values()), (
+        f"platform knowledge appeared without a sourcing review: {declared}"
+    )
+
+
 def test_held_out_vendor_has_no_pack(manifest: dict) -> None:
     """The generalisation experiment is only real if nothing was ever authored."""
     held_out = manifest["held_out_vendor"]

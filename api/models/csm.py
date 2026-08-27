@@ -51,7 +51,19 @@ would make adding a canonical field a code change.
 
 
 class DeviceIdentity(BaseModel):
-    """Who this configuration belongs to, as far as the file reveals."""
+    """Who this configuration belongs to, as far as the file reveals.
+
+    **Not** `api.models.ingestion.DetectedDeviceIdentity`, which is the
+    ingestion-layer type: a bundle of `Field[str]` objects, each carrying its own
+    evidence and abstaining independently. This one is the resolved, flattened
+    identity the canonical model carries, and P5 converts the former into the
+    latter. The two were both called `DeviceIdentity` until P5; the ingestion
+    side was renamed so an ambiguous import cannot silently pick the wrong one.
+
+    `device_id` is currently the ingested file's content hash, so it identifies
+    *this configuration*, not the physical device across time. Recorded as
+    DEF-3 and deferred; nothing here may present it as a stable device identity.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -170,7 +182,32 @@ class CanonicalSecurityModel(BaseModel):
         return next((a for a in self.acls if a.acl_id == acl_id), None)
 
     def management_interfaces(self) -> tuple[Interface, ...]:
-        return tuple(i for i in self.interfaces if i.is_management)
+        """Interfaces **confirmed** to be management interfaces.
+
+        `is True`, not truthiness. `Interface.is_management` is `bool | None`,
+        where `None` means undocumented — and `None` is falsy, so a truthiness
+        test folded *we do not know* into *confirmed not management*. That is the
+        exact substitution Rule 3 forbids, in the accessor P12's exposure-aware
+        prioritisation depends on: an interface we failed to classify would be
+        quietly de-prioritised rather than surfaced as undetermined.
+
+        Anything not confirmed either way is `indeterminate_interfaces()`, which
+        a caller must handle rather than receive silently folded into this
+        result.
+        """
+        return tuple(i for i in self.interfaces if i.is_management is True)
+
+    def non_management_interfaces(self) -> tuple[Interface, ...]:
+        """Interfaces **confirmed** not to be management interfaces."""
+        return tuple(i for i in self.interfaces if i.is_management is False)
+
+    def indeterminate_interfaces(self) -> tuple[Interface, ...]:
+        """Interfaces whose management status is undocumented.
+
+        Neither confirmed nor excluded. Kept as its own answer so a caller must
+        decide what to do about it — abstaining is a result, not an empty set.
+        """
+        return tuple(i for i in self.interfaces if i.is_management is None)
 
     # -- summary -----------------------------------------------------------
 

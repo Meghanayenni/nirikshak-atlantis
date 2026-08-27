@@ -28,6 +28,7 @@ from api.models import (
     Severity,
     VendorPack,
 )
+from tests.fixtures.platform import sourced_default
 
 # ---------------------------------------------------------------------------
 # Patterns — boring by design (DEVELOPER_GUIDE.md §4)
@@ -141,23 +142,35 @@ def test_capability_unknown_means_abstain() -> None:
     assert p.supports("never_declared") is None
 
 
-def test_capability_claim_requires_a_citation() -> None:
+def test_capability_claim_requires_provenance() -> None:
     """A guess wearing a citation field is worse than abstaining."""
-    with pytest.raises(ValidationError, match="without a citation"):
+    with pytest.raises(ValidationError, match="without provenance"):
         PlatformCapability(field="ssh_version", supported=True)
 
 
-def test_platform_default_requires_a_citation() -> None:
-    with pytest.raises(ValidationError):
-        PlatformDefault(field="telnet_enabled", value=False, citation="")
+def test_platform_default_requires_provenance() -> None:
+    """D11 — the free-text citation is gone; provenance is mandatory and typed."""
+    with pytest.raises(ValidationError, match="provenance"):
+        PlatformDefault(field="telnet_enabled", value=False)
+
+
+def test_platform_default_rejects_a_free_text_citation() -> None:
+    """The old escape hatch is closed, not merely discouraged.
+
+    `citation="general knowledge"` used to satisfy the contract. It is now an
+    unknown field on a model that forbids extras, so the pack fails to load
+    rather than loading with an unjustified claim inside it (D11).
+    """
+    with pytest.raises(ValidationError, match="[Ee]xtra"):
+        PlatformDefault(
+            field="telnet_enabled",
+            value=False,
+            citation="general knowledge",  # type: ignore[call-arg]
+        )
 
 
 def test_pack_lookup_helpers() -> None:
-    p = pack(
-        defaults=(
-            PlatformDefault(field="telnet_enabled", value=False, citation="IOS 17.x config guide"),
-        )
-    )
+    p = pack(defaults=(sourced_default("telnet_enabled", False),))
     assert p.pack_id == "cisco/ios"
     assert len(p.patterns_for("ssh_version")) == 1
     assert p.patterns_for("nonexistent") == ()

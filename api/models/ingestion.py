@@ -176,12 +176,20 @@ class DetectionResult(BaseModel):
         return "UNKNOWN — no signature matched"
 
 
-class DeviceIdentity(BaseModel):
+class DetectedDeviceIdentity(BaseModel):
     """What the configuration says about the device it belongs to.
 
     Every field is a `Field[str]`, so each carries its own evidence and abstains
     independently: a file with a hostname but no serial yields one PRESENT and
     one UNKNOWN, never a fabricated serial.
+
+    **Not** `api.models.csm.DeviceIdentity`, which is the canonical model's
+    resolved identity — flat strings, plus a `device_id`. Both types were called
+    `DeviceIdentity` until P5, and only the CSM one was exported from
+    `api.models`, so `from api.models import DeviceIdentity` silently returned
+    the wrong class for anyone meaning this one. P5 is the first layer that
+    converts between them, which is exactly where that would have bitten, so the
+    ingestion side took the more specific name.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -229,7 +237,7 @@ class IngestedFile(BaseModel):
     file_format: FileFormat
 
     detection: DetectionResult
-    identity: DeviceIdentity = Constraint(default_factory=DeviceIdentity)
+    identity: DetectedDeviceIdentity = Constraint(default_factory=DetectedDeviceIdentity)
 
     blob_path: str = Constraint(min_length=1)
     ingested_at: datetime | None = None

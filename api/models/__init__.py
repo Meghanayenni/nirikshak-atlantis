@@ -67,7 +67,9 @@ from api.models.enums import (
     MatchType,
     PackStatus,
     PatternSource,
+    PlatformSourceType,
     PortOp,
+    ProvenanceStatus,
     Severity,
     SourceType,
     SyntaxMode,
@@ -76,7 +78,13 @@ from api.models.enums import (
     Verdict,
 )
 from api.models.evidence import Evidence, sha256_hex
-from api.models.field import Field, FieldProvenance, abstention_threshold
+from api.models.field import (
+    Field,
+    FieldProvenance,
+    abstention_threshold,
+    platform_default_confidence,
+    platform_default_floor,
+)
 from api.models.finding import (
     Finding,
     FindingProvenance,
@@ -95,6 +103,7 @@ from api.models.pack import (
     PatternScope,
     PlatformCapability,
     PlatformDefault,
+    PlatformProvenance,
     VendorPack,
 )
 from api.models.parsing import FieldMatch, ParseResult
@@ -122,6 +131,8 @@ __all__ = [
     "Field",
     "FieldProvenance",
     "abstention_threshold",
+    "platform_default_confidence",
+    "platform_default_floor",
     # acl
     "ACL",
     "ACLEntry",
@@ -152,6 +163,7 @@ __all__ = [
     "IDENTITY_FIELDS",
     "PlatformDefault",
     "PlatformCapability",
+    "PlatformProvenance",
     # parsing (P4)
     "FieldMatch",
     "ParseResult",
@@ -200,6 +212,8 @@ __all__ = [
     "MatchType",
     "PackStatus",
     "PatternSource",
+    "PlatformSourceType",
+    "ProvenanceStatus",
     "PortOp",
     "Severity",
     "SourceType",

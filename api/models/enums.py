@@ -206,6 +206,59 @@ class MappingProvenance(StrEnum):
 
 
 # ---------------------------------------------------------------------------
+# Platform knowledge provenance (decision D11)
+# ---------------------------------------------------------------------------
+
+
+class PlatformSourceType(StrEnum):
+    """What kind of material backs a platform default or capability claim.
+
+    A platform default is a security claim about a device made *without* a line
+    of its configuration to cite — the whole point is that the line is absent.
+    The citation is therefore the only justification the claim has, which is why
+    it is typed rather than left as free text someone can fill with a hunch.
+    """
+
+    VENDOR_DOCUMENTATION = "vendor_documentation"
+    """A vendor's own configuration guide, command reference or hardening guide."""
+
+    VENDOR_RELEASE_NOTES = "vendor_release_notes"
+    """Release notes or a security advisory, where a default changed at a version."""
+
+    STANDARDS_BODY = "standards_body"
+    """A published benchmark or standard stating the platform's behaviour."""
+
+    PROJECT_ASSERTED = "project_asserted"
+    """NIRIKSHAK's own claim, backed by no external source.
+
+    Representable so that an assertion can be recorded honestly and reviewed
+    later — **not** admissible. It is not vendor documentation, must never be
+    presented as externally verified, and cannot support a compliance verdict
+    (decision D11). A field resting on one abstains.
+    """
+
+
+class ProvenanceStatus(StrEnum):
+    """Whether a platform claim's source has actually been obtained and read."""
+
+    SOURCED = "sourced"
+    """The named document was obtained and the locator points into it."""
+
+    PROJECT_ASSERTED = "project_asserted"
+    """Our own assertion. Recorded, visible, and not admissible (D11)."""
+
+    @property
+    def is_admissible(self) -> bool:
+        """Whether a claim with this status may support a compliance verdict.
+
+        Only `SOURCED`. An assertion we made ourselves is a note for a future
+        reviewer, not evidence — treating it as evidence is how an unverified
+        default becomes a PASS, which Rule 3 forbids outright.
+        """
+        return self is ProvenanceStatus.SOURCED
+
+
+# ---------------------------------------------------------------------------
 # ACL
 # ---------------------------------------------------------------------------
 

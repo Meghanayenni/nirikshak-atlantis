@@ -72,7 +72,7 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "version": "0.1.0",
-        "phase": "P4",
+        "phase": "P5",
         "schema_version": versions["audit"],
         "schema_versions": versions,
         "airgap": settings.airgap,
@@ -81,4 +81,8 @@ def health() -> dict[str, object]:
         # population — which is the misreading D6 exists to prevent.
         "confidence_threshold": settings.confidence_threshold,
         "platform_default_min_confidence": settings.platform_default_min_confidence,
+        # D13 — the confidence an accepted platform default is ASSIGNED, distinct
+        # from the floor above it must clear. Reported because an operator
+        # checking why a control passed on an absent directive needs both.
+        "platform_default_confidence": settings.platform_default_confidence,
     }

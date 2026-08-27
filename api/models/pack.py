@@ -18,7 +18,14 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, model_validator
 from pydantic import Field as Constraint
 
-from api.models.enums import CastType, MatchType, PackStatus, PatternSource
+from api.models.enums import (
+    CastType,
+    MatchType,
+    PackStatus,
+    PatternSource,
+    PlatformSourceType,
+    ProvenanceStatus,
+)
 
 SEMVER = r"^\d+\.\d+\.\d+$"
 SHA256_PREFIXED = r"^sha256:[0-9a-f]{64}$"
@@ -306,12 +313,109 @@ class LiteralBlock(BaseModel):
         return self
 
 
+class PlatformProvenance(BaseModel):
+    """Where a platform default or capability claim comes from (decision D11).
+
+    Typed rather than a free string, because a free string is a place to write
+    "general knowledge" and have it pass every test in the repository. A platform
+    default is the one security claim NIRIKSHAK makes with **no configuration
+    line to cite** — the whole premise is that the directive is absent — so the
+    provenance is the entire justification. Making an unsourced claim
+    unconstructable is the only mechanism that keeps that honest.
+
+    `project_asserted` exists so a claim we cannot yet source can still be
+    written down and reviewed. It is **not** vendor documentation, must never be
+    presented as externally verified, and is not admissible: a field resting on
+    one abstains rather than asserting.
+
+    Per `docs/CONTENT_POLICY.md`, this records *identifiers and locators* only.
+    Transcribed vendor prose does not belong in the repository, and nothing here
+    is a place to put it.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    platform: str = Constraint(
+        min_length=1,
+        description="Vendor/OS-family the claim is about, e.g. 'cisco/ios'",
+    )
+    source_type: PlatformSourceType
+    source_id: str = Constraint(
+        default="",
+        description="Document identifier or title — never its prose",
+    )
+    locator: str = Constraint(
+        default="",
+        description="Where in that document: section, table, page or anchor",
+    )
+    status: ProvenanceStatus
+    applies_to_versions: str | None = Constraint(
+        default=None,
+        description="OS version range the claim was verified against, if narrower",
+    )
+
+    @model_validator(mode="after")
+    def _check(self) -> PlatformProvenance:
+        asserted_type = self.source_type is PlatformSourceType.PROJECT_ASSERTED
+        asserted_status = self.status is ProvenanceStatus.PROJECT_ASSERTED
+
+        # Biconditional, so an assertion cannot be laundered into a sourced claim
+        # by relabelling one half of the pair.
+        if asserted_type != asserted_status:
+            raise ValueError(
+                "project_asserted provenance must use BOTH source_type and status "
+                "'project_asserted'. Marking one without the other would let an "
+                "assertion be presented as externally verified (D11)."
+            )
+
+        if self.status is ProvenanceStatus.SOURCED:
+            if not self.source_id.strip():
+                raise ValueError(
+                    f"sourced provenance for {self.platform!r} names no document. "
+                    "A claim that cannot be looked up is an assertion — mark it "
+                    "project_asserted instead (D11)."
+                )
+            if not self.locator.strip():
+                raise ValueError(
+                    f"sourced provenance for {self.platform!r} names "
+                    f"{self.source_id!r} but no locator. 'Somewhere in the "
+                    "configuration guide' is not a citation (D11)."
+                )
+        return self
+
+    @property
+    def is_admissible(self) -> bool:
+        """Whether a claim resting on this may support a compliance verdict.
+
+        Only `SOURCED`. Everything else abstains — an unverified default must
+        never become a PASS or a FAIL (Rule 3).
+        """
+        return self.status.is_admissible
+
+    def cite(self) -> str:
+        """Short human-readable citation for reports and `Field.default_ref`.
+
+        A `project_asserted` claim says so in its own citation string, so it
+        cannot be mistaken for a sourced one anywhere it is displayed.
+        """
+        if self.status is ProvenanceStatus.PROJECT_ASSERTED:
+            return f"{self.platform} — NIRIKSHAK project assertion (not externally verified)"
+        version = f" [{self.applies_to_versions}]" if self.applies_to_versions else ""
+        return f"{self.platform} — {self.source_id}, {self.locator}{version}"
+
+
 class PlatformDefault(BaseModel):
-    """A documented default, with the citation that makes it usable.
+    """A documented default, with the provenance that makes it usable.
 
     Absence-aware evaluation depends on this being sourced rather than assumed:
     a guess wearing a citation field is worse than abstaining, because it looks
     authoritative.
+
+    There is deliberately **no confidence field** (decision D13). The confidence
+    an accepted default carries is a single configured value, not something a
+    pack author chooses per entry — otherwise the number becomes a dial for
+    making a weak claim look strong, which is the same failure D6 closed for
+    deterministic patterns. `extra="forbid"` means YAML cannot add one.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -319,7 +423,11 @@ class PlatformDefault(BaseModel):
     field: str = Constraint(min_length=1)
     value: str | int | bool | None = None
     applies_when: str | None = None
-    citation: str = Constraint(min_length=1, description="Where this default is documented")
+    provenance: PlatformProvenance
+
+    @property
+    def is_admissible(self) -> bool:
+        return self.provenance.is_admissible
 
 
 class PlatformCapability(BaseModel):
@@ -327,22 +435,33 @@ class PlatformCapability(BaseModel):
 
     `supported is None` means undocumented, which must produce abstention rather
     than an assumption in either direction.
+
+    Carries the same typed provenance as `PlatformDefault`, for the same reason:
+    `supported: false` resolves to ABSENT_UNSUPPORTED, which is a determinable
+    state a compliance rule may act on. An unsourced claim that a platform cannot
+    express a control is exactly as capable of producing a wrong verdict as an
+    unsourced default.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     field: str = Constraint(min_length=1)
     supported: bool | None = None
-    citation: str | None = None
+    provenance: PlatformProvenance | None = None
 
     @model_validator(mode="after")
     def _check(self) -> PlatformCapability:
-        if self.supported is not None and not self.citation:
+        if self.supported is not None and self.provenance is None:
             raise ValueError(
                 f"capability claim for {self.field!r} asserts support="
-                f"{self.supported} without a citation; assert nothing instead"
+                f"{self.supported} without provenance; assert nothing instead"
             )
         return self
+
+    @property
+    def is_admissible(self) -> bool:
+        """An undocumented capability is not a claim, so there is nothing to admit."""
+        return self.provenance is not None and self.provenance.is_admissible
 
 
 class VendorPack(BaseModel):

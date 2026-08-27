@@ -55,10 +55,26 @@ def platform_default_floor() -> float:
 
     Its own floor, not borrowed. A documented platform default is either sourced
     well enough to rely on or it is not used at all.
+
+    Distinct from `platform_default_confidence()`, which is the value an accepted
+    default is *assigned*. This is the boundary it must clear (D13).
     """
     from api.config import settings
 
     return settings.platform_default_min_confidence
+
+
+def platform_default_confidence() -> float:
+    """The confidence assigned to an accepted platform default (decision D13).
+
+    Not a calibrated probability, and not settable in a vendor pack: the number
+    lives in configuration alone so no pack author can dial a weak claim up to
+    look like a strong one. Admissibility is decided by *provenance* (D11) — this
+    number is applied only once a claim has already qualified.
+    """
+    from api.config import settings
+
+    return settings.platform_default_confidence
 
 
 EXACT_CONFIDENCE_POPULATIONS: frozenset[ConfidenceMethod] = frozenset(

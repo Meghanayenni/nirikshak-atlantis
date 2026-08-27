@@ -31,6 +31,24 @@ class Settings(BaseSettings):
     # D6 — platform defaults are their own population with their own floor.
     # A documented default is either sourced and trusted or it is not used;
     # borrowing the similarity threshold here would compare incomparable numbers.
+    #
+    # Two numbers, and they mean different things (decision D13):
+    #
+    #   platform_default_confidence      the confidence an ACCEPTED, admissibly
+    #                                    sourced default is assigned
+    #   platform_default_min_confidence  the ADMISSIBILITY FLOOR below which the
+    #                                    field abstains
+    #
+    # They are deliberately not equal. Setting the assigned value at the floor
+    # would put every default exactly on the boundary, which makes the floor
+    # untestable in the failing direction and reads as a coincidence rather than
+    # a decision. Neither number is a calibrated probability — the platform
+    # default population is not similarity-derived and is never pooled with it
+    # when fitting the calibrator at P9 (R7).
+    #
+    # A pack author cannot choose either: PlatformDefault has no confidence
+    # field and forbids extras, so this is the only place the number exists.
+    platform_default_confidence: float = 0.95
     platform_default_min_confidence: float = 0.90
 
     # Rule 6 — when true, no outbound network call is permitted, including
