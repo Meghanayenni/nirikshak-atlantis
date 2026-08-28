@@ -48,13 +48,18 @@ def corpus_files() -> list[Path]:
 def configuration_files() -> list[Path]:
     """The device configurations the manifest tracks.
 
-    Labels are excluded because they are ground truth *about* a configuration
-    rather than one. They are not manifest entries — a label recording its own
-    checksum would be circular — and their integrity is enforced instead by
-    binding each to the checksum the manifest already records for the file it
-    describes, checked in `test_every_label_cites_the_checksum_the_manifest_records`.
+    Labels and seed examples are excluded because they are derived material
+    *about* configurations rather than configurations. They are not manifest
+    entries — a label recording its own checksum would be circular — and their
+    integrity is enforced instead by binding each to the checksum the manifest
+    already records for the file it describes, checked in
+    `test_every_label_cites_the_checksum_the_manifest_records`.
+
+    Both remain inside every sanitisation scan above, because both quote
+    configuration lines verbatim.
     """
-    return [p for p in corpus_files() if "labels" not in p.relative_to(CORPUS).parts]
+    derived = {"labels", "seed_examples"}
+    return [p for p in corpus_files() if not (derived & set(p.relative_to(CORPUS).parts))]
 
 
 # ---------------------------------------------------------------------------

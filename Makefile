@@ -18,7 +18,7 @@ help:
 	@echo "venv            Create the project-local Python 3.11 virtual environment"
 	@echo "install         Install core + dev dependencies (P0)"
 	@echo "install-report  Optional PDF rendering (needs system GTK3; HTML needs neither)"
-	@echo "install-ai      Add the machine-learning group (P10, large download)"
+	@echo "install-ai      Similarity layer deps (P10; weights are a separate step)"
 	@echo "test            Run the test suite"
 	@echo "lint            Run ruff checks"
 	@echo "fmt             Format with ruff"

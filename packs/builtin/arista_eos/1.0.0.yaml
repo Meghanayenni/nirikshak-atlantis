@@ -13,7 +13,7 @@
 vendor: arista
 os_family: eos
 pack_version: 1.0.0
-status: active
+status: deprecated
 created_by: team-atlantis
 checksum: sha256:48ebe2a26f86e10467a1254da120deee0398721aa9908a902b509a1ce9bb06e0
 

@@ -66,6 +66,12 @@ FORBIDDEN_EDGES: list[tuple[str, str, str]] = [
     ("report", "ingest", "the renderer has no route to an uploaded file"),
     ("report", "learn", "Rule 1 — no model output may reach a document a human acts on"),
     ("report", "db", "the router performs the I/O; the renderer stays free of storage"),
+    # P10 — the similarity layer (decisions D38, D42).
+    ("learn", "normalise", "Rule 1 — a suggestion must not reach the canonical model"),
+    ("learn", "analyse", "a suggestion is not an observation about an access list"),
+    ("learn", "report", "the suggestion layer does not know how it will be rendered"),
+    ("learn", "remediate", "Rule 4 — no model output may reach a remediation command"),
+    ("learn", "db", "suggestions are produced, not persisted, until P11 records a decision"),
 ]
 
 

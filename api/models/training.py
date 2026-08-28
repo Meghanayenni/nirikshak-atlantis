@@ -126,5 +126,11 @@ class TrainingExample(BaseModel):
 
     @property
     def top3_hit(self) -> bool:
-        """Did the correct field appear in the suggestions? Feeds the P9 metric."""
+        """Did the correct field appear in the suggestions?
+
+        Feeds top-3 mapping accuracy. That metric is not computable yet: it needs
+        line-level ground truth, which decision D39 declined to author, and its
+        held-out form additionally needs a parser that decision D37 deferred. The
+        property is correct and waiting for a population — see ADR 0017.
+        """
         return self.field is not None and any(s.field == self.field for s in self.suggestions_shown)

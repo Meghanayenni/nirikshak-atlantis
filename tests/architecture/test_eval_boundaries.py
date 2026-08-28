@@ -26,7 +26,24 @@ EVAL = REPO_ROOT / "eval"
 CORPUS = REPO_ROOT / "corpus"
 LABELS = CORPUS / "labels"
 
-PIPELINE_PACKAGES = ["api.parse", "api.normalise", "api.comply", "api.ingest", "api.analyse"]
+PIPELINE_PACKAGES = [
+    "api.parse",
+    "api.normalise",
+    "api.comply",
+    "api.ingest",
+    "api.analyse",
+    "api.learn",
+]
+"""Packages the label side must not reach, directly or transitively.
+
+`api.learn` was added at P10 (GAP-1). It was absent from this list until then
+only because the package was empty, and the omission was harmless exactly as
+long as that stayed true. It is the most important entry now: a label loader
+that can reach the similarity layer is a label that could be *suggested by the
+model it scores*, which is the circularity decision D31 exists to prevent — and
+a subtler one than reaching the parser, because a suggestion looks like a
+judgement rather than like output.
+"""
 
 # Modules that must never reach the pipeline. These are what produce ground
 # truth, so a route from here to a parser is a route from parser output into a

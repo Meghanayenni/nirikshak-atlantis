@@ -323,10 +323,20 @@ def test_the_report_states_the_holdout_was_not_read(report: str) -> None:
     assert "SEALED" in report
 
 
-def test_the_report_defers_calibration_and_generalisation(report: str) -> None:
-    """D33 — both are P10, and the report says so rather than printing zero."""
-    assert "deferred to P10" in report
-    assert "not possible" in report
+def test_the_report_states_generalisation_and_calibration_are_blocked(report: str) -> None:
+    """D33, then D37 and D42 — never a zero, always a reason.
+
+    P9 said "deferred to P10". P10 arrived, built the similarity layer, and found
+    the metric blocked underneath for a different reason entirely. The report now
+    names that reason rather than pointing at a phase that has been and gone.
+    """
+    assert "NOT MEASURED — BLOCKED" in report
+    assert "NOT FITTED — decision D42" in report
+    assert "UNCALIBRATED_SIMILARITY" in report
+    assert "NOT opened at any point during this run" in report
+
+    # A blocked metric must never render as a number.
+    assert "top-3 mapping accuracy   NOT MEASURED" in report
 
 
 def test_the_report_qualifies_the_zero_wrong_confident_rate(report: str) -> None:

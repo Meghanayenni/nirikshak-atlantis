@@ -21,18 +21,24 @@ administrator, and permanently learns the answer.
 
 ## Status
 
-**Phase P9 — the evaluation harness.** The eleven data contracts (P1), the
+**Phase P10 — the similarity layer.** The eleven data contracts (P1), the
 hash-chained audit log on SQLite (P2), configuration ingestion with deterministic
 vendor detection (P3), the structural parser (P4), normalisation into the
 Canonical Security Model (P5), the rule engine that evaluates it (P6), semantic
 ACL analysis with an authenticated findings API (P7), the remediation resolver
 with the report an operator reads (P8), and the harness that measures all of it
-against hand-authored ground truth (P9) are in place.
+against hand-authored ground truth (P9), and the similarity layer that proposes
+mappings for lines no pack recognises (P10) are in place.
 
 The pipeline runs end to end: a configuration file goes in, and an
 evidence-linked HTML report comes out, citing the exact lines it rests on. And
-the accuracy of that pipeline is now a measurement rather than a claim —
+the accuracy of that pipeline is a measurement rather than a claim —
 `make evaluate`, with the numbers in `eval/reports/evaluation.txt`.
+
+The similarity layer clusters unrecognised lines and ranks up to three candidate
+mappings. **It proposes; it never decides.** Every suggestion is uncalibrated, so
+the field stays UNKNOWN until an administrator confirms the mapping — the
+confirmation workflow itself is P11.
 
 The parser turns configuration text into a `ConfigTree` and applies a vendor pack
 to it, producing canonical fields that each carry a value, a confidence and
@@ -70,6 +76,18 @@ so the semantic ACL analyser — shadowed, redundant and overly permissive entri
 by interval logic — is tested against constructed model objects and has never seen
 a parsed one. No detection rate against real access lists is claimed.
 
+**Similarity scores are not confidence, and no calibrator is fitted.** Every
+suggestion carries `UNCALIBRATED_SIMILARITY`, which forces the field to UNKNOWN
+regardless of score. Fitting a calibrator needs labelled score outcomes that do
+not exist, and the fitter refuses below a sample floor the corpus cannot reach.
+No similarity number in this system may be read as a probability.
+
+**Held-out generalisation and top-3 accuracy are not measured.** The similarity
+layer exists, so that is no longer the obstacle. The metric is defined over the
+held-out vendor's commands, reading them needs a parser for its format, and that
+parser waits on a sample independent of the held-out files — building it from
+them would destroy the experiment. **The holdout has never been opened.**
+
 **Evaluation results are synthetic-corpus results.** Every configuration in
 `corpus/` is hand-written, so the harness scores the parser against its author's
 imagination rather than against the field. The numbers are real measurements of a
@@ -98,9 +116,10 @@ name. See `docs/adr/0006-weasyprint-gtk-probe.md`.
 
 See `docs/CORPUS_PREREQUISITES.md` and `docs/SOURCING_BACKLOG.md`.
 
-Held-out generalisation, top-3 mapping accuracy and confidence calibration are
-**P10** — all three are defined over the similarity layer, which does not exist
-yet, so the PAN-OS holdout has not been opened. Exposure-aware prioritisation and
+Held-out generalisation, top-3 mapping accuracy and confidence calibration
+remain **unmeasured**, each for a reason recorded in `docs/adr/0017-similarity-layer.md`;
+the PAN-OS holdout has still not been opened. The administrator training workflow
+is P13's interface over P11's confirmation loop. Exposure-aware prioritisation and
 peer-baseline detection are P12. See `docs/adr/` for the decisions taken so far,
 and `docs/SOURCING_BACKLOG.md` for the six gaps that cannot be closed by writing
 code.
@@ -144,7 +163,7 @@ Dependency groups are installed as the phases need them:
 | *(core)*   | P0           | FastAPI, parsing, YAML, schema validation       |
 | `[dev]`    | P0           | pytest, ruff                                    |
 | `[report]` | P8, optional | WeasyPrint (plus the system GTK3 runtime)       |
-| `[ai]`     | P10          | sentence-transformers, torch (CPU), FAISS       |
+| `[ai]`     | P10, optional| sentence-transformers, torch (CPU), FAISS       |
 
 The machine-learning stack is deliberately deferred so the first nine phases
 install quickly and stay within the 8 GB target hardware budget.

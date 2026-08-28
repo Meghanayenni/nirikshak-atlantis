@@ -1,0 +1,67 @@
+# NIRIKSHAK vendor pack — arista eos
+#
+# 1.0.1 (P10, defect DEF-9). ONE CHANGE from 1.0.0: `comment_prefixes` now
+# declares '!'.
+#
+# Arista EOS uses '!' as its comment character exactly as Cisco IOS does, and
+# the Cisco pack has declared it since P4. This pack did not, so every '!' line
+# became a parse node and landed in the unknown-line queue: 23 of 57 residue
+# lines across the Arista corpus, 40% of the queue, none of it configuration.
+#
+# `api/normalise/residue.py` states the invariant that breaks:
+#
+#     Comments, blank lines and literal-block bodies cannot appear here. They
+#     never became nodes at P4, so a queue full of `!` and banner prose is
+#     impossible by construction rather than by filtering.
+#
+# For Arista it was neither. That mattered little before P10 and matters a great
+# deal now: the queue is the input to clustering and to the similarity index,
+# and at P11 it is what an administrator reads one line at a time. Making a
+# person page through '!' twenty-three times is how careless confirmations
+# happen, and a careless confirmation enters a vendor pack permanently.
+#
+# AUTHORED FROM: corpus/arista/dev/sw-leaf-01.cfg and sw-spine-01.cfg, which use
+# '!' as a section separator throughout. This is a reading of the development
+# corpus, not general vendor knowledge — the same standard every pattern is held
+# to. NO PARSING PATTERN IS ADDED. This pack remains detection-and-identity only
+# (decision D41).
+#
+# WHY IDENTITY STILL WORKS: `detect` and `identity` are applied to raw lines at
+# ingestion, before the parse tree exists, so the '! device: ...' signature and
+# the os_version pattern that reads it are unaffected by comment stripping.
+# Verified rather than assumed.
+#
+# CHECKSUM: sha256 of this file's bytes as stored (LF endings), with the
+# `checksum:` line removed. The repository had no reproducible convention —
+# the checksums on earlier packs match no computable digest, which
+# `tests/unit/test_rulepack_loading.py` already records as "a mistake worth
+# not repeating". This one is reproducible; the older ones are left alone.
+
+vendor: arista
+os_family: eos
+pack_version: 1.0.1
+parent_version: 1.0.0
+status: active
+created_by: team-atlantis
+checksum: sha256:bf89633775c9d15e964ce779741db278699de1883a15c4e7738bcb5bf65e74ba
+
+comment_prefixes: ['!']
+
+detect:
+  - { type: regex, pattern: '^! device: \S+ \(', weight: 0.35 }
+  - { type: regex, pattern: '^transceiver qsfp default-mode ', weight: 0.3 }
+  - { type: regex, pattern: '^management api http-commands', weight: 0.25 }
+  - { type: regex, pattern: '^interface Ethernet\d', weight: 0.2 }
+  - { type: regex, pattern: '^line vty \d+', weight: 0.05 }
+
+identity:
+  - field: hostname
+    match:   { type: regex, pattern: '^hostname (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['hostname sw-leaf-01']
+  - field: os_version
+    match:   { type: regex, pattern: '^! device: \S+ \([^,]+, EOS-(\S+)\)' }
+    capture: { value: '$1', cast: str }
+    examples: ['! device: sw-leaf-01 (DCS-7050SX3-48YC8, EOS-4.29.2F)']
+
+patterns: []

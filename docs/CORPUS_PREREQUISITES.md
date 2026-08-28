@@ -43,6 +43,14 @@ is:
 naming this document. It does not return an empty tree, which would look like a
 successfully parsed empty configuration.
 
+> **This is now the binding constraint on the Concept Report's headline metric.**
+> P9 deferred held-out generalisation to P10 for want of a similarity layer. P10
+> built the layer and hit this: the metric is defined over the held-out vendor's
+> commands, and reading them needs the parser this entry blocks. Circular, and no
+> code closes it — only a sourced XML sample from a vendor that is not the
+> held-out one. See decision D37 and ADR 0017. The holdout has still never been
+> opened.
+
 **Explicitly not acceptable:** writing an XML file ourselves and calling the
 resulting parser "XML support".
 
@@ -263,3 +271,35 @@ to come from someone else.
 reader, or naming the label author as their own reviewer. The contract refuses an
 unnamed reviewer, but it cannot tell whether the named one actually read
 anything.
+
+---
+
+## 8. Administrator confirmations for the similarity layer
+
+**Blocks:** top-3 mapping accuracy and confidence calibration.
+**Affects:** every claim about the adaptive learning loop.
+
+**State.** The similarity layer ships at P10. Its index holds **11** labelled
+examples across 8 fields, all from one vendor, taken from pattern examples the
+Cisco pack already declared. That is what the packs contain, and nothing was
+authored to enlarge it (decision D38).
+
+Two consequences follow, and neither is fixable by writing code:
+
+- **Top-3 accuracy has no population.** It needs ground truth of the form *this
+  unknown line means `ssh_version`*; P9 labelled fields, not lines, and D39
+  declined to author line labels for the purpose of producing a number.
+- **Calibration has no data.** `fit()` refuses below 200 observations; the
+  development split holds roughly a dozen security-relevant unknown lines. Every
+  suggestion therefore stays `UNCALIBRATED_SIMILARITY` and abstains (D42).
+
+**What would close it.** The P11 confirmation loop. Every administrator decision
+records a `TrainingExample` holding what was proposed and what the human chose —
+which is precisely the labelled population both metrics need. **This gap closes
+through use rather than through a labelling exercise**, and that is the whole
+argument for measuring top-3 accuracy in production rather than only on a
+benchmark.
+
+**What must not happen.** Authoring line labels to make the metric computable, or
+lowering the calibration sample floor to fit the data on hand. Either turns a
+refusal into a claim without changing anything that is known.

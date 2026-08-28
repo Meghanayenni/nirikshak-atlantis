@@ -13,8 +13,8 @@ vendors appear in separate rows and no combined figure is computed anywhere
 written", which is a coverage statement wearing an accuracy statement's clothes.
 
 **Absent measurements say why they are absent.** A metric that could not be
-computed renders as `not exercised` or `deferred to P10`, never as a blank or a
-zero. A zero is a measurement; these are not.
+computed renders as `not exercised` or `NOT MEASURED` with its reason, never as
+a blank or a zero. A zero is a measurement; these are not.
 
 The corpus caveat is generated from the manifest rather than typed, so the day a
 real sanitised configuration is added the wording changes on its own.
@@ -37,6 +37,7 @@ from eval.metrics import (
     verdicts_by_vendor,
 )
 from eval.score import ScoreRun
+from eval.similarity import MetricStatus, generalisation_status
 
 WIDTH = 78
 
@@ -71,7 +72,7 @@ def render(run: ScoreRun) -> str:
 
     lines += [
         _rule("="),
-        "NIRIKSHAK — EVALUATION REPORT (P9)",
+        "NIRIKSHAK — EVALUATION REPORT (P9–P10)",
         _rule("="),
         "",
         "Accuracy is reported as a measurement, not a claim.",
@@ -80,7 +81,7 @@ def render(run: ScoreRun) -> str:
         f"Rulepack       : {run.rulepack_version}",
         f"Vendor packs   : {', '.join(f'{k} {v}' for k, v in run.pack_versions.items()) or 'none'}",
         f"Files scored   : {len(run.files_scored)} (evaluation split only)",
-        f"Held-out vendor: {held_out_vendor()} — NOT READ (deferred to P10)",
+        f"Held-out vendor: {held_out_vendor()} — NOT READ (blocked; see section 10)",
     ]
 
     # ---------------------------------------------------------------- corpus
@@ -314,17 +315,33 @@ def render(run: ScoreRun) -> str:
 
     # ------------------------------------------------------------- deferred
     lines += _heading("10. Not measured, and why")
+
+    generalisation = generalisation_status()
+    assert generalisation.status is not MetricStatus.MEASURED  # P10 cannot measure it
     lines += [
-        "held-out generalisation  deferred to P10 — the metric is defined over the",
-        "                         similarity layer, and api/learn/ is empty. The PAN-OS",
-        "                         holdout was not opened at any point during this run.",
+        "held-out generalisation  NOT MEASURED — BLOCKED.",
+        "                         The similarity layer exists as of P10, so that is no",
+        "                         longer the obstacle. The metric is defined over the",
+        "                         held-out vendor's commands and reading them needs a",
+        "                         parser for its format; that parser waits on a sample",
+        "                         of the format independent of the held-out files,",
+        "                         because building it from them would destroy the",
+        "                         experiment. No such sample exists. The holdout was",
+        "                         NOT opened at any point during this run.",
         "",
-        "top-3 mapping accuracy   deferred to P10 — same reason.",
+        "top-3 mapping accuracy   NOT MEASURED — no line-level ground truth exists.",
+        "                         P9 labelled canonical fields, not lines, and decision",
+        "                         D39 declined to author line labels for the purpose of",
+        "                         making this metric computable. The arithmetic is",
+        "                         implemented and tested; it has no population to run on.",
         "",
-        "calibration              not possible — every field carries DETERMINISTIC",
-        "                         confidence at a constant 1.00, which R7 forbids reading",
-        "                         as a probability. There is one population and nothing",
-        "                         to calibrate until the model arrives.",
+        "calibration              NOT FITTED — decision D42.",
+        "                         Every suggestion the similarity layer produces carries",
+        "                         UNCALIBRATED_SIMILARITY, which forces the field to",
+        "                         UNKNOWN regardless of score. No calibrator is active.",
+        "                         Fitting one would need labelled score outcomes that do",
+        "                         not exist, and the corpus is far below the sample floor",
+        "                         the fitter refuses under.",
         "",
         "ACL analysis accuracy    not measured — the corpus contains no access list.",
         "",
@@ -344,6 +361,8 @@ def render(run: ScoreRun) -> str:
         "  * Generalisation to the held-out vendor.",
         "  * That its labels are independent ground truth — they are unreviewed, and",
         "    for Cisco they share an author with the patterns being scored.",
+        "  * Any top-3 or generalisation accuracy for the similarity layer.",
+        "  * That any similarity score means anything as a probability.",
         "",
         _rule("="),
     ]

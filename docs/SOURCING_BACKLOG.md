@@ -1,6 +1,6 @@
 # Sourcing backlog
 
-**Six gaps that cannot be closed by writing code.** Each is blocking a capability
+**Eight gaps that cannot be closed by writing code.** Each is blocking a capability
 the Concept Report promises, each needs material obtained from outside this
 repository, and none may be closed by inventing data.
 
@@ -100,6 +100,14 @@ measures memory, not generalisation. Nor is a self-authored XML fixture
 sufficient — a parser built for a shape we invented is wrong in exactly the ways
 only the real thing reveals.
 
+**Now the binding constraint on the headline metric.** P9 deferred held-out
+generalisation to P10 because the similarity layer did not exist. P10 built it,
+and found this gap underneath: the metric is defined over the held-out vendor's
+commands, and they cannot be read without the parser this entry blocks. The
+dependency is circular and no code closes it. Until an independent XML sample is
+sourced, **the Concept Report's generalisation figure cannot be produced at all** —
+see decision D37 and ADR 0017.
+
 ---
 
 ## 4. Framework control-ID sources
@@ -195,6 +203,66 @@ exists to name the person who is accountable for the commands.
 
 ---
 
+---
+
+## 7. Line-level ground truth for the similarity layer
+
+**Blocks:** top-3 mapping accuracy on any population, and confidence calibration.
+
+**State.** The similarity layer ships at P10 and works. What does not exist is
+ground truth of the form *this unknown line means `ssh_version`*. P9 labelled
+canonical **fields**, not lines, so its labels cannot score a retrieval layer.
+
+Decision D39 declined to author line labels for the purpose of making the metric
+computable, and that was the right call: manufacturing evaluation data to fill a
+metric is the failure this project has refused at every phase. The arithmetic
+lives in `eval/similarity.py`, is tested against constructed observations, and
+reports `NOT MEASURED` with its reason.
+
+**Calibration is blocked twice over.** It needs the same labels, *and* enough of
+them: `api/learn/calibration.py` refuses to fit below 200 observations, while the
+development split holds roughly a dozen security-relevant unknown lines. Until
+both are true, every suggestion stays `UNCALIBRATED_SIMILARITY` and the field
+abstains (decision D42).
+
+**What would close it.** Real administrator confirmations. The P11 training loop
+records a `TrainingExample` for every decision — what was proposed and what the
+human chose — which is exactly the labelled population both metrics need. This
+gap closes through *use*, not through a labelling exercise, which is the whole
+argument for measuring top-3 accuracy in production rather than only on a
+benchmark.
+
+**What must not happen.** Authoring line labels to produce a number, or lowering
+the calibration floor to fit the data available. Both would turn a refusal into a
+claim without changing what is known.
+
+---
+
+## 8. A corpus written by more than one author
+
+**Blocks:** nothing. **Affects:** any claim that coverage compounds across vendors.
+
+**State.** Every corpus file was hand-written by the same author, so idioms repeat
+verbatim across platforms: `ntp server 192.0.2.20` appears in both the Cisco and
+Arista configurations, character for character. A similarity layer will retrieve
+across those vendors flawlessly for a reason that has nothing to do with
+embeddings.
+
+The Concept Report's claim that *"teaching vendor A measurably improves the
+suggestions offered for vendor B"* cannot be tested on data where A and B were
+written by one person using one vocabulary.
+
+The single case in the corpus that genuinely tests it is Juniper's
+`set system services ssh protocol-version v2` against Cisco's
+`ip ssh version 2` — different vocabulary, no string overlap. One case is a
+demonstration, not a measurement.
+
+**What would close it.** Configurations from different origins, ideally real and
+sanitised (gap 3 above), so cross-vendor retrieval is scored on genuine syntactic
+distance rather than on a shared authorial habit.
+
+---
+
 ## What P9 claims, now that it has run
 
 The harness exists and has produced numbers (ADR 0016). What it measured, on a
@@ -224,6 +292,9 @@ Written here so the evaluation report inherits it rather than re-deriving it:
 - **May not** claim ACL detection rates — no real access list has been seen.
 - **May not** claim remediation coverage, or that NIRIKSHAK produces
   device-specific remediation for any platform — no snippet has ever resolved.
+- **May not** claim any top-3, generalisation or calibration figure — all three
+  are blocked, and the report says so with the reason rather than a zero.
+- **May not** claim that coverage compounds across vendors; see gap 8.
 - **May not** describe its ground-truth labels as independent. They are
   unreviewed, and the Cisco labels share an author with the Cisco patterns
   (decision D35). A second reader clearing `review_status` is a data change, and

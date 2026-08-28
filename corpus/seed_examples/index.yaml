@@ -1,0 +1,100 @@
+# NIRIKSHAK similarity index — seed examples (P10, decision D38)
+#
+# GENERATED FROM VENDOR PACK PATTERN EXAMPLES. Do not hand-edit: this file is
+# a readable projection of what `api/learn/index.py` builds at runtime, kept
+# under corpus/ so the index's contents are reviewable without running code.
+#
+# Every entry is a (line, canonical field) pair already declared by a pack
+# pattern, and every one appears verbatim in a DEVELOPMENT configuration --
+# a property `test_every_pack_example_comes_from_the_development_split` has
+# enforced since P4 and `verify_provenance` re-checks at index build time.
+#
+# NOTHING HERE IS INVENTED. No example was authored for the index, none comes
+# from an evaluation or held-out file, and none is derived from parser output.
+#
+# The index is small and says so: 11 pairs, 8 fields, one vendor. Arista and
+# Juniper contribute nothing because neither pack declares a parsing pattern.
+
+count: 11
+fields: 8
+vendors: [cisco]
+source: vendor pack pattern examples (ExampleSource.SEED)
+
+examples:
+  - field: banner_present
+    text: 'banner motd ^C'
+    signature: 'banner motd ^C'
+    vendor: cisco
+    os_family: ios
+    origin: cisco/ios:p-banner-present-001
+    source: seed
+  - field: http_server_enabled
+    text: 'no ip http server'
+    signature: 'no ip http server'
+    vendor: cisco
+    os_family: ios
+    origin: cisco/ios:p-http-server-001
+    source: seed
+  - field: https_server_enabled
+    text: 'ip http secure-server'
+    signature: 'ip http secure-server'
+    vendor: cisco
+    os_family: ios
+    origin: cisco/ios:p-https-server-001
+    source: seed
+  - field: idle_timeout_seconds
+    text: 'exec-timeout 10 0'
+    signature: 'exec-timeout <N> <N>'
+    vendor: cisco
+    os_family: ios
+    origin: cisco/ios:p-idle-timeout-001
+    source: seed
+  - field: idle_timeout_seconds
+    text: 'exec-timeout 30 0'
+    signature: 'exec-timeout <N> <N>'
+    vendor: cisco
+    os_family: ios
+    origin: cisco/ios:p-idle-timeout-001
+    source: seed
+  - field: logging_hosts
+    text: 'logging host 192.0.2.10'
+    signature: 'logging host <IP>'
+    vendor: cisco
+    os_family: ios
+    origin: cisco/ios:p-logging-host-001
+    source: seed
+  - field: ntp_servers
+    text: 'ntp server 192.0.2.20'
+    signature: 'ntp server <IP>'
+    vendor: cisco
+    os_family: ios
+    origin: cisco/ios:p-ntp-server-001
+    source: seed
+  - field: ntp_servers
+    text: 'ntp server 192.0.2.21'
+    signature: 'ntp server <IP>'
+    vendor: cisco
+    os_family: ios
+    origin: cisco/ios:p-ntp-server-001
+    source: seed
+  - field: ssh_version
+    text: 'ip ssh version 2'
+    signature: 'ip ssh version <N>'
+    vendor: cisco
+    os_family: ios
+    origin: cisco/ios:p-ssh-version-001
+    source: seed
+  - field: telnet_enabled
+    text: 'transport input ssh'
+    signature: 'transport input ssh'
+    vendor: cisco
+    os_family: ios
+    origin: cisco/ios:p-telnet-enabled-002
+    source: seed
+  - field: telnet_enabled
+    text: 'transport input telnet ssh'
+    signature: 'transport input telnet ssh'
+    vendor: cisco
+    os_family: ios
+    origin: cisco/ios:p-telnet-enabled-001
+    source: seed

@@ -1,14 +1,14 @@
 ==============================================================================
-NIRIKSHAK — EVALUATION REPORT (P9)
+NIRIKSHAK — EVALUATION REPORT (P9–P10)
 ==============================================================================
 
 Accuracy is reported as a measurement, not a claim.
 
-Generated      : 2026-08-28T06:09:33.496043+00:00
+Generated      : 2026-08-28T08:04:54.258919+00:00
 Rulepack       : 1.0.0
-Vendor packs   : arista/eos 1.0.0, cisco/ios 1.1.0, juniper/junos 1.0.0
+Vendor packs   : arista/eos 1.0.1, cisco/ios 1.1.0, juniper/junos 1.0.0
 Files scored   : 4 (evaluation split only)
-Held-out vendor: paloalto — NOT READ (deferred to P10)
+Held-out vendor: paloalto — NOT READ (blocked; see section 10)
 
 1. WHAT THIS WAS MEASURED ON
 ==============================================================================
@@ -201,16 +201,29 @@ contributing zeros.
 
 10. NOT MEASURED, AND WHY
 ==============================================================================
-held-out generalisation  deferred to P10 — the metric is defined over the
-                         similarity layer, and api/learn/ is empty. The PAN-OS
-                         holdout was not opened at any point during this run.
+held-out generalisation  NOT MEASURED — BLOCKED.
+                         The similarity layer exists as of P10, so that is no
+                         longer the obstacle. The metric is defined over the
+                         held-out vendor's commands and reading them needs a
+                         parser for its format; that parser waits on a sample
+                         of the format independent of the held-out files,
+                         because building it from them would destroy the
+                         experiment. No such sample exists. The holdout was
+                         NOT opened at any point during this run.
 
-top-3 mapping accuracy   deferred to P10 — same reason.
+top-3 mapping accuracy   NOT MEASURED — no line-level ground truth exists.
+                         P9 labelled canonical fields, not lines, and decision
+                         D39 declined to author line labels for the purpose of
+                         making this metric computable. The arithmetic is
+                         implemented and tested; it has no population to run on.
 
-calibration              not possible — every field carries DETERMINISTIC
-                         confidence at a constant 1.00, which R7 forbids reading
-                         as a probability. There is one population and nothing
-                         to calibrate until the model arrives.
+calibration              NOT FITTED — decision D42.
+                         Every suggestion the similarity layer produces carries
+                         UNCALIBRATED_SIMILARITY, which forces the field to
+                         UNKNOWN regardless of score. No calibrator is active.
+                         Fitting one would need labelled score outcomes that do
+                         not exist, and the corpus is far below the sample floor
+                         the fitter refuses under.
 
 ACL analysis accuracy    not measured — the corpus contains no access list.
 
@@ -228,5 +241,7 @@ remediation coverage     not measured — the vetted snippet library is empty.
   * Generalisation to the held-out vendor.
   * That its labels are independent ground truth — they are unreviewed, and
     for Cisco they share an author with the patterns being scored.
+  * Any top-3 or generalisation accuracy for the similarity layer.
+  * That any similarity score means anything as a probability.
 
 ==============================================================================
