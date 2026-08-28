@@ -23,6 +23,7 @@ from api.remediate.library import load_active_library
 from api.report.pdf import availability as pdf_availability
 from api.routers import audit as audit_router
 from api.routers import audits as audits_router
+from api.routers import fleet as fleet_router
 from api.routers import ingest as ingest_router
 from api.routers import reports as reports_router
 from api.routers import training as training_router
@@ -68,6 +69,7 @@ app = FastAPI(
 
 app.include_router(audit_router.router)
 app.include_router(audits_router.router)
+app.include_router(fleet_router.router)
 app.include_router(ingest_router.router)
 app.include_router(reports_router.router)
 app.include_router(training_router.router)
@@ -92,7 +94,7 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "version": "0.1.0",
-        "phase": "P11",
+        "phase": "P12",
         "schema_version": versions["audit"],
         "schema_versions": versions,
         "airgap": settings.airgap,

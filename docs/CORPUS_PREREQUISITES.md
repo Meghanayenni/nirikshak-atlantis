@@ -121,7 +121,7 @@ correspondingly. Until then the corpus is synthetic and says so.
 ## 4. An access control list — blocks ACL normalisation
 
 **Blocks:** populating `CanonicalSecurityModel.acls`, and therefore the semantic
-ACL analysis at P7 and exposure-aware prioritisation at P12.
+ACL analysis at P7 and exposure-aware prioritisation at P12. Both are now built and both abstain: the P12 stage reports `no_interface_data` for every exposure-relevant finding on every device, which is this gap measured rather than argued.
 
 **Why it is blocked.** **The corpus contains no ACL at all.** Searching every
 development *and* evaluation file for `access-list`, `access-group`, `ip access`,

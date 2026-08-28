@@ -36,6 +36,13 @@ action, on a vendor whose pack is detection-only.
 The P7 analyser is built and exhaustively tested against constructed `ACL`
 objects. It has never seen a parsed one.
 
+**Now blocking a second built feature.** P12 shipped the Prioritise stage, and it
+abstains on every finding of every device: exposure needs interfaces *and* access
+lists, and the corpus holds **zero interfaces and zero ACLs** across all ten
+non-holdout devices. `exposure_score` and `priority_rank` are `None` everywhere
+and the audit response reports `no_interface_data` as the blocker. Two phases of
+machinery — P7's interval logic and P12's ranking — now wait on this one gap.
+
 **What would close it.** Development-split configurations containing real access
 lists, sanitised to `docs/CONTENT_POLICY.md`, ideally including a shadowed entry,
 a redundant entry, an overly permissive entry, a partial overlap that is none of
@@ -162,6 +169,17 @@ canonical model with zero fields and full residue.
 near-copies; at least one further vendor with a real parsing pack; and devices
 that legitimately **lack** controls, so absence-aware evaluation has something real
 to reason about.
+
+**Now measured as a cohort size.** P12's peer baselines group devices by platform
+and refuse to claim a deviation below `MIN_COHORT_SIZE` (5). The corpus forms
+three cohorts of 4, 3 and 3, so **no baseline is established for any field on any
+platform** and no device is called an outlier. One more Cisco device would make
+the Cisco cohort comparable for the first time — the cheapest single addition on
+this page, and the only one that would make a built feature produce output.
+
+Note what a fifth Cisco device would and would not buy: the cohort would become
+*comparable*, not *representative*. Five hand-written devices by one author can
+demonstrate the arithmetic; they cannot support a claim about fleet drift.
 
 **What must not happen.** Growing the corpus by templating the two existing files.
 Near-identical devices inflate the file count without adding evidence, and they
@@ -307,6 +325,12 @@ Written here so the evaluation report inherits it rather than re-deriving it:
   device-specific remediation for any platform — no snippet has ever resolved.
 - **May not** claim any top-3, generalisation or calibration figure — all three
   are blocked, and the report says so with the reason rather than a zero.
+- **May not** claim exposure-aware prioritisation of anything. The stage exists
+  (P12) and abstains on every finding for want of interfaces and ACLs. A
+  severity-ordered list is specifically not offered in its place.
+- **May not** claim peer-baseline outlier detection on real data. Every cohort is
+  below the minimum size, so the feature reports refusals; its arithmetic is
+  tested against constructed observations only.
 - **May not** claim that coverage compounds across vendors; see gap 8.
 - **May not** describe its ground-truth labels as independent. They are
   unreviewed, and the Cisco labels share an author with the Cisco patterns

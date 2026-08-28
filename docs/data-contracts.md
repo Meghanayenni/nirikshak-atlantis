@@ -543,8 +543,12 @@ admin-only — rows predating ownership have no owner, and defaulting those to
 
 ## What is not here yet
 
-The prioritisation that scores exposure (P12). It consumes these contracts; it may
-not weaken one.
+The prioritisation that scores exposure was built at P12, in `api/prioritise/`.
+It consumes these contracts and weakens none of them: `exposure_score` and
+`priority_rank` are populated only when exposure was actually determined, which
+on this corpus is never — there is no interface and no access list to determine
+it from. A score exists if and only if the assessment reached DETERMINED, which
+is enforced at construction rather than by convention (ADR 0021, decision D53).
 
 Chain-walking verification (P2), the block parser (P4), the normaliser that builds
 a CSM (P5), the rule engine that evaluates one (P6), the ACL analyser (P7) and the

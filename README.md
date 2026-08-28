@@ -21,7 +21,7 @@ administrator, and permanently learns the answer.
 
 ## Status
 
-**Phase P11 — the confirmation loop.** The eleven data contracts (P1), the
+**Phase P12 — the Prioritise stage.** The eleven data contracts (P1), the
 hash-chained audit log on SQLite (P2), configuration ingestion with deterministic
 vendor detection (P3), the structural parser (P4), normalisation into the
 Canonical Security Model (P5), the rule engine that evaluates it (P6), semantic
@@ -30,7 +30,8 @@ with the report an operator reads (P8), the harness that measures all of it
 against hand-authored ground truth (P9), the similarity layer that proposes
 mappings for lines no pack recognises (P10), and the administrator confirmation
 loop that turns one of those proposals into a permanent vendor-pack pattern
-(P11) are in place.
+(P11), and the prioritisation stage that ranks findings by exposure and compares
+each device against its peers (P12) are in place.
 
 The pipeline runs end to end: a configuration file goes in, and an
 evidence-linked HTML report comes out, citing the exact lines it rests on. And
@@ -81,6 +82,21 @@ is recognised, and every field it cannot read says UNKNOWN.
 The compliance engine reads only the canonical model and produces PASS, FAIL,
 UNKNOWN or NOT_APPLICABLE, each carrying the exact line it rests on or the reason
 it abstained.
+
+**Prioritisation runs and abstains.** The Prioritise stage exists as of P12 and
+produces no ranking on this corpus, because exposure needs interfaces and access
+lists and the corpus contains **zero of both** on every device in every split. So
+`exposure_score` and `priority_rank` stay `None`, the audit response says which
+input was missing, and no severity-sorted list is offered in their place —
+severity alone must not determine remediation order.
+
+**Peer baselines run and abstain.** Devices are grouped by platform and compared
+against their own cohort. The largest cohort in this corpus holds four devices
+against a floor of five, so no baseline is established and no device is called an
+outlier. The fleet view returns the cohorts, their sizes and the reason each
+produced no claim, because an empty outlier list on its own would read as a
+uniform fleet. An abstaining field is never counted as an absent one: a device we
+could not read is not a device without logging.
 
 ### What is deliberately not claimed
 
@@ -146,8 +162,8 @@ See `docs/CORPUS_PREREQUISITES.md` and `docs/SOURCING_BACKLOG.md`.
 Held-out generalisation, top-3 mapping accuracy and confidence calibration
 remain **unmeasured**, each for a reason recorded in `docs/adr/0017-similarity-layer.md`;
 the PAN-OS holdout has still not been opened. The training **GUI** is P13's
-interface over the P11 API. Exposure-aware prioritisation and peer-baseline
-detection are P12. See `docs/adr/` for the decisions taken so far,
+interface over the P11 API, and `docs/ui_reference.html` remains its untouched
+specification. See `docs/adr/` for the decisions taken so far,
 and `docs/SOURCING_BACKLOG.md` for the six gaps that cannot be closed by writing
 code.
 
@@ -219,6 +235,7 @@ Endpoints so far:
 | GET | `/compliance/audits/{id}/report.html` | Evidence-linked report | user |
 | GET | `/compliance/audits/{id}/report.pdf` | The same, or 503 (see below) | user |
 | GET | `/compliance/audits/{id}/remediation` | Plan, in application order | user |
+| GET | `/fleet/baseline` | Peer baselines and deviations | **admin** |
 | GET | `/training/queue` | Unknown shapes, clustered and ranked | **admin** |
 | POST | `/training/confirm` | Record one administrator decision | **admin** |
 | POST | `/training/compile` | Compile it into a DRAFT pack version | **admin** |

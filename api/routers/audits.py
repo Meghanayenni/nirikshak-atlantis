@@ -25,19 +25,25 @@ from typing import Annotated, Any
 from fastapi import APIRouter, HTTPException, Query
 
 from api.analyse.service import analyse_device
+from api.audit.chain import AuditChain
 from api.comply.engine import evaluate_device, new_audit_id
 from api.comply.rulepacks import load_active_rulepack
-from api.comply.service import summarise
+from api.comply.service import audit_payload, summarise
 from api.config import settings
 from api.db import findings as finding_store
 from api.ingest import blobs
+from api.ingest.device_identity import extract_identity
+from api.ingest.lines import split_lines
 from api.ingest.packs import find_pack
+from api.models.audit import Subject
+from api.models.enums import AuditAction
 from api.models.finding import Finding
 from api.normalise.service import build_csm
 from api.parse.service import parse_configuration
+from api.prioritise.service import prioritise
 from api.remediate.library import load_active_library
 from api.remediate.resolver import RemediationResolution, resolve
-from api.routers.deps import Conn, CurrentUser, owner_filter, require_access
+from api.routers.deps import AuditConn, Conn, CurrentUser, owner_filter, require_access
 from api.train import service as train_service
 
 router = APIRouter(prefix="/compliance/audits", tags=["compliance"])
@@ -122,7 +128,9 @@ def _finding_json(finding: Finding, resolution: RemediationResolution) -> dict[s
 
 
 @router.post("", status_code=201)
-def run_audit_endpoint(conn: Conn, user: CurrentUser, file_id: str) -> dict[str, Any]:
+def run_audit_endpoint(
+    conn: Conn, audit_conn: AuditConn, user: CurrentUser, file_id: str
+) -> dict[str, Any]:
     """Audit one ingested configuration, and persist the result.
 
     The caller must own the upload. Ownership is checked before anything is read
@@ -157,7 +165,23 @@ def run_audit_endpoint(conn: Conn, user: CurrentUser, file_id: str) -> dict[str,
     raw = blobs.read(settings.blob_root, file_id)
     text = raw.decode("utf-8", errors="replace")
     parsed = parse_configuration(text, pack, file_id=file_id, file_path=row["blob_path"])
-    csm = build_csm(parsed, pack, device_id=file_id)
+
+    # DEF-15 (P12) — the detected identity now reaches the canonical model.
+    #
+    # `build_csm` has accepted a `detected_identity` since P5 and no production
+    # caller ever passed one, so every audited device carried hostname, model,
+    # os_version and serial as None while ingestion had already read and stored
+    # them. Rule applicability was unaffected (vendor and os_family fall back to
+    # the pack) and the report omits identity by design, so nothing produced a
+    # wrong answer — but peer-baseline grouping at P12 needs to know which device
+    # it is looking at, and "the model has no idea" is not a workable input.
+    identity = extract_identity(
+        pack,
+        split_lines(text),
+        file_id=file_id,
+        file_path=row["blob_path"],
+    )
+    csm = build_csm(parsed, pack, device_id=file_id, detected_identity=identity)
 
     # P11 (D49) — residue becomes the durable training queue. Recorded on every
     # audit, and the file's previous entries are replaced, so re-auditing after
@@ -178,6 +202,7 @@ def run_audit_endpoint(conn: Conn, user: CurrentUser, file_id: str) -> dict[str,
         csm, load_active_rulepack(), audit_id=audit_id, evaluated_at=evaluated_at
     )
     acl_result = analyse_device(csm, audit_id=audit_id, analysed_at=evaluated_at)
+    ranking = prioritise(csm, results, load_active_rulepack())
 
     finding_store.save_run(
         conn,
@@ -187,6 +212,19 @@ def run_audit_endpoint(conn: Conn, user: CurrentUser, file_id: str) -> dict[str,
         findings=results,
         rulepack_id=load_active_rulepack().rulepack_id,
         summary=summarise(results),
+    )
+
+    # DEF-14 (found at P11, fixed here) — the chain records that this audit ran.
+    #
+    # `api/comply/service.run_audit` has appended AUDIT_RUN since P6 and this
+    # route never called it, so the one action DEVELOPER_GUIDE.md §9 names alongside
+    # suggestions, corrections and pack changes — "audit results" — was the only
+    # one the chain never held. The payload is `comply.service.audit_payload`,
+    # unchanged: counts, identifiers and versions, never a value and never a line.
+    AuditChain(audit_conn).append_system(
+        AuditAction.AUDIT_RUN,
+        Subject(kind="audit", id=audit_id),
+        payload=audit_payload(csm, load_active_rulepack(), results),
     )
 
     return {
@@ -201,6 +239,16 @@ def run_audit_endpoint(conn: Conn, user: CurrentUser, file_id: str) -> dict[str,
         "acl_analysis": {
             "analysed_nothing": acl_result.analysed_nothing,
             "summary": acl_result.summary(),
+        },
+        # P12 — the Prioritise stage. On a model with no interfaces and no access
+        # lists this reports that it could not rank, and which input was missing,
+        # rather than falling back to a severity sort (DEVELOPER_GUIDE.md §7).
+        "prioritisation": {
+            "ranked": ranking.ranked,
+            "reason": ranking.reason,
+            "determined": ranking.determined,
+            "undetermined": ranking.undetermined,
+            "blockers": ranking.blockers(),
         },
     }
 

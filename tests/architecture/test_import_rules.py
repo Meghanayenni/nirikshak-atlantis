@@ -93,6 +93,29 @@ FORBIDDEN_EDGES: list[tuple[str, str, str]] = [
     ("learn", "train", "the advisory branch must not reach the layer that persists"),
     ("parse", "train", "parsing applies a pack; it does not know one was learned"),
     ("ingest", "train", "loading a pack must not depend on the layer that writes packs"),
+    # P12 — the Prioritise stage.
+    #
+    # Prioritisation reads canonical models and findings and orders them. It must
+    # not be able to reach the thing that DECIDED them: a layer that could see
+    # verdict logic could start disagreeing with it, and an operator would have
+    # two orderings with no way to tell which was the audit.
+    ("prioritise", "comply", "Rule 1 — exposure orders verdicts; it does not produce one"),
+    ("prioritise", "parse", "prioritisation reads the canonical model, never vendor syntax"),
+    ("prioritise", "normalise", "prioritisation receives a CSM; it does not build one"),
+    ("prioritise", "learn", "Rule 1 — no model output may reach a remediation order"),
+    ("prioritise", "train", "a confirmation is not an exposure fact"),
+    ("prioritise", "remediate", "Rule 4 — ordering a queue must not resolve a command"),
+    ("prioritise", "report", "prioritisation does not know how it will be rendered"),
+    ("prioritise", "ingest", "prioritisation has no business with uploaded files"),
+    ("prioritise", "db", "the router performs the I/O; the ranking stays free of storage"),
+    ("prioritise", "audit", "prioritisation records nothing; it is not an event"),
+    ("comply", "prioritise", "Rule 1 — a verdict is decided before anything is ordered"),
+    ("normalise", "prioritise", "the canonical model is built before it is ranked"),
+    ("parse", "prioritise", "parsing produces facts; ordering them is downstream"),
+    ("analyse", "prioritise", "an ACL observation is not a priority"),
+    ("learn", "prioritise", "the advisory branch must not reach the ordering layer"),
+    ("remediate", "prioritise", "a snippet is resolved from a rule, not from a rank"),
+    ("ingest", "prioritise", "ingestion identifies files; it does not rank findings"),
 ]
 
 

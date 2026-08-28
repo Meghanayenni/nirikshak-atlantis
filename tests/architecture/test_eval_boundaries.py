@@ -34,6 +34,7 @@ PIPELINE_PACKAGES = [
     "api.analyse",
     "api.learn",
     "api.train",
+    "api.prioritise",
 ]
 """Packages the label side must not reach, directly or transitively.
 
@@ -51,6 +52,10 @@ believed* and compiles it into a pack. A label loader that could reach it would
 be ground truth able to see — or to become — the mapping it is scoring, and
 correlated error between the two would be invisible in every metric the harness
 prints.
+
+`api.prioritise` joined at P12. It is the weakest of the three claims and is
+listed anyway: a label that could reach the ordering layer would be ground truth
+aware of how important the thing it describes was judged to be.
 """
 
 # Modules that must never reach the pipeline. These are what produce ground
