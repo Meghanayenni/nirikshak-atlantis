@@ -21,15 +21,18 @@ administrator, and permanently learns the answer.
 
 ## Status
 
-**Phase P8 — remediation resolution and evidence-linked reporting.** The eleven
-data contracts (P1), the hash-chained audit log on SQLite (P2), configuration
-ingestion with deterministic vendor detection (P3), the structural parser (P4),
-normalisation into the Canonical Security Model (P5), the rule engine that
-evaluates it (P6), semantic ACL analysis with an authenticated findings API (P7),
-and the remediation resolver with the report an operator reads (P8) are in place.
+**Phase P9 — the evaluation harness.** The eleven data contracts (P1), the
+hash-chained audit log on SQLite (P2), configuration ingestion with deterministic
+vendor detection (P3), the structural parser (P4), normalisation into the
+Canonical Security Model (P5), the rule engine that evaluates it (P6), semantic
+ACL analysis with an authenticated findings API (P7), the remediation resolver
+with the report an operator reads (P8), and the harness that measures all of it
+against hand-authored ground truth (P9) are in place.
 
-The pipeline now runs end to end: a configuration file goes in, and an
-evidence-linked HTML report comes out, citing the exact lines it rests on.
+The pipeline runs end to end: a configuration file goes in, and an
+evidence-linked HTML report comes out, citing the exact lines it rests on. And
+the accuracy of that pipeline is now a measurement rather than a claim —
+`make evaluate`, with the numbers in `eval/reports/evaluation.txt`.
 
 The parser turns configuration text into a `ConfigTree` and applies a vendor pack
 to it, producing canonical fields that each carry a value, a confidence and
@@ -67,6 +70,17 @@ so the semantic ACL analyser — shadowed, redundant and overly permissive entri
 by interval logic — is tested against constructed model objects and has never seen
 a parsed one. No detection rate against real access lists is claimed.
 
+**Evaluation results are synthetic-corpus results.** Every configuration in
+`corpus/` is hand-written, so the harness scores the parser against its author's
+imagination rather than against the field. The numbers are real measurements of a
+synthetic sample and **are not real-world accuracy.**
+
+**The ground-truth labels are not independent.** They are unreviewed, and the
+Cisco labels were written by the author of the Cisco parsing patterns — so
+correlated error between parser and ground truth is not visible in the Cisco
+figures. The label files declare this, and the report prints it. Arista and
+Juniper carry no such conflict, because no parsing pattern exists for either.
+
 **No remediation commands ship.** The vetted snippet library is **empty**. Rule 4
 requires commands come from that library, and `docs/CONTENT_POLICY.md` requires
 each one cite the vendor document it was checked against — so a snippet cannot
@@ -84,9 +98,12 @@ name. See `docs/adr/0006-weasyprint-gtk-probe.md`.
 
 See `docs/CORPUS_PREREQUISITES.md` and `docs/SOURCING_BACKLOG.md`.
 
-Exposure-aware prioritisation and peer-baseline detection are P12. See
-`docs/adr/` for the decisions taken so far, and `docs/SOURCING_BACKLOG.md` for the
-six gaps that cannot be closed by writing code.
+Held-out generalisation, top-3 mapping accuracy and confidence calibration are
+**P10** — all three are defined over the similarity layer, which does not exist
+yet, so the PAN-OS holdout has not been opened. Exposure-aware prioritisation and
+peer-baseline detection are P12. See `docs/adr/` for the decisions taken so far,
+and `docs/SOURCING_BACKLOG.md` for the six gaps that cannot be closed by writing
+code.
 
 ---
 
@@ -188,6 +205,25 @@ Create the first administrator out-of-band:
 python scripts/create_admin.py --username alice
 ```
 
+## Measuring accuracy
+
+```bash
+make evaluate                 # score, and write eval/reports/evaluation.txt
+python -m eval.run            # print only
+```
+
+The harness scores the **evaluation split only** against labels in
+`corpus/labels/`. It refuses to score development files — that would measure
+memorisation — and it cannot open the held-out vendor at all: a sealed-split
+guard raises before any file handle is opened.
+
+Ground truth is authored by reading the raw configuration, never from parser
+output. Each label cites a line number and that line's verbatim text, and the
+loader refuses any label whose citation has drifted from the file.
+
+It exits non-zero only when the measurement cannot be made honestly, never
+because a number is low. See `eval/reports/README.md`.
+
 ## Verifying the audit log
 
 ```bash
@@ -261,7 +297,7 @@ see `docs/adr/0001-no-live-device-access.md`.
 | `rules/`    | Compliance rules and framework mappings — **data**          |
 | `snippets/` | Vetted remediation command library — **data**               |
 | `corpus/`   | Sample configurations, ground-truth labels, held-out vendor |
-| `eval/`     | Evaluation harness and metrics reports                      |
+| `eval/`     | Evaluation harness, ground-truth scoring, metrics reports    |
 | `ui/`       | React + Tailwind interface (from P13)                       |
 | `tests/`    | Unit, integration, golden and architecture tests            |
 | `docs/`     | Specification, architecture, content policy, decision records |

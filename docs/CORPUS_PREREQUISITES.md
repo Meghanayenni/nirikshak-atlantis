@@ -52,6 +52,12 @@ resulting parser "XML support".
 
 **Blocks:** P6, where compliance rules are validated.
 
+> **Partly addressed at P9 (decision D32).** `corpus/cisco/eval/sw-dist-11.cfg`
+> was added because the evaluation split contained no FAIL verdict at all, so
+> compliance-verdict accuracy was undefined for the class that matters most. It
+> holds three failing controls across three severities. No pattern was authored
+> from it. Corpus breadth beyond that is still open.
+
 **Why.** P4 authored eight canonical fields from two Cisco devices. That is
 sufficient to build and verify a parser — the two files disagree on five of the
 eight fields, so the patterns are genuinely exercised. It is **not** sufficient
@@ -81,6 +87,12 @@ data supports.
 ## 3. Real sanitised configurations — affects what P9 may claim
 
 **Blocks:** nothing. **Affects:** the honesty of every P9 evaluation number.
+
+> **Now measured.** The P9 harness has run. Every number in
+> `eval/reports/evaluation.txt` is a synthetic-corpus result, and the report says
+> so in the same block as the figures rather than in a footnote. A synthetic file
+> contains exactly the shapes its author thought to include, so the parser is
+> scored against its author's imagination rather than against the field.
 
 Every file in the corpus today is **synthetic** — written by the team to be
 realistic, not captured from a real network. `corpus/MANIFEST.yaml` records
@@ -217,3 +229,37 @@ noise in the training queue.
 
 **What would unblock it.** A development-split configuration containing such a
 block, from which the declaration can be authored and verified.
+
+---
+
+## 7. Ground-truth labels reviewed by a second person
+
+**Blocks:** nothing. **Affects:** whether the P9 numbers can be called
+independent.
+
+**State.** Four evaluation files are labelled (P9, decision D31). Every label was
+authored by reading the raw configuration — no pipeline output was consulted, and
+the loader verifies each citation against the file. But all four are
+`review_status: unreviewed`, and the two Cisco files carry
+`pattern_author_conflict: true` because the Cisco patterns and the Cisco labels
+share an author.
+
+Correlated error between parser and ground truth is therefore invisible in the
+Cisco figures: a field misunderstood while writing the pattern would be
+misunderstood the same way while writing the label, and the measurement would
+come out clean without proving anything.
+
+**What would close it.** A person other than the label author reads each
+evaluation configuration, checks each label against it, and sets
+`review_status: reviewed` with `reviewed_by` and `reviewed_at`.
+`LabelProvenance.is_independent` then becomes true and the harness reports those
+labels in the independent population.
+
+This is a **data change requiring no code**, and it is the cheapest item in
+either backlog. Arista and Juniper need only the review; Cisco needs the review
+to come from someone else.
+
+**What must not happen.** Setting `review_status: reviewed` without a second
+reader, or naming the label author as their own reviewer. The contract refuses an
+unnamed reviewer, but it cannot tell whether the named one actually read
+anything.

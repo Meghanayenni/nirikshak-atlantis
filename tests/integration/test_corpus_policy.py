@@ -33,9 +33,28 @@ def manifest() -> dict:
 
 
 def corpus_files() -> list[Path]:
+    """Everything under `corpus/` that carries configuration-derived text.
+
+    Includes the label files: they quote lines verbatim out of the
+    configurations, so they are held to the same sanitisation standard. A
+    credential laundered through a citation is still a credential in the
+    repository.
+    """
     return sorted(
         p for p in CORPUS.rglob("*") if p.is_file() and p.name not in ("MANIFEST.yaml", ".gitkeep")
     )
+
+
+def configuration_files() -> list[Path]:
+    """The device configurations the manifest tracks.
+
+    Labels are excluded because they are ground truth *about* a configuration
+    rather than one. They are not manifest entries — a label recording its own
+    checksum would be circular — and their integrity is enforced instead by
+    binding each to the checksum the manifest already records for the file it
+    describes, checked in `test_every_label_cites_the_checksum_the_manifest_records`.
+    """
+    return [p for p in corpus_files() if "labels" not in p.relative_to(CORPUS).parts]
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +70,7 @@ def test_manifest_exists_and_parses(manifest: dict) -> None:
 def test_every_corpus_file_is_in_the_manifest(manifest: dict) -> None:
     """An unlisted file could quietly enter a metric."""
     listed = {entry["path"] for entry in manifest["files"]}
-    actual = {p.relative_to(CORPUS).as_posix() for p in corpus_files()}
+    actual = {p.relative_to(CORPUS).as_posix() for p in configuration_files()}
     assert actual == listed, f"unlisted: {actual - listed}; missing: {listed - actual}"
 
 
@@ -383,3 +402,85 @@ def test_every_split_has_files(manifest: dict) -> None:
     assert counts["dev"] >= 4
     assert counts["eval"] >= 2
     assert counts["holdout"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# Ground truth (P9, defect DEF-6)
+#
+# The `labelled` flag was set on five files from the day the corpus was
+# committed, and `corpus/labels/` held nothing but a `.gitkeep`. Nothing read
+# the flag, so the manifest asserted a property the repository did not have for
+# three phases. These tests are what stop it drifting again.
+# ---------------------------------------------------------------------------
+
+
+def test_the_labelled_flag_matches_the_filesystem(manifest: dict) -> None:
+    """DEF-6 — a flag nothing checks eventually describes a previous release."""
+    labels_root = CORPUS / "labels"
+    labelled_paths = set()
+    for path in sorted(labels_root.glob("*.yaml")):
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        labelled_paths.add(data["corpus_path"])
+
+    for entry in manifest["files"]:
+        declared = entry.get("labelled", False)
+        actual = entry["path"] in labelled_paths
+        assert declared == actual, (
+            f"{entry['path']} declares labelled={declared} but "
+            f"{'has' if actual else 'has no'} label file under corpus/labels/"
+        )
+
+
+def test_only_evaluation_files_are_labelled(manifest: dict) -> None:
+    """Ground truth beside the files patterns are authored from is an invitation.
+
+    And the held-out vendor may not be labelled at all: labelling requires
+    reading, and nothing may read it until the generalisation experiment.
+    """
+    for entry in manifest["files"]:
+        if entry.get("labelled"):
+            assert entry["split"] == "eval", (
+                f"{entry['path']} is labelled but sits in the {entry['split']} split"
+            )
+
+
+def test_no_label_file_mentions_the_held_out_vendor(manifest: dict) -> None:
+    held_out = manifest["held_out_vendor"]
+    for path in sorted((CORPUS / "labels").glob("*.yaml")):
+        text = path.read_text(encoding="utf-8").lower()
+        assert held_out not in text, f"{path.name} names the held-out vendor"
+        assert "holdout" not in text, f"{path.name} names the holdout split"
+
+
+def test_every_label_cites_the_checksum_the_manifest_records(manifest: dict) -> None:
+    """A label bound to different bytes than the manifest lists is scoring a
+    file nobody can identify."""
+    by_path = {e["path"]: e for e in manifest["files"]}
+
+    for path in sorted((CORPUS / "labels").glob("*.yaml")):
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        entry = by_path[data["corpus_path"]]
+        assert data["file_sha256"] == entry["sha256"], (
+            f"{path.name} was written against a different version of "
+            f"{data['corpus_path']} than the manifest records"
+        )
+
+
+def test_no_label_was_authored_from_pipeline_output() -> None:
+    """ADR 0010 — a label is authored from the configuration, never from output.
+
+    Checked as a property of the recorded provenance: `authored_from` must name
+    the raw configuration, and no label may claim to have read a report, a
+    finding or a parse result.
+    """
+    forbidden = ("finding", "report", "parsed", "csm", "canonical model", "audit")
+
+    for path in sorted((CORPUS / "labels").glob("*.yaml")):
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        source = str(data["provenance"]["authored_from"]).lower()
+
+        assert data["corpus_path"] in source, (
+            f"{path.name} does not record reading its own configuration"
+        )
+        for token in forbidden:
+            assert token not in source, f"{path.name} was authored from {token!r}"

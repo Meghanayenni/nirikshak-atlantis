@@ -1,0 +1,132 @@
+# Ground truth for corpus/juniper/eval/srx-dc-02.conf
+#
+# Authored by reading the 7 lines of the configuration. No NIRIKSHAK output was
+# consulted. See corpus/labels/README.md for the determinability doctrine.
+#
+# No parsing pattern has ever been written for Juniper Junos, so there is no
+# authorship conflict here. The determinable fields are expected to score as
+# MISSES, which measures missing pack coverage rather than parser accuracy.
+
+corpus_path: juniper/eval/srx-dc-02.conf
+split: eval
+vendor: juniper
+os_family: junos
+file_sha256: 2a872f6e7afd3ecd1261956b83c335a46fa6dae059c7eebd6f8dc63808320cb9
+
+provenance:
+  labelled_by: ai-assistant
+  labelled_at: 2026-08-28T00:00:00Z
+  authored_from: corpus/juniper/eval/srx-dc-02.conf (raw configuration text)
+  review_status: unreviewed
+  reviewed_by: null
+  reviewed_at: null
+  pattern_author_conflict: false
+  conflict_note: null
+  parser_state_at_labelling: null
+
+fields:
+  - field: ssh_version
+    determinability: determinable
+    expected_value: 2
+    evidence_line: 3
+    evidence_text: set system services ssh protocol-version v2
+    rationale: >-
+      The protocol version is stated explicitly as v2, which is the same claim
+      the canonical field records as the integer 2.
+
+  - field: ntp_servers
+    determinability: determinable
+    expected_value: ["192.0.2.23"]
+    evidence_line: 5
+    evidence_text: set system ntp server 192.0.2.23
+    rationale: One time source is configured.
+
+  - field: banner_present
+    determinability: determinable
+    expected_value: false
+    evidence_line: null
+    evidence_text: null
+    rationale: >-
+      The file contains no login-message or announcement directive. A banner
+      exists only by being configured, so its absence establishes the value.
+
+  - field: logging_hosts
+    determinability: determinable
+    expected_value: []
+    evidence_line: null
+    evidence_text: null
+    rationale: >-
+      No syslog host is configured anywhere in the file. A remote destination
+      exists only by being configured, so the list is empty.
+
+  - field: telnet_enabled
+    determinability: not_determinable
+    rationale: >-
+      No telnet service directive appears. Whether the service is offered when
+      it is not named is documented platform behaviour rather than a reading of
+      this file, so the label abstains rather than inferring it from the absence.
+
+  - field: http_server_enabled
+    determinability: not_determinable
+    rationale: No web-management directive appears in the file.
+
+  - field: https_server_enabled
+    determinability: not_determinable
+    rationale: No web-management directive appears in the file.
+
+  - field: idle_timeout_seconds
+    determinability: not_determinable
+    rationale: No idle-timeout directive appears in the file.
+
+  - field: logging_enabled
+    determinability: not_determinable
+    rationale: No syslog directive appears; the unconfigured state is platform behaviour.
+
+  - field: aaa_enabled
+    determinability: not_determinable
+    rationale: >-
+      Line 4 denies root login over ssh, which is an authorisation restriction
+      rather than a statement about centralised authentication.
+
+  - field: min_password_length
+    determinability: not_determinable
+    rationale: No password policy directive appears in the file.
+
+  - field: snmp_v3_only
+    determinability: not_determinable
+    rationale: No snmp directive appears in the file.
+
+  - field: weak_ciphers
+    determinability: not_determinable
+    rationale: No cipher or algorithm directive appears in the file.
+
+verdicts:
+  - rule_id: NRK-SSH-001
+    expected_verdict: pass
+    rationale: ssh_version is 2, and the rule requires equality with 2.
+
+  - rule_id: NRK-NTP-001
+    expected_verdict: pass
+    rationale: ntp_servers is non-empty.
+
+  - rule_id: NRK-BANNER-001
+    expected_verdict: fail
+    rationale: The rule requires a banner to be present and this device has none.
+
+  - rule_id: NRK-LOGGING-001
+    expected_verdict: fail
+    rationale: >-
+      The rule requires at least one remote logging destination and none is
+      configured.
+
+  - rule_id: NRK-TELNET-001
+    expected_verdict: unknown
+    rationale: telnet_enabled is not determinable from this file.
+
+  - rule_id: NRK-HTTP-001
+    expected_verdict: unknown
+    rationale: http_server_enabled is not determinable from this file.
+
+  - rule_id: NRK-TIMEOUT-001
+    expected_verdict: unknown
+    rationale: idle_timeout_seconds is not determinable from this file.

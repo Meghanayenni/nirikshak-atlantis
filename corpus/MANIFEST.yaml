@@ -12,6 +12,17 @@
 # report must state this, and must not claim universal vendor coverage on the
 # strength of eleven hand-written files.
 #
+# THE `labelled` FLAG (decision D31, defect DEF-6)
+# ------------------------------------------------
+# `labelled: true` means a ground-truth label file exists under corpus/labels/
+# for this configuration. Before P9 the flag was set on five files and no label
+# existed anywhere; a test now checks the flag against the filesystem, so it
+# cannot drift again.
+#
+# The holdout entries are `labelled: false` and must stay that way. Labelling a
+# file requires reading it, and nothing may read the held-out vendor until the
+# generalisation experiment at P10.
+#
 # SPLITS
 # ------
 #   dev      configurations vendor packs are authored from
@@ -107,6 +118,29 @@ files:
     labelled: true
     sha256: 7cc8347c6914212c09ed4d922313fb95eb6ce4c7530e4f6c7c7ff53c22f5aa00
     added: 2026-08-27
+  # Added at P9 (decision D32). The evaluation split contained no FAIL verdict of
+  # any kind, so compliance-verdict accuracy could not be measured for the class
+  # that matters most. This device is written to hold ordinary misconfigurations
+  # — telnet left enabled, SSHv1 not disabled, a half-hour idle timeout — and it
+  # exercises three severities.
+  #
+  # NO PATTERN WAS AUTHORED FROM THIS FILE. It uses only directives the shipped
+  # cisco/ios pack already recognised at P4, plus `ip http server`, which the pack
+  # deliberately does NOT parse — that line is here precisely so the evaluation
+  # can record a miss rather than pretend the field was covered.
+  - path: cisco/eval/sw-dist-11.cfg
+    split: eval
+    vendor: cisco
+    os_family: ios
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis to exercise failing controls; no pattern authored from it"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
+    is_real_world_data: false
+    labelled: true
+    sha256: 3fdca8162bc99436bac03e1c0cb7afc0da0492fae02397d54a968ae874fd10ca
+    added: 2026-08-28
   - path: holdout/panos/fw-dmz-02.xml
     split: holdout
     vendor: paloalto
@@ -117,7 +151,7 @@ files:
     sanitised: true
     sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
     is_real_world_data: false
-    labelled: true
+    labelled: false
     sha256: ad6b31b375f3ef573e42fe602bca38d835cbafff85048d5ff8bbba602c332e65
     added: 2026-08-27
   - path: holdout/panos/fw-perimeter-01.xml
@@ -130,7 +164,7 @@ files:
     sanitised: true
     sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; no credentials"
     is_real_world_data: false
-    labelled: true
+    labelled: false
     sha256: 8fbbe56fd35fb670011ded3d500ebbae562df3f5e27be67206e8dd4085114f9a
     added: 2026-08-27
   - path: juniper/dev/srx-branch-04.conf

@@ -1,0 +1,150 @@
+# Ground truth for corpus/cisco/eval/sw-dist-11.cfg
+#
+# Authored by reading the 33 lines of the configuration. No NIRIKSHAK output was
+# consulted. See corpus/labels/README.md for the determinability doctrine.
+#
+# This is the device added at P9 (decision D32) to give the evaluation split a
+# genuine failing security condition. Note the http_server_enabled label: the
+# line is plainly readable, and the shipped pack has no pattern for the
+# affirmative form, so this is expected to score as a MISS rather than a
+# correct abstention. That is the point of labelling it.
+
+corpus_path: cisco/eval/sw-dist-11.cfg
+split: eval
+vendor: cisco
+os_family: ios
+file_sha256: 3fdca8162bc99436bac03e1c0cb7afc0da0492fae02397d54a968ae874fd10ca
+
+provenance:
+  labelled_by: ai-assistant
+  labelled_at: 2026-08-28T00:00:00Z
+  authored_from: corpus/cisco/eval/sw-dist-11.cfg (raw configuration text)
+  review_status: unreviewed
+  reviewed_by: null
+  reviewed_at: null
+  pattern_author_conflict: true
+  conflict_note: >-
+    The cisco/ios parsing patterns and these labels share an author, so
+    correlated error between parser and ground truth is not visible in the
+    result. Reported separately until a second person reviews the labels.
+  parser_state_at_labelling: cisco/ios pack_version 1.1.0
+
+fields:
+  - field: ssh_version
+    determinability: determinable
+    expected_value: 1
+    evidence_line: 11
+    evidence_text: ip ssh version 1
+    rationale: The version is stated explicitly, and it is version 1.
+
+  - field: telnet_enabled
+    determinability: determinable
+    expected_value: true
+    evidence_line: 30
+    evidence_text: " transport input telnet ssh"
+    rationale: >-
+      The vty lines accept telnet as well as ssh, so telnet is accepted for
+      management access.
+
+  - field: http_server_enabled
+    determinability: determinable
+    expected_value: true
+    evidence_line: 12
+    evidence_text: ip http server
+    rationale: >-
+      The plaintext HTTP management server is explicitly enabled. The line is
+      unambiguous and requires no knowledge of platform defaults to read.
+
+  - field: idle_timeout_seconds
+    determinability: determinable
+    expected_value: 1800
+    evidence_line: 31
+    evidence_text: " exec-timeout 30 0"
+    rationale: >-
+      Thirty minutes and zero seconds under line vty 0 15, so 1800 seconds. The
+      exec-timeout on line 28 belongs to line con 0 and is a console timeout,
+      which is a different control.
+
+  - field: logging_hosts
+    determinability: determinable
+    expected_value: ["192.0.2.13"]
+    evidence_line: 14
+    evidence_text: logging host 192.0.2.13
+    rationale: One remote logging destination is configured.
+
+  - field: ntp_servers
+    determinability: determinable
+    expected_value: ["192.0.2.23"]
+    evidence_line: 17
+    evidence_text: ntp server 192.0.2.23
+    rationale: One time source is configured.
+
+  - field: banner_present
+    determinability: determinable
+    expected_value: false
+    evidence_line: null
+    evidence_text: null
+    rationale: >-
+      The file contains no banner directive of any kind. A banner exists only by
+      being configured, so its absence establishes the value.
+
+  - field: https_server_enabled
+    determinability: not_determinable
+    rationale: >-
+      No ip http secure-server directive appears in either form. Whether the TLS
+      listener runs when unconfigured is documented platform behaviour.
+
+  - field: logging_enabled
+    determinability: not_determinable
+    rationale: >-
+      A logging destination and a trap level are configured, but the file does
+      not state whether the logging subsystem itself is enabled.
+
+  - field: aaa_enabled
+    determinability: not_determinable
+    rationale: No aaa directive appears; the unconfigured behaviour is platform documentation.
+
+  - field: min_password_length
+    determinability: not_determinable
+    rationale: No password policy directive appears; the default is platform behaviour.
+
+  - field: snmp_v3_only
+    determinability: not_determinable
+    rationale: No snmp-server directive appears. The file says nothing about SNMP.
+
+  - field: weak_ciphers
+    determinability: not_determinable
+    rationale: >-
+      No cipher or algorithm directive appears. Which suites an unconfigured
+      device offers is documented platform behaviour.
+
+verdicts:
+  - rule_id: NRK-SSH-001
+    expected_verdict: fail
+    rationale: ssh_version is 1 and the rule requires equality with 2.
+
+  - rule_id: NRK-TELNET-001
+    expected_verdict: fail
+    rationale: telnet_enabled is true and the rule requires it to be false.
+
+  - rule_id: NRK-HTTP-001
+    expected_verdict: fail
+    rationale: >-
+      http_server_enabled is true and the rule requires it to be false. A human
+      reading line 12 establishes this.
+
+  - rule_id: NRK-TIMEOUT-001
+    expected_verdict: fail
+    rationale: 1800 seconds exceeds the 600-second maximum the rule states.
+
+  - rule_id: NRK-LOGGING-001
+    expected_verdict: pass
+    rationale: logging_hosts is non-empty.
+
+  - rule_id: NRK-NTP-001
+    expected_verdict: pass
+    rationale: ntp_servers is non-empty.
+
+  - rule_id: NRK-BANNER-001
+    expected_verdict: fail
+    rationale: The rule requires a banner to be present and this device has none.

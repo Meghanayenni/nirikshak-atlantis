@@ -12,7 +12,7 @@ PIP    := $(VENV_BIN)/pip
 PYTEST := $(VENV_BIN)/pytest
 RUFF   := $(VENV_BIN)/ruff
 
-.PHONY: help venv install install-report install-ai test lint fmt run migrate verify-audit clean
+.PHONY: help venv install install-report install-ai test lint fmt run migrate verify-audit evaluate clean
 
 help:
 	@echo "venv            Create the project-local Python 3.11 virtual environment"
@@ -24,6 +24,7 @@ help:
 	@echo "fmt             Format with ruff"
 	@echo "migrate         Apply pending database migrations"
 	@echo "verify-audit    Verify the audit hash chain (tamper-evident)"
+	@echo "evaluate        Score against hand-authored ground truth (P9)"
 	@echo "run             Start the API with reload"
 	@echo "clean           Remove caches and build artefacts"
 
@@ -53,6 +54,11 @@ migrate:
 
 verify-audit:
 	$(PY) scripts/verify_audit_chain.py
+
+# Scores the evaluation split against corpus/labels/. Exits non-zero only when
+# the measurement cannot be made honestly, never because a number is low.
+evaluate:
+	$(PY) -m eval.run --out
 
 run:
 	$(VENV_BIN)/uvicorn api.main:app --reload

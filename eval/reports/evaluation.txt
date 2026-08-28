@@ -1,0 +1,232 @@
+==============================================================================
+NIRIKSHAK — EVALUATION REPORT (P9)
+==============================================================================
+
+Accuracy is reported as a measurement, not a claim.
+
+Generated      : 2026-08-28T06:09:33.496043+00:00
+Rulepack       : 1.0.0
+Vendor packs   : arista/eos 1.0.0, cisco/ios 1.1.0, juniper/junos 1.0.0
+Files scored   : 4 (evaluation split only)
+Held-out vendor: paloalto — NOT READ (deferred to P10)
+
+1. WHAT THIS WAS MEASURED ON
+==============================================================================
+EVERY configuration in this corpus is SYNTHETIC — written by the team to
+be realistic, not captured from a real network. These are synthetic-corpus
+results. They are NOT real-world accuracy and may not be presented as such.
+
+A synthetic file contains exactly the shapes its author thought to include,
+so the parser is scored against its author's imagination rather than against
+the field.
+
+file                                   split   vendor    labelled
+------------------------------------------------------------------------------
+arista/dev/sw-leaf-01.cfg              dev     arista    no
+arista/dev/sw-spine-01.cfg             dev     arista    no
+arista/eval/sw-leaf-07.cfg             eval    arista    yes
+cisco/dev/rtr-core-01.cfg              dev     cisco     no
+cisco/dev/sw-access-02.cfg             dev     cisco     no
+cisco/eval/rtr-edge-09.cfg             eval    cisco     yes
+cisco/eval/sw-dist-11.cfg              eval    cisco     yes
+holdout/panos/fw-dmz-02.xml            holdout paloalto  no  (SEALED — not read)
+holdout/panos/fw-perimeter-01.xml      holdout paloalto  no  (SEALED — not read)
+juniper/dev/srx-branch-04.conf         dev     juniper   no
+juniper/dev/srx-edge-01.conf           dev     juniper   no
+juniper/eval/srx-dc-02.conf            eval    juniper   yes
+
+2. GROUND-TRUTH PROVENANCE
+==============================================================================
+A label is authored from the configuration, never from parser output.
+
+file                                   labelled by            review      conflict
+------------------------------------------------------------------------------
+arista/eval/sw-leaf-07.cfg             ai-assistant unreviewed  none
+cisco/eval/rtr-edge-09.cfg             ai-assistant unreviewed  PATTERN AUTHOR
+cisco/eval/sw-dist-11.cfg              ai-assistant unreviewed  PATTERN AUTHOR
+juniper/eval/srx-dc-02.conf            ai-assistant unreviewed  none
+
+Independently reviewed labels: 0 of 4.
+
+NOT INDEPENDENT GROUND TRUTH. No label here has been reviewed by a second
+person, and the Cisco labels were written by the author of the Cisco parsing
+patterns. Correlated error between parser and ground truth is therefore not
+visible in the Cisco numbers: a field misunderstood while writing the pattern
+would be misunderstood the same way while writing the label.
+
+Arista and Juniper carry no such conflict — no parsing pattern has ever been
+written for either platform.
+
+3. VENDOR DETECTION
+==============================================================================
+Correct   : 4 / 4
+Wrong     : 0
+Abstained : 0
+
+Measured against the vendor the manifest records, which the author noted when
+writing the file and which no parser produced.
+
+4. FIELD EXTRACTION, BY VENDOR
+==============================================================================
+Vendors with a parsing pack and detection-only vendors are NEVER pooled.
+A combined recall figure would be dominated by packs nobody has written.
+
+vendor     pack      n   ok  wrong  miss  abst    precision       recall
+------------------------------------------------------------------------------
+arista     NO       13    0      0     3    10          n/a    0.0% /  3
+cisco      yes      26   11      0     4    11  100.0% / 11   73.3% / 15
+juniper    NO       13    0      0     4     9          n/a    0.0% /  4
+
+ok    = determinable, and the system asserted the labelled value
+wrong = the system asserted a value the label contradicts
+miss  = determinable, and the system abstained  (a recall loss)
+abst  = not determinable, and the system abstained  (honest uncertainty)
+
+Rates print as percentage / denominator. A rate over a handful of observations
+is not a characterisation of a parser.
+
+5. ABSTENTION AND THE WRONG-CONFIDENT RATE
+==============================================================================
+vendor        wrong-confident    correct-abstention
+------------------------------------------------------------------------------
+arista                    n/a            76.9% / 13
+cisco               0.0% / 11            73.3% / 15
+juniper                   n/a            69.2% / 13
+
+Wrong-confident answers across all vendors: 0 of 11 assertions.
+
+A zero here is NOT evidence of accuracy. The system asserts a value only
+where a deterministic pattern matched, and it currently holds patterns for
+one platform. A system that asserts little cannot assert much wrongly.
+Read this figure alongside the miss counts above, not instead of them.
+
+6. EVIDENCE INTEGRITY
+==============================================================================
+Rule 2 — a correct value carrying a citation that does not support it is a
+failure, not a rounding error. Scored separately from value accuracy.
+
+vendor      checked  correct  wrong line  missing    integrity
+------------------------------------------------------------------------------
+arista            0        0           0        0          n/a
+cisco            11       11           0        0  100.0% / 11
+juniper           0        0           0        0          n/a
+
+Scored only where a citation can be checked: the system asserted a value AND
+the labeller read it off a specific line. A label resting on the ABSENCE of a
+directive has no line to point at and is excluded rather than counted as a
+missing citation.
+
+7. FIELD EXTRACTION, BY CANONICAL FIELD
+==============================================================================
+field                      n  ok  wrong  miss  abst
+------------------------------------------------------------------------------
+aaa_enabled                4   0      0     0     4
+banner_present             4   0      0     4     0
+http_server_enabled        4   1      0     1     2
+https_server_enabled       4   0      0     1     3
+idle_timeout_seconds       4   2      0     0     2
+logging_enabled            4   0      0     0     4
+logging_hosts              4   2      0     2     0
+min_password_length        4   0      0     0     4
+ntp_servers                4   2      0     2     0
+snmp_v3_only               4   0      0     0     4
+ssh_version                4   2      0     1     1
+telnet_enabled             4   2      0     0     2
+weak_ciphers               4   0      0     0     4
+
+8. COMPLIANCE VERDICTS
+==============================================================================
+
+arista — 7 verdicts
+------------------------------------------------------------------------------
+expected vs actual                pass            fail         unknown  not_applicable
+pass                                 0               0               1               0
+fail                                 0               0               2               0
+unknown                              0               0               4               0
+not_applicable                       0               0               0               0
+
+  pass             precision      n/a   recall   0.0% /  1
+  fail             precision      n/a   recall   0.0% /  2
+  unknown          precision  57.1% /  7   recall 100.0% /  4
+  not_applicable   not exercised — no label expects this class
+
+cisco — 14 verdicts
+------------------------------------------------------------------------------
+expected vs actual                pass            fail         unknown  not_applicable
+pass                                 8               0               0               0
+fail                                 0               3               3               0
+unknown                              0               0               0               0
+not_applicable                       0               0               0               0
+
+  pass             precision 100.0% /  8   recall 100.0% /  8
+  fail             precision 100.0% /  3   recall  50.0% /  6
+  unknown          not exercised — no label expects this class
+  not_applicable   not exercised — no label expects this class
+
+juniper — 7 verdicts
+------------------------------------------------------------------------------
+expected vs actual                pass            fail         unknown  not_applicable
+pass                                 0               0               2               0
+fail                                 0               0               2               0
+unknown                              0               0               3               0
+not_applicable                       0               0               0               0
+
+  pass             precision      n/a   recall   0.0% /  2
+  fail             precision      n/a   recall   0.0% /  2
+  unknown          precision  42.9% /  7   recall 100.0% /  3
+  not_applicable   not exercised — no label expects this class
+
+Expected verdicts were derived by a human applying each rule's condition AS
+WRITTEN to the labelled field value — never by running the engine. Where a
+rule's condition and its own rationale disagree, that is a rule defect and is
+recorded in ADR 0016, not folded into this matrix.
+
+9. ABSENCE-AWARE EVALUATION — BRANCH COVERAGE
+==============================================================================
+Reported as branch coverage rather than as an accuracy percentage. Zero
+platform defaults have been sourced, so every absent field takes one branch
+and an accuracy figure over it would be measuring a constant.
+
+field state                   count
+------------------------------------------------------------------------------
+unknown                           5
+
+absent_default             0  — the AbsenceAction.EVALUATE branch has never
+                                fired on real data. It cannot until vendor
+                                documentation is sourced (SOURCING_BACKLOG 2).
+
+Counted over platforms that produce canonical fields at all. Detection-only
+platforms produce none, so they contribute nothing to this table rather than
+contributing zeros.
+
+10. NOT MEASURED, AND WHY
+==============================================================================
+held-out generalisation  deferred to P10 — the metric is defined over the
+                         similarity layer, and api/learn/ is empty. The PAN-OS
+                         holdout was not opened at any point during this run.
+
+top-3 mapping accuracy   deferred to P10 — same reason.
+
+calibration              not possible — every field carries DETERMINISTIC
+                         confidence at a constant 1.00, which R7 forbids reading
+                         as a probability. There is one population and nothing
+                         to calibrate until the model arrives.
+
+ACL analysis accuracy    not measured — the corpus contains no access list.
+
+framework coverage       not measured — every rule ships frameworks: [].
+
+remediation coverage     not measured — the vetted snippet library is empty.
+
+11. WHAT THIS REPORT DOES NOT CLAIM
+==============================================================================
+  * Real-world accuracy of any kind. The corpus is synthetic.
+  * Broad or universal vendor coverage. Three vendors, one with a parsing pack.
+  * A parser accuracy figure that generalises beyond these files.
+  * Absence-aware evaluation accuracy — the branch never fires.
+  * Calibrated confidence, or that the abstention threshold is tuned.
+  * Generalisation to the held-out vendor.
+  * That its labels are independent ground truth — they are unreviewed, and
+    for Cisco they share an author with the patterns being scored.
+
+==============================================================================

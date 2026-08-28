@@ -69,6 +69,11 @@ locators only, never transcribed vendor prose.
 branch fire on real data for the first time. This is the highest value-per-hour
 item on the list.
 
+**Now measured.** The P9 harness reports absence as branch coverage:
+`absent_default` is **0** across every scored file, so the `EVALUATE` branch has
+never executed against a real configuration. That is no longer an assertion in a
+document; it is a line in `eval/reports/evaluation.txt`.
+
 **What must not happen.** Manufacturing a default from general knowledge, or
 citing a corpus file. A corpus file is a claim about a device *we wrote* and can
 never be evidence about a vendor's documented behaviour — a test asserts that no
@@ -124,6 +129,12 @@ presentation may claim coverage against any of the four frameworks.**
 
 **Blocks:** compliance-rule validation, and any P9 accuracy claim beyond the
 narrowest.
+
+**Now measured.** Arista and Juniper score **recall 0** in the P9 report — three
+and four fields respectively that a human reads off the page and the system
+cannot, because neither platform has a parsing pattern. Reported per vendor and
+never pooled (decision D34), so the gap is visible rather than averaged into a
+fleet figure.
 
 **State.** Two Cisco development devices, eight canonical fields, seven rules. That
 is enough to validate the *evaluator* — the two files disagree, so PASS, FAIL and
@@ -184,7 +195,23 @@ exists to name the person who is accountable for the commands.
 
 ---
 
-## What P9 may claim today
+## What P9 claims, now that it has run
+
+The harness exists and has produced numbers (ADR 0016). What it measured, on a
+synthetic corpus of four labelled evaluation files:
+
+- vendor detection correct on 4 of 4;
+- Cisco field extraction — precision 100% over 11 assertions, recall 73.3% over
+  15 determinable fields, **wrong-confident rate 0**;
+- Cisco evidence integrity 11 of 11 — every asserted value cited the line the
+  labeller read;
+- Cisco compliance verdicts — FAIL precision 100% (3/3), **FAIL recall 50%
+  (3/6)**;
+- Arista and Juniper recall **0** — no parsing pattern exists for either, which
+  this measures honestly rather than averaging away.
+
+Every one of those gaps traces to an entry on this list. The harness turned the
+backlog from an argument into an arithmetic.
 
 Written here so the evaluation report inherits it rather than re-deriving it:
 
@@ -197,6 +224,10 @@ Written here so the evaluation report inherits it rather than re-deriving it:
 - **May not** claim ACL detection rates — no real access list has been seen.
 - **May not** claim remediation coverage, or that NIRIKSHAK produces
   device-specific remediation for any platform — no snippet has ever resolved.
+- **May not** describe its ground-truth labels as independent. They are
+  unreviewed, and the Cisco labels share an author with the Cisco patterns
+  (decision D35). A second reader clearing `review_status` is a data change, and
+  it is the cheapest item on this page.
 - **May not** claim coverage against CIS, NIST, DISA STIG or ISO/IEC 27001.
 - **May not** claim universal vendor coverage, or present any result from the
   synthetic corpus as real-world accuracy.
