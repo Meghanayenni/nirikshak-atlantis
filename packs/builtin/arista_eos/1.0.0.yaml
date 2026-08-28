@@ -15,7 +15,7 @@ os_family: eos
 pack_version: 1.0.0
 status: deprecated
 created_by: team-atlantis
-checksum: sha256:48ebe2a26f86e10467a1254da120deee0398721aa9908a902b509a1ce9bb06e0
+checksum: sha256:a93f50f8e150066b6ef8dd5ead44735de2fbd5d4419933ec6d949fab92f21435
 
 detect:
   - { type: regex, pattern: '^! device: \S+ \(', weight: 0.35 }

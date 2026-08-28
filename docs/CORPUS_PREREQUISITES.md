@@ -293,12 +293,18 @@ Two consequences follow, and neither is fixable by writing code:
   development split holds roughly a dozen security-relevant unknown lines. Every
   suggestion therefore stays `UNCALIBRATED_SIMILARITY` and abstains (D42).
 
-**What would close it.** The P11 confirmation loop. Every administrator decision
-records a `TrainingExample` holding what was proposed and what the human chose —
-which is precisely the labelled population both metrics need. **This gap closes
-through use rather than through a labelling exercise**, and that is the whole
-argument for measuring top-3 accuracy in production rather than only on a
-benchmark.
+**What would close it.** The P11 confirmation loop, which now exists. Every
+administrator decision records a `TrainingExample` holding what was proposed and
+what the human chose — precisely the labelled population both metrics need.
+**This gap closes through use rather than through a labelling exercise**, and
+that is the whole argument for measuring top-3 accuracy in production rather than
+only on a benchmark.
+
+**P11 built the recorder and recorded nothing.** No administrator has used this
+deployment, so the population is still empty and both metrics still report
+`NOT MEASURED` with their reasons. Shipping the mechanism is not the same as
+having the data, and the report says so rather than treating the first as
+evidence of the second.
 
 **What must not happen.** Authoring line labels to make the metric computable, or
 lowering the calibration sample floor to fit the data on hand. Either turns a

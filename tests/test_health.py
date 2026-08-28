@@ -33,7 +33,7 @@ def test_health_returns_ok(client: TestClient) -> None:
 
     body = response.json()
     assert body["status"] == "ok"
-    assert body["phase"] == "P8"
+    assert body["phase"] == "P11"
 
     # Rule 3 — the abstention threshold must be present and be a real
     # probability, not a placeholder.
@@ -90,3 +90,43 @@ def test_audit_endpoints_reject_anonymous_callers(client: TestClient) -> None:
     """The chain records who touched whose configuration. Not a public surface."""
     assert client.get("/audit/head").status_code == 401
     assert client.get("/audit/verify").status_code == 401
+
+
+def test_health_reports_the_similarity_model(client: TestClient) -> None:
+    """ADR 0018 — /health reports model availability from P11 onward.
+
+    Deferred at P10 on the grounds that the model had no operator-facing
+    consequence until a training queue was put in front of a person. P11 is that
+    phase, so the readout arrives with the thing that gives it meaning.
+
+    On this machine the `[ai]` extra is deliberately uninstalled, so the honest
+    answer is `available: false` with the reason attached. The assertions below
+    therefore check the SHAPE and the calibration statement rather than the
+    value, which is environment-dependent and must stay so.
+    """
+    body = client.get("/health").json()
+    model = body["similarity_model"]
+
+    assert model["model"] == "sentence-transformers/all-MiniLM-L6-v2"
+    assert isinstance(model["available"], bool)
+    assert isinstance(model["package_installed"], bool)
+    assert isinstance(model["weights_present"], bool)
+    assert model["summary"]
+
+    # R7 and D42 — no calibrator is fitted, and the readout says so rather than
+    # letting a caller assume a score means a probability.
+    assert model["calibrated"] is False
+    assert "UNCALIBRATED_SIMILARITY" in model["note"]
+
+
+def test_health_never_claims_a_calibrated_model(client: TestClient) -> None:
+    """A fitted calibrator would be a claim about how often we are right.
+
+    None is fitted, and nothing in the health readout may imply otherwise while
+    the labelled population that would justify one does not exist
+    (SOURCING_BACKLOG gap 7).
+    """
+    from api.learn.calibration import active_calibrator
+
+    assert active_calibrator() is None
+    assert client.get("/health").json()["similarity_model"]["calibrated"] is False

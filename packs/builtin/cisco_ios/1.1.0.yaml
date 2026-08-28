@@ -30,7 +30,7 @@ pack_version: 1.1.0
 parent_version: 1.0.0
 status: active
 created_by: team-atlantis
-checksum: sha256:b23481b9c1f2fdc5d8580531541f4e25834fe280ae98d308cea964d129b00ac1
+checksum: sha256:b9f20cc9faea1eb8c3d3b40c2da32e62b5795ac61cd169641085de181b3d0c39
 
 comment_prefixes: ['!']
 

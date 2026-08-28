@@ -17,6 +17,15 @@ htmlcov/
 *.db-journal
 uploads/
 
+# Runtime-generated vendor packs (P11, decision D45).
+# `packs/trained/` holds packs api/train/ compiled from administrator
+# confirmations, plus the activation record naming which version is in force.
+# Both are DEPLOYMENT STATE, not repository content: committing them would blur
+# the one distinction the two pack roots exist to keep — what a person wrote and
+# a reviewer read, versus what this deployment learned.
+packs/trained/*
+!packs/trained/.gitkeep
+
 # Environment
 .env
 

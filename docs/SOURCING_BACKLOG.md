@@ -4,6 +4,11 @@
 the Concept Report promises, each needs material obtained from outside this
 repository, and none may be closed by inventing data.
 
+P11 changed the *shape* of gap 7 without closing it: the loop that would generate
+the missing labels now exists and is tested end to end, so the gap is waiting on
+operators rather than on engineering. Every other gap on this page is exactly
+where P10 left it.
+
 This document exists because four consecutive phases have now shipped correct,
 well-tested machinery that produces nothing observable — an absence engine with
 no platform defaults (P5), a compliance engine with no framework mappings (P6),
@@ -225,12 +230,20 @@ development split holds roughly a dozen security-relevant unknown lines. Until
 both are true, every suggestion stays `UNCALIBRATED_SIMILARITY` and the field
 abstains (decision D42).
 
-**What would close it.** Real administrator confirmations. The P11 training loop
-records a `TrainingExample` for every decision — what was proposed and what the
-human chose — which is exactly the labelled population both metrics need. This
-gap closes through *use*, not through a labelling exercise, which is the whole
-argument for measuring top-3 accuracy in production rather than only on a
-benchmark.
+**What would close it.** Real administrator confirmations.
+
+**The mechanism now exists.** P11 shipped the confirmation loop: every decision
+records a `TrainingExample` holding what was proposed and what the human chose,
+and `/training/examples` reports the population. That is precisely the labelled
+data both metrics need — and P11 produced **none of it**, because building a
+recorder is not the same as having something recorded. The gap closes through
+*use*, one confirmation at a time, which is the whole argument for measuring
+top-3 accuracy in production rather than only on a benchmark.
+
+Note what will still be missing when confirmations do accumulate: they are drawn
+from whatever devices a deployment happens to ingest, so the population is
+representative of that fleet and of nothing else. A top-3 figure computed from it
+must say whose fleet it came from.
 
 **What must not happen.** Authoring line labels to produce a number, or lowering
 the calibration floor to fit the data available. Both would turn a refusal into a

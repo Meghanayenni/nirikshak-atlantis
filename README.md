@@ -21,14 +21,16 @@ administrator, and permanently learns the answer.
 
 ## Status
 
-**Phase P10 — the similarity layer.** The eleven data contracts (P1), the
+**Phase P11 — the confirmation loop.** The eleven data contracts (P1), the
 hash-chained audit log on SQLite (P2), configuration ingestion with deterministic
 vendor detection (P3), the structural parser (P4), normalisation into the
 Canonical Security Model (P5), the rule engine that evaluates it (P6), semantic
 ACL analysis with an authenticated findings API (P7), the remediation resolver
-with the report an operator reads (P8), and the harness that measures all of it
-against hand-authored ground truth (P9), and the similarity layer that proposes
-mappings for lines no pack recognises (P10) are in place.
+with the report an operator reads (P8), the harness that measures all of it
+against hand-authored ground truth (P9), the similarity layer that proposes
+mappings for lines no pack recognises (P10), and the administrator confirmation
+loop that turns one of those proposals into a permanent vendor-pack pattern
+(P11) are in place.
 
 The pipeline runs end to end: a configuration file goes in, and an
 evidence-linked HTML report comes out, citing the exact lines it rests on. And
@@ -37,8 +39,33 @@ the accuracy of that pipeline is a measurement rather than a claim —
 
 The similarity layer clusters unrecognised lines and ranks up to three candidate
 mappings. **It proposes; it never decides.** Every suggestion is uncalibrated, so
-the field stays UNKNOWN until an administrator confirms the mapping — the
-confirmation workflow itself is P11.
+the field stays UNKNOWN until an administrator confirms the mapping.
+
+**P11 closes the loop.** An administrator reads the queue one shape at a time,
+confirms or corrects, and that recorded decision compiles into a deterministic
+pattern in a new vendor-pack version:
+
+```
+residue → cluster → a human decides → compile → DRAFT → VALIDATED
+        → activate → re-parse → the line is no longer unknown
+```
+
+Activation is explicit, admin-only, and takes effect without a restart. The
+generated regex is deliberately boring — `logging host 192.0.2.10` becomes
+`^logging\s+host\s+(\S+)$` — because an administrator who cannot read a pattern
+cannot verify it, and their confirmation is permanent. They may edit it before
+activating; the edit is re-validated and must still match the line it came from.
+
+Every compiled pattern keeps the training example and audit sequence it came
+from, so any mapping traces back to the person who confirmed it. A field read by
+a learned pattern reports `admin_confirmed`, never `deterministic` — an operator
+always knows which mappings NIRIKSHAK shipped and which this deployment learned.
+
+**The queue works with no model installed**, which is the state of this
+repository. It shows clusters ranked by frequency and says *why* there are no
+suggestions. It never returns an empty list as though the model had run and found
+nothing: those are opposite statements, and confusing them at the one screen
+where a mistake becomes permanent is not a tolerable interface.
 
 The parser turns configuration text into a `ConfigTree` and applies a vendor pack
 to it, producing canonical fields that each carry a value, a confidence and
@@ -118,9 +145,9 @@ See `docs/CORPUS_PREREQUISITES.md` and `docs/SOURCING_BACKLOG.md`.
 
 Held-out generalisation, top-3 mapping accuracy and confidence calibration
 remain **unmeasured**, each for a reason recorded in `docs/adr/0017-similarity-layer.md`;
-the PAN-OS holdout has still not been opened. The administrator training workflow
-is P13's interface over P11's confirmation loop. Exposure-aware prioritisation and
-peer-baseline detection are P12. See `docs/adr/` for the decisions taken so far,
+the PAN-OS holdout has still not been opened. The training **GUI** is P13's
+interface over the P11 API. Exposure-aware prioritisation and peer-baseline
+detection are P12. See `docs/adr/` for the decisions taken so far,
 and `docs/SOURCING_BACKLOG.md` for the six gaps that cannot be closed by writing
 code.
 
@@ -192,6 +219,12 @@ Endpoints so far:
 | GET | `/compliance/audits/{id}/report.html` | Evidence-linked report | user |
 | GET | `/compliance/audits/{id}/report.pdf` | The same, or 503 (see below) | user |
 | GET | `/compliance/audits/{id}/remediation` | Plan, in application order | user |
+| GET | `/training/queue` | Unknown shapes, clustered and ranked | **admin** |
+| POST | `/training/confirm` | Record one administrator decision | **admin** |
+| POST | `/training/compile` | Compile it into a DRAFT pack version | **admin** |
+| POST | `/training/activate` | Activate a validated pack — no restart | **admin** |
+| POST | `/training/rollback` | Return a platform to an earlier pack | **admin** |
+| GET | `/training/examples` | Decisions recorded so far | **admin** |
 | GET | `/audit/head` · `/audit/records` · `/audit/verify` | The hash chain | user |
 | GET · POST | `/users`, `/users/{id}/disable` | Account management | **admin** |
 | GET | `/users/me` | Who you are | user |
@@ -286,7 +319,8 @@ These come from `DEVELOPER_GUIDE.md` and are enforced by tests in
    confidence and evidence pointing at an exact file and line. No evidence, no
    claim.
 3. **Low confidence abstains.** Below threshold, the answer is UNKNOWN and the
-   field is routed to training. Never a guessed PASS or FAIL.
+   field is routed to training. Never a guessed PASS or FAIL. Trust is created by
+   an administrator's confirmation, never by a score.
 4. **Remediation is never AI-generated.** Commands come only from the vetted
    snippet library, keyed by vendor, OS family and rule ID. That library is
    currently empty, so no command is offered for anything.
@@ -312,7 +346,7 @@ see `docs/adr/0001-no-live-device-access.md`.
 | Path        | Contents                                                    |
 | ----------- | ----------------------------------------------------------- |
 | `api/`      | Python backend (FastAPI)                                    |
-| `packs/`    | Vendor packs — **data**, how vendor syntax maps to canonical |
+| `packs/`    | Vendor packs — **data**. `builtin/` reviewed, `trained/` learned |
 | `rules/`    | Compliance rules and framework mappings — **data**          |
 | `snippets/` | Vetted remediation command library — **data**               |
 | `corpus/`   | Sample configurations, ground-truth labels, held-out vendor |

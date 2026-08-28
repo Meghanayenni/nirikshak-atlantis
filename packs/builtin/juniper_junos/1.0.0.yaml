@@ -15,7 +15,7 @@ os_family: junos
 pack_version: 1.0.0
 status: active
 created_by: team-atlantis
-checksum: sha256:7bcb655289d99325b6c4bf6dd754f2be3d3e199926110b91390bbe387b6cba33
+checksum: sha256:f2d79c76d2de3c1695d6c8d6faf4fed293c833894641592bce4c4e50c1ec3bea
 
 detect:
   - { type: regex, pattern: '^set system host-name ', weight: 0.35 }

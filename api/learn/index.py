@@ -9,7 +9,11 @@ two legitimate sources and no third:
   has required since P4 that the example appear verbatim in a `dev` file.
 
   **ADMIN** — an administrator's confirmation, recorded as a `TrainingExample`.
-  None exist yet; the confirmation workflow is P11.
+  Added at P11 by `admin_entries_from_examples`. Unlike a seed, an admin entry
+  is *not* required to appear in a development configuration: it came from a
+  real device this deployment ingested, which is the point. Its provenance is
+  the recorded decision — a named person, an outcome and an audit sequence —
+  which is a stronger claim than a corpus citation, not a weaker one.
 
 **Nothing else may enter** (decision D38). No example is invented, no line is
 harvested from an evaluation file, and no entry is derived from the parser's own
@@ -24,12 +28,14 @@ refused.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from api.learn.errors import IndexBuildError
 from api.learn.signature import signature
 from api.models.enums import ExampleSource
 from api.models.pack import VendorPack
+from api.models.training import TrainingExample
 
 DEV_SPLIT = "dev"
 """The only split an index entry may be traced to.
@@ -124,6 +130,39 @@ def seed_entries_from_packs(packs: list[VendorPack]) -> tuple[IndexEntry, ...]:
     return tuple(entries)
 
 
+def admin_entries_from_examples(examples: Iterable[TrainingExample]) -> tuple[IndexEntry, ...]:
+    """Confirmed mappings as index entries (P11).
+
+    A rejection is skipped. "This line is not security relevant" is a real
+    decision worth keeping in `training_example`, and it is not a labelled
+    example of anything — indexing it would let the layer propose a field for a
+    line a human explicitly said had none.
+
+    `raw_line_scrubbed` is what enters the index, never a raw line. The contract
+    stores it post-redaction precisely because this text reaches an embedding
+    model (Rule 6).
+    """
+    entries: list[IndexEntry] = []
+    for example in examples:
+        if example.field is None:
+            continue
+        text = example.raw_line_scrubbed.strip()
+        if not text:
+            continue
+        entries.append(
+            IndexEntry(
+                text=text,
+                field=example.field,
+                vendor=example.vendor,
+                os_family=example.os_family,
+                source=ExampleSource.ADMIN,
+                origin=example.example_id,
+                signature=signature(text),
+            )
+        )
+    return tuple(entries)
+
+
 def verify_provenance(entries: tuple[IndexEntry, ...], development_lines: set[str]) -> list[str]:
     """Entries that cannot be traced to a development configuration.
 
@@ -145,7 +184,10 @@ def verify_provenance(entries: tuple[IndexEntry, ...], development_lines: set[st
 
 
 def build_index(
-    packs: list[VendorPack], *, development_lines: set[str] | None = None
+    packs: list[VendorPack],
+    *,
+    development_lines: set[str] | None = None,
+    confirmations: Iterable[TrainingExample] = (),
 ) -> ExampleIndex:
     """The seed index, in a stable order.
 
@@ -158,7 +200,7 @@ def build_index(
     smaller index would change every retrieval metric with nothing in the output
     saying why.
     """
-    entries = seed_entries_from_packs(packs)
+    entries = seed_entries_from_packs(packs) + admin_entries_from_examples(confirmations)
 
     if development_lines is not None:
         problems = verify_provenance(entries, development_lines)
@@ -168,5 +210,5 @@ def build_index(
                 + "\n".join(f"  {p}" for p in problems)
             )
 
-    ordered = tuple(sorted(entries, key=lambda e: (e.field, e.vendor, e.text)))
+    ordered = tuple(sorted(entries, key=lambda e: (e.field, e.vendor, e.text, e.origin)))
     return ExampleIndex(entries=ordered)

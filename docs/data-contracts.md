@@ -194,7 +194,14 @@ capabilities`
 
 Rule 5 in contract form. Patterns are deliberately boring: regexes must be
 anchored with `^`, and `self_check()` runs each pattern against its own positive
-and negative examples — the validation the P11 workflow gates activation on.
+and negative examples — the validation the P11 workflow gates activation on, and
+which `api/train/activation.py` now genuinely gates on.
+
+**As of P11 a pack's `checksum` is verified** on every load of an ACTIVE pack,
+against the convention in `api/ingest/pack_checksum.py`: sha256 of the stored LF
+bytes with the `checksum:` line removed. Verification fails closed — an
+unverifiable ACTIVE pack refuses to load rather than being skipped, because a
+skipped pack leaves a platform silently unparsed.
 
 `PlatformCapability.supported is None` means undocumented, which must produce
 abstention. A capability claim without a citation is rejected: a guess wearing a
@@ -331,7 +338,10 @@ throw away exactly the information needed to tell those apart.
 
 `pattern_id` and `node_id` are what make a field traceable back to the pack
 pattern that produced it and the tree node it came from, which is what the P10
-training queue and the P11 pack-version audit both need.
+training queue and the P11 pack-version audit both need. At P11 the trace
+extends one step further: an admin-trained pattern carries the training example
+id and audit sequence it was compiled from, so a field resolves not only to a
+pattern but to the person who confirmed it.
 
 ### ParseResult
 
@@ -445,9 +455,15 @@ reason `CsmSource.pack_versions` records which vendor pack read the line: a
 verdict is reproducible only if the data that produced it is identified.
 
 Modelled on `VendorPack` but **deliberately without its `checksum` field**. Pack
-checksums are declared and never verified against file bytes — found at P4,
-deferred to P11 — and replicating an unverified integrity mechanism into a second
-contract would double the problem rather than solve it.
+checksums were declared and never verified against file bytes — found at P4,
+numbered **DEF-13** and fixed at P11 (ADR 0020) — and replicating an unverified
+integrity mechanism into a second contract would have doubled the problem rather
+than solved it.
+
+That reasoning has now paid off rather than expired: a working, reproducible
+convention exists in `api/ingest/pack_checksum.py`, so giving `Rulepack` a
+checksum that actually verifies is a reasonable future change. It is a different
+decision, about `rules/`, and P11 did not make it.
 
 `applicable_to()` selects rules whose `AppliesTo` admits a device. A rule that
 does not apply produces **no finding at all**, rather than an UNKNOWN one: *this

@@ -71,7 +71,28 @@ FORBIDDEN_EDGES: list[tuple[str, str, str]] = [
     ("learn", "analyse", "a suggestion is not an observation about an access list"),
     ("learn", "report", "the suggestion layer does not know how it will be rendered"),
     ("learn", "remediate", "Rule 4 — no model output may reach a remediation command"),
-    ("learn", "db", "suggestions are produced, not persisted, until P11 records a decision"),
+    ("learn", "db", "suggestions are produced, not persisted; P11 persists from api/train/"),
+    # P11 — the confirmation loop (decision D44).
+    #
+    # `api/train/` is a COMPOSITION layer: it is allowed to import learn, db,
+    # audit, ingest.packs, parse and models, because joining them is its whole
+    # job. What it must not do is reach the layers that decide things, and what
+    # those layers must not do is reach it.
+    #
+    # `learn -> db` stays forbidden above. That edge was annotated "until P11
+    # records a decision", which invited relaxation; the decision recorded was to
+    # keep it. Persistence lives here instead, so the one advisory branch in the
+    # system still cannot write anything.
+    ("train", "comply", "Rule 1 — a confirmation must not see verdict logic"),
+    ("train", "report", "the confirmation loop does not know how it will be rendered"),
+    ("train", "remediate", "Rule 4 — no confirmation may reach a remediation command"),
+    ("train", "analyse", "a mapping is not an observation about an access list"),
+    ("comply", "train", "Rule 1 — no confirmation path into a verdict"),
+    ("normalise", "train", "Rule 1 — the canonical model is built from packs, not decisions"),
+    ("report", "train", "Rule 1 — a report renders findings, not training state"),
+    ("learn", "train", "the advisory branch must not reach the layer that persists"),
+    ("parse", "train", "parsing applies a pack; it does not know one was learned"),
+    ("ingest", "train", "loading a pack must not depend on the layer that writes packs"),
 ]
 
 

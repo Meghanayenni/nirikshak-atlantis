@@ -26,12 +26,46 @@ partial match to express, so a successful parse is worth exactly 1.0 — and the
 pack contract rejects any other value rather than letting YAML say otherwise."""
 
 
+def _pattern_source(pack: VendorPack, pattern_id: str) -> PatternSource:
+    """The source declared by the pattern that actually fired (defect DEF-10).
+
+    This was hard-coded to `BUILTIN`, which was true of every pattern in the
+    repository until P11 and false the moment the first administrator confirmed
+    one. `FieldProvenance.source` is documented as recording *whether a human
+    vetted it*; reporting a compiled confirmation as vendor-shipped erases the
+    only distinction the learning loop creates, and an operator could not tell a
+    mapping NIRIKSHAK shipped from one their colleague confirmed last Tuesday.
+    """
+    for pattern in pack.patterns:
+        if pattern.id == pattern_id:
+            return pattern.source
+    return PatternSource.BUILTIN
+
+
+def _method_for(source: PatternSource) -> ConfidenceMethod:
+    """Which confidence population a match belongs to (D48).
+
+    Both are exact-1.0 populations (`EXACT_CONFIDENCE_POPULATIONS`, decision D6):
+    a pattern either matched or it did not, and a human either confirmed a
+    mapping or did not. They are kept apart because they are different *kinds* of
+    claim — one rests on a vendor pack somebody reviewed, the other on a named
+    administrator's judgement recorded in the audit chain — and R7 exists to stop
+    populations being pooled just because they share a numeric range.
+
+    Neither is model-derived, so no verdict changes: a compiled pattern reaches a
+    field by matching text deterministically, exactly as a builtin one does.
+    """
+    if source is PatternSource.ADMIN_TRAINED:
+        return ConfidenceMethod.ADMIN_CONFIRMED
+    return ConfidenceMethod.DETERMINISTIC
+
+
 def _provenance(pack: VendorPack, pattern_id: str) -> FieldProvenance:
     return FieldProvenance(
         pack_id=pack.pack_id,
         pack_version=pack.pack_version,
         pattern_id=pattern_id,
-        source=PatternSource.BUILTIN,
+        source=_pattern_source(pack, pattern_id),
     )
 
 
@@ -61,6 +95,7 @@ def build_field(
         )
 
     provenance = _provenance(pack, matches[0].pattern_id)
+    method = _method_for(_pattern_source(pack, matches[0].pattern_id))
 
     if is_multi_valued(cast):
         # Repetition is accumulation: two `ntp server` lines are two servers.
@@ -71,7 +106,7 @@ def build_field(
             value=values,
             state=FieldState.PRESENT,
             confidence=DETERMINISTIC_CONFIDENCE,
-            confidence_method=ConfidenceMethod.DETERMINISTIC,
+            confidence_method=method,
             evidence=evidence,
             provenance=provenance,
         )
@@ -86,7 +121,7 @@ def build_field(
             value=None,
             state=FieldState.UNKNOWN,
             confidence=0.0,
-            confidence_method=ConfidenceMethod.DETERMINISTIC,
+            confidence_method=method,
             unknown_reason=UnknownReason.CONFLICTING_EVIDENCE,
             evidence=evidence,
             provenance=provenance,
@@ -98,7 +133,7 @@ def build_field(
         value=matches[0].value,
         state=FieldState.PRESENT,
         confidence=DETERMINISTIC_CONFIDENCE,
-        confidence_method=ConfidenceMethod.DETERMINISTIC,
+        confidence_method=method,
         evidence=evidence,
         provenance=provenance,
     )

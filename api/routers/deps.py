@@ -64,6 +64,32 @@ def get_conn() -> Iterator[sqlite3.Connection]:
 Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
 
 
+def get_audit_conn() -> Iterator[sqlite3.Connection]:
+    """A connection to the AUDIT database, which is a separate file (D4).
+
+    Added at P11, where a route mutates state that must be attested: a
+    confirmation, a pack creation, an activation, a rollback. Before then the one
+    router that appended a record opened its own connection inline; a dependency
+    is the right shape once four endpoints need the same thing, and it closes the
+    connection on the way out whether the handler succeeded or raised.
+
+    Deliberately a second connection rather than a second table in the first
+    database. Decision D4 keeps configuration content and attestations in
+    different files precisely so "the audit database contains no configuration
+    content" is provable by opening it.
+    """
+    conn = connect(settings.audit_db_path)
+    try:
+        if not table_exists(conn, "audit_log"):
+            raise HTTPException(status_code=503, detail="audit store is not initialised")
+        yield conn
+    finally:
+        conn.close()
+
+
+AuditConn = Annotated[sqlite3.Connection, Depends(get_audit_conn)]
+
+
 def current_user(
     conn: Conn,
     credentials: Annotated[HTTPBasicCredentials | None, Depends(basic)] = None,

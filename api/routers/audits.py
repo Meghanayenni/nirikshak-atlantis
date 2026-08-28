@@ -38,6 +38,7 @@ from api.parse.service import parse_configuration
 from api.remediate.library import load_active_library
 from api.remediate.resolver import RemediationResolution, resolve
 from api.routers.deps import Conn, CurrentUser, owner_filter, require_access
+from api.train import service as train_service
 
 router = APIRouter(prefix="/compliance/audits", tags=["compliance"])
 
@@ -158,6 +159,19 @@ def run_audit_endpoint(conn: Conn, user: CurrentUser, file_id: str) -> dict[str,
     parsed = parse_configuration(text, pack, file_id=file_id, file_path=row["blob_path"])
     csm = build_csm(parsed, pack, device_id=file_id)
 
+    # P11 (D49) — residue becomes the durable training queue. Recorded on every
+    # audit, and the file's previous entries are replaced, so re-auditing after
+    # activating a pack shrinks the queue instead of duplicating it. A line the
+    # new pack now reads simply stops being produced.
+    residue_recorded = train_service.record_residue(
+        conn,
+        csm.residue,
+        file_id=file_id,
+        vendor=row["detected_vendor"],
+        os_family=row["detected_os_family"],
+    )
+    conn.commit()
+
     audit_id = new_audit_id()
     evaluated_at = datetime.now(UTC)
     results = evaluate_device(
@@ -180,6 +194,9 @@ def run_audit_endpoint(conn: Conn, user: CurrentUser, file_id: str) -> dict[str,
         "device_id": file_id,
         "verdicts": summarise(results),
         "rules_evaluated": len(results),
+        # The size of the training queue this file contributes. Expected to fall
+        # after an administrator confirms a mapping and the pack is activated.
+        "residue_lines": residue_recorded,
         # A separate rail from findings, and reported as one (decision D22).
         "acl_analysis": {
             "analysed_nothing": acl_result.analysed_nothing,

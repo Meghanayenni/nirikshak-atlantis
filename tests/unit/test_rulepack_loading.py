@@ -158,9 +158,16 @@ def test_duplicate_rule_ids_are_rejected() -> None:
 def test_the_rulepack_has_no_checksum_field() -> None:
     """D17 — deliberately not copied from VendorPack.
 
-    Pack checksums are declared and never verified against file bytes; that was
-    found at P4 and deferred to P11. Replicating an unverified integrity
-    mechanism into a second contract would double the problem, not solve it.
+    Pack checksums were declared and never verified against file bytes — found at
+    P4, numbered DEF-13 and fixed at P11 (ADR 0020). Replicating an unverified
+    integrity mechanism into a second contract would have doubled the problem
+    rather than solved it, which is why this contract never grew one.
+
+    The reasoning has now paid off rather than expired. A working, reproducible
+    convention exists in `api/ingest/pack_checksum.py`, so giving `Rulepack` a
+    checksum that genuinely verifies is a reasonable future change — a different
+    decision, about `rules/`, which P11 did not make. Until somebody makes it,
+    the absence of the field remains the honest state and this assertion stands.
     """
     assert "checksum" not in Rulepack.model_fields
 

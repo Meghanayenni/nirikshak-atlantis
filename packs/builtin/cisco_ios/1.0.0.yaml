@@ -16,7 +16,7 @@ os_family: ios
 pack_version: 1.0.0
 status: deprecated
 created_by: team-atlantis
-checksum: sha256:3a3bc0394fa93fcb28f6b33e4412e9337ca764bce176f4720e8d565b0c9d0009
+checksum: sha256:be8bb5776feda278d9ca22e1335ea5872c1f7ceef9f9bd758c7132e88a825e28
 
 detect:
   - { type: regex, pattern: '^version \d+\.\d+', weight: 0.25 }

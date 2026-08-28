@@ -33,6 +33,7 @@ PIPELINE_PACKAGES = [
     "api.ingest",
     "api.analyse",
     "api.learn",
+    "api.train",
 ]
 """Packages the label side must not reach, directly or transitively.
 
@@ -43,6 +44,13 @@ that can reach the similarity layer is a label that could be *suggested by the
 model it scores*, which is the circularity decision D31 exists to prevent — and
 a subtler one than reaching the parser, because a suggestion looks like a
 judgement rather than like output.
+
+`api.train` joined at P11 for the same argument one step further on. The
+similarity layer only proposes; the confirmation loop *records what was
+believed* and compiles it into a pack. A label loader that could reach it would
+be ground truth able to see — or to become — the mapping it is scoring, and
+correlated error between the two would be invisible in every metric the harness
+prints.
 """
 
 # Modules that must never reach the pipeline. These are what produce ground

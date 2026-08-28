@@ -17,12 +17,15 @@ from fastapi import FastAPI
 from api.config import settings
 from api.db.connection import connect
 from api.db.migrate import AUDIT_MIGRATIONS, OPERATIONAL_MIGRATIONS, current_version, migrate
+from api.learn.embedding import MODEL_NAME
+from api.learn.embedding import availability as model_availability
 from api.remediate.library import load_active_library
 from api.report.pdf import availability as pdf_availability
 from api.routers import audit as audit_router
 from api.routers import audits as audits_router
 from api.routers import ingest as ingest_router
 from api.routers import reports as reports_router
+from api.routers import training as training_router
 from api.routers import users as users_router
 
 
@@ -67,6 +70,7 @@ app.include_router(audit_router.router)
 app.include_router(audits_router.router)
 app.include_router(ingest_router.router)
 app.include_router(reports_router.router)
+app.include_router(training_router.router)
 app.include_router(users_router.router)
 
 
@@ -74,6 +78,7 @@ app.include_router(users_router.router)
 def health() -> dict[str, object]:
     """Liveness check, and a readout of the safety-relevant settings."""
     pdf_state = pdf_availability()
+    model_state = model_availability(airgap=settings.airgap)
     library = load_active_library()
 
     versions = {}
@@ -87,7 +92,7 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "version": "0.1.0",
-        "phase": "P8",
+        "phase": "P11",
         "schema_version": versions["audit"],
         "schema_versions": versions,
         "airgap": settings.airgap,
@@ -104,6 +109,25 @@ def health() -> dict[str, object]:
         # (ADR 0006). HTML reporting has no native dependency and is always
         # available; the PDF endpoint answers 503 when this says otherwise, and
         # never substitutes the HTML document for the PDF it could not make.
+        # P11 — the embedding model, probed live for the same reason the PDF
+        # stack is (ADR 0018). Reported from this phase onward because P11 is
+        # what puts a training queue in front of a person: until then the model
+        # had no operator-facing consequence, and now its absence is the
+        # difference between a ranked queue and an unranked one. The queue works
+        # either way and says which it is.
+        "similarity_model": {
+            "available": model_state.available,
+            "model": MODEL_NAME,
+            "package_installed": model_state.package_installed,
+            "weights_present": model_state.weights_present,
+            "summary": model_state.summary,
+            "calibrated": False,
+            "note": (
+                "No calibrator is fitted (D42). Every suggestion is "
+                "UNCALIBRATED_SIMILARITY and forces the field to UNKNOWN; a "
+                "similarity score is never a probability."
+            ),
+        },
         "pdf_reporting": {
             "available": pdf_state.available,
             "weasyprint_installed": pdf_state.weasyprint_installed,
