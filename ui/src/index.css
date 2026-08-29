@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Base layer.
+ *
+ * Numerals are tabular throughout so columns of counts align — §10 asks for
+ * density, and misaligned digits are the fastest way to make a dense table
+ * unreadable.
+ */
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-surface text-ink font-sans antialiased;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Every numeric column in this product is a count, a line number, a version
+     or a hash. None of them should shift width between digits. */
+  .num,
+  table td,
+  table th {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* One visible focus treatment, on the accent, everywhere. Keyboard users get
+     the same affordance on links, buttons, inputs and dialog controls. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-1 ring-offset-paper;
+  }
+
+  ::selection {
+    @apply bg-accent-bg text-ink;
+  }
+}
+
+@layer components {
+  /* A hairline-separated card. §10: restraint in borders and shadows, not in
+     information — so a single border, no shadow stack. */
+  .card {
+    @apply bg-paper border border-border rounded-card;
+  }
+
+  .card-header {
+    @apply px-4 py-3 border-b border-border flex items-center justify-between gap-3;
+  }
+
+  .card-title {
+    @apply text-[13px] font-semibold tracking-tight text-ink;
+  }
+
+  /* Tables use ONE separation mechanism — hairlines. No banding, no extra
+     spacing on top of it (§10). */
+  .table {
+    @apply w-full text-[13px] border-collapse;
+  }
+
+  .table th {
+    @apply text-left font-medium text-muted text-2xs uppercase tracking-wider
+           px-3 py-2 border-b border-border whitespace-nowrap;
+  }
+
+  .table td {
+    @apply px-3 py-2 border-b border-border align-top;
+  }
+
+  .table tbody tr:hover {
+    @apply bg-surface;
+  }
+
+  .table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .mono {
+    @apply font-mono text-[12px];
+  }
+
+  .label {
+    @apply text-2xs uppercase tracking-wider text-muted font-medium;
+  }
+
+  .link {
+    @apply text-accent hover:underline underline-offset-2;
+  }
+}

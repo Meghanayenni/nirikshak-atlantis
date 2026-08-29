@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+*.local
+
+# Incremental build state written by `tsc -b` (npm run build). Machine-local,
+# regenerated on every build, and never useful to another checkout.
+*.tsbuildinfo

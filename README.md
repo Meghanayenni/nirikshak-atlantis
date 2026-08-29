@@ -21,7 +21,7 @@ administrator, and permanently learns the answer.
 
 ## Status
 
-**Phase P12 — the Prioritise stage.** The eleven data contracts (P1), the
+**Phase P13 — the interface.** The eleven data contracts (P1), the
 hash-chained audit log on SQLite (P2), configuration ingestion with deterministic
 vendor detection (P3), the structural parser (P4), normalisation into the
 Canonical Security Model (P5), the rule engine that evaluates it (P6), semantic
@@ -31,7 +31,8 @@ against hand-authored ground truth (P9), the similarity layer that proposes
 mappings for lines no pack recognises (P10), and the administrator confirmation
 loop that turns one of those proposals into a permanent vendor-pack pattern
 (P11), and the prioritisation stage that ranks findings by exposure and compares
-each device against its peers (P12) are in place.
+each device against its peers (P12), and the React interface an operator
+actually uses (P13) are in place.
 
 The pipeline runs end to end: a configuration file goes in, and an
 evidence-linked HTML report comes out, citing the exact lines it rests on. And
@@ -82,6 +83,13 @@ is recognised, and every field it cannot read says UNKNOWN.
 The compliance engine reads only the canonical model and produces PASS, FAIL,
 UNKNOWN or NOT_APPLICABLE, each carrying the exact line it rests on or the reason
 it abstained.
+
+**The interface shows what the backend says, and says where it cannot.** The
+P13 React application is a pure consumer: it never evaluates a rule, computes a
+verdict, scores exposure or ranks a finding. Where a capability has no data it
+renders the reason rather than an empty table — an empty list and a refusal are
+different statements, and confusing them is how an operator concludes their
+fleet is clean when nothing was measured.
 
 **Prioritisation runs and abstains.** The Prioritise stage exists as of P12 and
 produces no ranking on this corpus, because exposure needs interfaces and access
@@ -161,9 +169,8 @@ See `docs/CORPUS_PREREQUISITES.md` and `docs/SOURCING_BACKLOG.md`.
 
 Held-out generalisation, top-3 mapping accuracy and confidence calibration
 remain **unmeasured**, each for a reason recorded in `docs/adr/0017-similarity-layer.md`;
-the PAN-OS holdout has still not been opened. The training **GUI** is P13's
-interface over the P11 API, and `docs/ui_reference.html` remains its untouched
-specification. See `docs/adr/` for the decisions taken so far,
+the PAN-OS holdout has still not been opened. `docs/ui_reference.html` remains
+the untouched visual specification the P13 interface was translated from. See `docs/adr/` for the decisions taken so far,
 and `docs/SOURCING_BACKLOG.md` for the six gaps that cannot be closed by writing
 code.
 
@@ -173,7 +180,8 @@ code.
 
 - **Python 3.11** (3.11.9 verified). The project uses a local `.venv` and does
   not modify the system Python installation.
-- **Node 18+** for the interface, from P13 onward. Not needed before then.
+- **Node 18+** for the interface (Node 24 verified). Only needed to build or run
+  the frontend; the API and the evaluation harness need nothing beyond Python.
 - **GTK3 runtime** for PDF reporting only. **Not required for HTML reporting**,
   which is the complete report and needs nothing beyond the core dependencies.
   Without GTK the `.pdf` endpoint answers 503 and names what is missing — see
@@ -216,7 +224,26 @@ install quickly and stay within the 8 GB target hardware budget.
 ## Running
 
 ```bash
-uvicorn api.main:app --reload
+uvicorn api.main:app --reload          # the API, on :8000
+```
+
+And the interface, in a second terminal:
+
+```bash
+cd ui
+npm install
+npm run dev                            # the UI, on :5173
+```
+
+The dev server proxies `/health`, `/ingest`, `/compliance`, `/fleet`, `/training`,
+`/audit` and `/users` to the API, so the browser makes same-origin requests and no
+API host is baked into the bundle. Sign in with an account created by
+`scripts/create_admin.py`; **there is no self-registration**, and the role comes
+from the server rather than from anything the login form offers.
+
+```bash
+cd ui
+npm run typecheck && npm run lint && npm run test && npm run build
 ```
 
 Endpoints so far:
@@ -368,7 +395,7 @@ see `docs/adr/0001-no-live-device-access.md`.
 | `snippets/` | Vetted remediation command library — **data**               |
 | `corpus/`   | Sample configurations, ground-truth labels, held-out vendor |
 | `eval/`     | Evaluation harness, ground-truth scoring, metrics reports    |
-| `ui/`       | React + Tailwind interface (from P13)                       |
+| `ui/`       | React + TypeScript + Tailwind interface (P13)                |
 | `tests/`    | Unit, integration, golden and architecture tests            |
 | `docs/`     | Specification, architecture, content policy, decision records |
 
