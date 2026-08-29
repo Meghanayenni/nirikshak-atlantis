@@ -348,7 +348,7 @@ corrects them, and only that confirmation compiles into a versioned vendor
 pack. The compliance engine's only input is the typed Canonical Security Model,
 so neither raw configuration text nor model output can reach a verdict.
 
-Full architecture: `docs/architecture.md` (written at P14).
+Full architecture: `docs/architecture.md`.
 
 ---
 
