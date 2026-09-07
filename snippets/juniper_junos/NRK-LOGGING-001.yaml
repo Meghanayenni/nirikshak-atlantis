@@ -1,0 +1,39 @@
+snippet_id: juniper-junos-NRK-LOGGING-001
+rule_id: NRK-LOGGING-001
+vendor: juniper
+os_family: junos
+os_version_range: null
+
+commands:
+  - configure
+  - set system syslog host <SYSLOG-COLLECTOR-IP> any notice
+  - set system syslog host <SYSLOG-COLLECTOR-IP> authorization info
+  - show | compare
+  - commit
+  - exit
+rollback:
+  - configure
+  - delete system syslog host <SYSLOG-COLLECTOR-IP>
+  - commit
+  - exit
+preconditions:
+  - The syslog collector's address is known and reachable from this device's management instance.
+  - Substitute <SYSLOG-COLLECTOR-IP> before pasting. The placeholder is deliberate.
+verification:
+  - show configuration system syslog
+  - show log messages | last 20
+
+impact:
+  service_affecting: false
+  requires_reload: false
+  lockout_risk: none
+  notes: Adds outbound syslog traffic. No management path is altered.
+
+depends_on: []
+order_hint: 400
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Junos OS CLI Reference, 'host (System Syslog)' at [edit system syslog] —
+  https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/statement/host-edit-system-syslog.html

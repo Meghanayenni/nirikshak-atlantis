@@ -1,0 +1,45 @@
+snippet_id: juniper-junos-NRK-TIMEOUT-001
+rule_id: NRK-TIMEOUT-001
+vendor: juniper
+os_family: junos
+os_version_range: null
+
+# Junos idle-timeout is in MINUTES, so 10 is the 600 seconds NRK-TIMEOUT-001
+# checks. 0 disables the timeout and is the failing state, never the fix.
+#
+# The global [edit system login] form is used because it covers the default
+# class as well as custom ones. Note the documented precedence: a class that
+# sets its own idle-timeout OVERRIDES this, so a device with custom login
+# classes needs the per-class form as well — see preconditions.
+commands:
+  - configure
+  - set system login idle-timeout 10
+  - show | compare
+  - commit
+  - exit
+rollback:
+  - configure
+  - delete system login idle-timeout
+  - commit
+  - exit
+preconditions:
+  - Long-running operator tasks that hold an idle session are known and accounted for.
+  - If this device defines custom login classes with their own idle-timeout, set it per class as well — a class value overrides the global one.
+verification:
+  - show configuration system login
+  - show cli
+
+impact:
+  service_affecting: false
+  requires_reload: false
+  lockout_risk: none
+  notes: An idle session is closed after ten minutes; the operator reconnects.
+
+depends_on: []
+order_hint: 300
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Junos OS CLI Reference, 'idle-timeout (System)' at [edit system login] —
+  https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/statement/idle-timeout-edit-system-login.html

@@ -1,0 +1,41 @@
+snippet_id: juniper-junos-NRK-HTTP-001
+rule_id: NRK-HTTP-001
+vendor: juniper
+os_family: junos
+os_version_range: null
+
+# Only the http child is deleted. `web-management https` is a sibling statement
+# and is left in place: the rule covers the plaintext listener, and removing
+# J-Web entirely is a change it did not ask for.
+commands:
+  - configure
+  - delete system services web-management http
+  - show | compare
+  - commit
+  - exit
+rollback:
+  - configure
+  - set system services web-management http
+  - commit
+  - exit
+preconditions:
+  - No monitoring or provisioning system reaches J-Web over plain HTTP.
+verification:
+  - show configuration system services web-management
+
+impact:
+  service_affecting: true
+  requires_reload: false
+  lockout_risk: none
+  notes: >-
+    J-Web over plaintext HTTP stops responding. The CLI, SSH and the HTTPS
+    listener are unaffected.
+
+depends_on: []
+order_hint: 200
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Junos OS CLI Reference, 'web-management (System Services)' / 'http (Web Management)' —
+  https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/statement/web-management-edit-system.html

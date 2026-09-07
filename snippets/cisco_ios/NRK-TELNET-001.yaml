@@ -1,0 +1,46 @@
+snippet_id: cisco-ios-NRK-TELNET-001
+rule_id: NRK-TELNET-001
+vendor: cisco
+os_family: ios
+os_version_range: null
+
+# Restricting `transport input` to ssh is what removes telnet from the vty
+# lines. `no ip telnet` does not exist on IOS: telnet is not a service that is
+# switched off globally, it is a transport a line either accepts or does not.
+commands:
+  - configure terminal
+  - line vty 0 15
+  - transport input ssh
+  - end
+  - write memory
+rollback:
+  - configure terminal
+  - line vty 0 15
+  - transport input telnet ssh
+  - end
+  - write memory
+preconditions:
+  - SSH is already working on this device and has been tested from the operator's own workstation in a separate session.
+  - An out-of-band console path exists.
+verification:
+  - show running-config | section line vty
+  - show line vty 0 15
+
+impact:
+  service_affecting: true
+  requires_reload: false
+  lockout_risk: high
+  notes: >-
+    This closes the only remaining management transport if SSH is not already
+    working. Apply it after the SSH snippet, from a session that is not itself a
+    telnet session, and keep a console connection open.
+
+depends_on:
+  - cisco-ios-NRK-SSH-001
+order_hint: 900
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Cisco IOS Terminal Services Command Reference, 'transport input' — 
+  https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/termserv/command/tsv-xe-book.html

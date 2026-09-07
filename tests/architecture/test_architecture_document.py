@@ -248,7 +248,11 @@ def test_the_document_states_what_is_not_claimed(text: str) -> None:
     """§7 is the section that keeps the rest of the document honest."""
     for phrase in [
         "does not currently claim",
-        "the vetted snippet library is empty",
+        # Was "the vetted snippet library is empty" until the library was
+        # sourced. The document must still account for what left this section,
+        # so the phrase is replaced rather than dropped: a claim quietly
+        # disappearing from §7 is exactly what §7 exists to prevent.
+        "shipped empty until every entry could name",
         "no access list in any split",
         "never been opened",
     ]:

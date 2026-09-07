@@ -178,27 +178,56 @@ def test_the_only_command_source_is_the_snippet_library() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_the_snippet_library_is_empty() -> None:
-    """D27 - zero vetted snippets ship at P8.
+def test_every_shipped_snippet_is_attributable() -> None:
+    """The successor to `test_the_snippet_library_is_empty` (D27 superseded).
 
-    A command written from general vendor knowledge would be attributed to
-    nobody and checked against nothing, and an operator would paste it into a
-    production device on this project's authority.
+    D27 kept the library empty because a command written from general vendor
+    knowledge is attributed to nobody and checked against nothing. That reasoning
+    has not changed - what changed is that the entries below were checked against
+    the vendor documents they cite, by the person they name.
 
-    **This test is expected to be deleted** by the change that adds the first
-    sourced snippet. It fails loudly at that point so the author has to confront
-    the vetting requirement rather than adding commands quietly. See
-    `docs/SOURCING_BACKLOG.md` gap 6.
+    So the guard is no longer "there are none". It is: every snippet on disk
+    names a human vetter and the document that vetter read, and no snippet
+    presents a service-affecting change without a way back. Those are the
+    properties the empty state was standing in for, asserted directly.
     """
     from api.remediate.library import load_library
 
-    library = load_library()
-    offenders = [f"{s.snippet_id} ({s.vendor}/{s.os_family})" for s in library.snippets]
+    problems: list[str] = []
+    for snippet in load_library().snippets:
+        who = snippet.vetted_by.strip()
+        if not who:
+            problems.append(f"{snippet.snippet_id}: no vetter")
+        if any(
+            token in who.lower()
+            for token in ("model", "llm", "gpt", "the assistant", "ai-generated", "automated", "tbd")
+        ):
+            problems.append(f"{snippet.snippet_id}: {who!r} is not a person")
+        if not (snippet.reference or "").strip():
+            problems.append(f"{snippet.snippet_id}: cites no document")
+        if snippet.impact.service_affecting and not snippet.rollback:
+            problems.append(f"{snippet.snippet_id}: service-affecting with no rollback")
 
-    assert offenders == [], (
-        "the snippet library is no longer empty; confirm every entry names a real "
-        "vetter and a real vendor document:\n" + "\n".join(f"  {o}" for o in offenders)
-    )
+    assert not problems, "Rule 4 - a snippet must be attributable: " + "; ".join(problems)
+
+
+def test_a_high_lockout_risk_snippet_explains_itself() -> None:
+    """Ordering exists because of these, so they must say what they endanger.
+
+    The resolver applies a high-lockout-risk change last. That ordering is only
+    protective if the operator also reads *why* it is last - a snippet that can
+    strand someone outside their own device and offers no note is the one place
+    the ordering logic cannot help them.
+    """
+    from api.models.enums import LockoutRisk
+    from api.remediate.library import load_library
+
+    silent = [
+        s.snippet_id
+        for s in load_library().snippets
+        if s.impact.lockout_risk is LockoutRisk.HIGH and not (s.impact.notes or "").strip()
+    ]
+    assert silent == [], "high lockout risk with no explanation: " + ", ".join(silent)
 
 
 def test_the_snippet_schema_is_present() -> None:

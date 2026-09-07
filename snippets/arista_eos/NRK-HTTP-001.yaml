@@ -1,0 +1,45 @@
+snippet_id: arista-eos-NRK-HTTP-001
+rule_id: NRK-HTTP-001
+vendor: arista
+os_family: eos
+os_version_range: null
+
+# `no protocol http` removes the plaintext listener from running-config. The
+# HTTPS listener is a separate statement and is deliberately left alone: the
+# rule is about the plaintext path, not about whether eAPI is used.
+commands:
+  - configure
+  - management api http-commands
+  - no protocol http
+  - exit
+  - end
+  - write memory
+rollback:
+  - configure
+  - management api http-commands
+  - protocol http
+  - exit
+  - end
+  - write memory
+preconditions:
+  - No automation or monitoring system calls eAPI over plain HTTP. Check before applying — eAPI clients frequently default to http.
+verification:
+  - show management api http-commands
+  - show running-config section management api
+
+impact:
+  service_affecting: true
+  requires_reload: false
+  lockout_risk: none
+  notes: >-
+    eAPI clients configured for http stop working. The CLI, SSH and the HTTPS
+    listener are unaffected.
+
+depends_on: []
+order_hint: 200
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Arista EOS User Manual, Session Management Commands — 'protocol http' (mgmt-api mode) —
+  https://www.arista.com/en/um-eos/eos-session-management-commands

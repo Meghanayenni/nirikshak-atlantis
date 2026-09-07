@@ -286,11 +286,19 @@ snippets it depends on, because disabling an insecure management protocol before
 its replacement is verified is how an operator is stranded outside their own
 device.
 
-**The shipped library is empty** (decision D27). `vetted_by` and `reference` are
-both mandatory, in the contract and in `snippets/schema/snippet.schema.json`, so a
-snippet cannot exist without naming the person who checked it and the document
-they checked it against. No vendor documentation has been sourced, so none has
-been written — see `docs/SOURCING_BACKLOG.md` gap 6.
+**The library ships sourced** (decision D27, superseded). `vetted_by` and
+`reference` are both mandatory, in the contract and in
+`snippets/schema/snippet.schema.json`, so a snippet cannot exist without naming
+the person who checked it and the document they checked it against. Twenty
+snippets now do: seven rules across Cisco IOS and Juniper Junos, six across
+Arista EOS, each citing the vendor command reference or configuration guide it
+was checked against.
+
+The twenty-first is deliberately absent. `NRK-SSH-001` asks for SSH protocol
+version 2, and Arista EOS exposes no protocol-version setting to configure —
+so `(arista, eos, NRK-SSH-001)` resolves to `NO_SNIPPET` and the operator reads
+the statement rather than a command invented to fill the gap. That is the
+resolver behaving correctly on live data, not a hole in the library.
 
 ## 10. TrainingExample
 

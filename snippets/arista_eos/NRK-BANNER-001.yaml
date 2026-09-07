@@ -1,0 +1,42 @@
+snippet_id: arista-eos-NRK-BANNER-001
+rule_id: NRK-BANNER-001
+vendor: arista
+os_family: eos
+os_version_range: null
+
+# EOS reads the banner body from stdin and ends it at a line containing only
+# EOF. The wording is the organisation's to choose; NRK-BANNER-001 checks that a
+# banner exists and takes no position on what it says.
+commands:
+  - configure
+  - banner login
+  - <YOUR ORGANISATION'S AUTHORISED-ACCESS NOTICE>
+  - EOF
+  - end
+  - write memory
+rollback:
+  - configure
+  - no banner login
+  - end
+  - write memory
+preconditions:
+  - The notice text has been approved by whoever owns access policy at this site.
+  - Substitute the placeholder line. NIRIKSHAK does not supply banner wording.
+verification:
+  - show banner login
+  - show running-config section banner
+
+impact:
+  service_affecting: false
+  requires_reload: false
+  lockout_risk: none
+  notes: Displayed before the login and password prompts on console, telnet and SSH.
+
+depends_on: []
+order_hint: 600
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Arista EOS User Manual, Session Management Commands — 'banner login' —
+  https://www.arista.com/en/um-eos/eos-session-management-commands

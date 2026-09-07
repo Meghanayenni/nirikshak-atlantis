@@ -1,0 +1,46 @@
+snippet_id: arista-eos-NRK-TELNET-001
+rule_id: NRK-TELNET-001
+vendor: arista
+os_family: eos
+os_version_range: null
+
+# EOS models telnet as a management service with its own configuration mode.
+# `shutdown` inside `management telnet` is what turns it off; there is no
+# `no telnet` at the global level.
+commands:
+  - configure
+  - management telnet
+  - shutdown
+  - exit
+  - end
+  - write memory
+rollback:
+  - configure
+  - management telnet
+  - no shutdown
+  - exit
+  - end
+  - write memory
+preconditions:
+  - SSH is already working and has been tested from the operator's own workstation in a separate session.
+  - An out-of-band console path exists. The console is always enabled on EOS and is the fallback.
+verification:
+  - show management telnet
+  - show running-config section management telnet
+
+impact:
+  service_affecting: true
+  requires_reload: false
+  lockout_risk: high
+  notes: >-
+    Closes the telnet management path. Apply from an SSH or console session,
+    never from the telnet session being closed.
+
+depends_on: []
+order_hint: 900
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Arista EOS User Manual, Connection Management — Telnet Management Configuration Mode —
+  https://www.arista.com/en/um-eos/eos-connection-management

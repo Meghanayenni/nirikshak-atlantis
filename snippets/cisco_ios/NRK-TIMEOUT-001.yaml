@@ -1,0 +1,40 @@
+snippet_id: cisco-ios-NRK-TIMEOUT-001
+rule_id: NRK-TIMEOUT-001
+vendor: cisco
+os_family: ios
+os_version_range: null
+
+# exec-timeout takes minutes and seconds. `exec-timeout 10 0` is 600 seconds,
+# which is the threshold NRK-TIMEOUT-001 checks. `exec-timeout 0 0` disables the
+# timeout entirely and is the state the rule fails on, so it is never the fix.
+commands:
+  - configure terminal
+  - line vty 0 15
+  - exec-timeout 10 0
+  - end
+  - write memory
+rollback:
+  - configure terminal
+  - line vty 0 15
+  - no exec-timeout
+  - end
+  - write memory
+preconditions:
+  - Long-running operator tasks that hold an idle session are known and accounted for.
+verification:
+  - show running-config | section line vty
+
+impact:
+  service_affecting: false
+  requires_reload: false
+  lockout_risk: none
+  notes: An idle session is closed after ten minutes; the operator reconnects.
+
+depends_on: []
+order_hint: 300
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Cisco IOS Terminal Services Command Reference, 'exec-timeout' —
+  https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/termserv/command/tsv-xe-book.html

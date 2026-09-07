@@ -100,40 +100,111 @@ def test_the_report_cites_lines_from_the_operators_own_file(client: TestClient) 
     assert cited, "the report cites no line from the configuration it audited"
 
 
-def test_every_failure_says_no_vetted_remediation_is_available(client: TestClient) -> None:
-    """D27 — the library is empty, and the document says so in that exact sentence."""
-    audit_id = audited(client)
-    html = client.get(f"/compliance/audits/{audit_id}/report.html", auth=ALICE).text
+def _library_commands() -> set[str]:
+    """Every command string that exists anywhere under `snippets/`.
 
+    Rollback lines included: a rollback is a command an operator will paste into
+    a device, so Rule 4 governs it exactly as it governs the forward change.
+
+    Read straight off disk rather than through the resolver, so the assertion
+    below is checking the API against the files an operator can open, not against
+    the same code path that produced the answer.
+    """
+    from api.remediate.library import load_library
+
+    return {
+        line
+        for snippet in load_library().snippets
+        for line in (*snippet.commands, *snippet.rollback)
+    }
+
+
+def test_no_command_in_a_report_was_generated(client: TestClient) -> None:
+    """Rule 4, asserted at the API boundary.
+
+    Was `test_every_failure_says_no_vetted_remediation_is_available`, which held
+    while the library was empty: nothing could be generated because nothing could
+    be returned. Now that commands do reach the report, the weaker property has
+    to be replaced by the one it was standing in for — every command string the
+    API emits appears verbatim in a file under `snippets/`.
+
+    That is the whole of Rule 4 stated as a test: resolution, never generation.
+    """
+    audit_id = audited(client)
     findings = client.get(f"/compliance/audits/{audit_id}/findings?status=fail", auth=ALICE)
     failures = findings.json()["findings"]
-
     assert failures, "this fixture should produce at least one FAIL"
-    assert NO_REMEDIATION_STATEMENT in html
+
+    vetted = _library_commands()
+    emitted: list[str] = []
     for failure in failures:
-        assert failure["remediation"]["outcome"] == "no_snippet"
-        assert failure["remediation"]["statement"] == NO_REMEDIATION_STATEMENT
-        assert failure["remediation"]["commands"] == []
+        remediation = failure["remediation"]
+        emitted.extend(remediation["commands"])
+        emitted.extend(remediation["rollback"])
+
+        if remediation["outcome"] == "resolved":
+            assert remediation["commands"], "a resolved outcome with no commands"
+            assert remediation["vetted_by"], "a command with no named vetter"
+            assert remediation["reference"], "a command citing no document"
+        else:
+            assert remediation["outcome"] == "no_snippet"
+            assert remediation["statement"] == NO_REMEDIATION_STATEMENT
+            assert remediation["commands"] == []
+
+    assert emitted, "the Cisco fixture should resolve at least one command"
+    invented = sorted(set(emitted) - vetted)
+    assert invented == [], f"commands not present in snippets/: {invented}"
 
 
-def test_the_report_offers_no_command_from_an_empty_library(client: TestClient) -> None:
-    """Rule 4 — no command block is rendered when nothing resolved.
+def test_a_rule_with_no_snippet_still_says_so(client: TestClient) -> None:
+    """The abstention path is live, not vestigial.
 
-    Asserted on the command block rather than on command text, because the two
-    are different things and only one of them is a violation. Configuration
-    syntax *does* appear in this document: every cited evidence line is verbatim
-    text from the operator's own file, and Rule 2 requires it be shown. What must
-    never appear is a command NIRIKSHAK is offering, and `class="cmd"` is
-    rendered only when the resolver returned a vetted snippet.
+    `NRK-SSH-001` has no Arista snippet — EOS exposes no SSH protocol-version
+    setting, so there was nothing to vet. The sentence an operator reads there is
+    fixed text and is asserted here rather than only in a unit test, because this
+    is the one path where a populated library could start quietly inventing a
+    command to fill a gap.
+    """
+    from api.remediate.library import load_library
+    from api.remediate.resolver import resolve
+
+    resolution = resolve(
+        load_library(),
+        rule_id="NRK-SSH-001",
+        vendor="arista",
+        os_family="eos",
+        actionable=True,
+    )
+    assert resolution.outcome.value == "no_snippet"
+    assert resolution.snippet is None
+    assert resolution.statement == NO_REMEDIATION_STATEMENT
+
+
+def test_the_report_renders_a_command_only_with_its_rollback(client: TestClient) -> None:
+    """§10 — "never the command alone".
+
+    Was `test_the_report_offers_no_command_from_an_empty_library`, which asserted
+    that `class="cmd"` never rendered. It renders now, so the guard moves to the
+    thing that actually protects the operator: a command block never appears
+    without the rollback and the vetting attribution beside it. A command with no
+    way back, offered on NIRIKSHAK's authority, is the failure that assertion was
+    always aiming at.
     """
     audit_id = audited(client)
     html = client.get(f"/compliance/audits/{audit_id}/report.html", auth=ALICE).text
 
-    assert 'class="cmd"' not in html, "a command block rendered from an empty library"
-    assert 'class="none"' in html, "the no-remediation block did not render"
+    assert 'class="cmd"' in html, "no command block rendered from a populated library"
 
     plan = client.get(f"/compliance/audits/{audit_id}/remediation", auth=ALICE).json()
-    assert all(step["snippet"] is None for step in plan["steps"])
+    resolved = [step for step in plan["steps"] if step["snippet"] is not None]
+    assert resolved, "the Cisco fixture should resolve at least one snippet"
+
+    for step in resolved:
+        snippet = step["snippet"]
+        assert snippet["commands"], "a snippet step with no commands"
+        assert snippet["rollback"], "a command offered with no way back"
+        assert snippet["vetted_by"], "a command with no named vetter"
+        assert snippet["reference"], "a command citing no document"
 
 
 def test_the_report_claims_no_framework_coverage(client: TestClient) -> None:
@@ -149,12 +220,21 @@ def test_the_report_claims_no_framework_coverage(client: TestClient) -> None:
 
 
 def test_the_report_names_the_snippet_library_it_resolved_against(client: TestClient) -> None:
-    """D26 — remediation is resolved at render time, so it is report provenance."""
+    """D26 — remediation is resolved at render time, so it is report provenance.
+
+    The version is a digest over the library's own bytes. Naming it is what lets
+    a reader of an old report answer "which commands was this document offering?"
+    after the library has moved on.
+    """
+    from api.remediate.library import load_library
+
+    library = load_library()
     audit_id = audited(client)
     html = client.get(f"/compliance/audits/{audit_id}/report.html", auth=ALICE).text
 
     assert "Snippet library" in html
-    assert "empty" in html
+    assert library.version in html, "the report does not name the library it resolved against"
+    assert library.version != "empty", "this test no longer proves anything"
 
 
 def test_the_report_does_not_present_its_subject_as_a_device(client: TestClient) -> None:
@@ -186,7 +266,13 @@ def test_a_detection_only_platform_reports_honestly(client: TestClient) -> None:
 
 
 def test_the_plan_lists_every_failure_even_with_nothing_to_apply(client: TestClient) -> None:
-    """Omitting the unfixable would understate the work by all of it."""
+    """Omitting the unfixable would understate the work by all of it.
+
+    The invariant is unchanged; only the arithmetic moved. A step exists for
+    every failing finding whether or not a snippet resolved for it, and `resolved`
+    counts the subset that did. A plan that silently dropped the steps it has no
+    command for would tell an operator their device needs less work than it does.
+    """
     audit_id = audited(client)
     plan = client.get(f"/compliance/audits/{audit_id}/remediation", auth=ALICE)
 
@@ -194,12 +280,29 @@ def test_the_plan_lists_every_failure_even_with_nothing_to_apply(client: TestCli
     body = plan.json()
 
     assert body["failing_findings"] > 0
-    assert body["resolved"] == 0
-    assert body["snippet_library_version"] == "empty"
+    assert len(body["steps"]) == body["failing_findings"], "a failing finding has no step"
+    assert 0 <= body["resolved"] <= body["failing_findings"]
+    assert body["snippet_library_version"] != "empty"
+
+    resolved = [step for step in body["steps"] if step["snippet"] is not None]
+    assert len(resolved) == body["resolved"]
+
     for step in body["steps"]:
-        assert step["snippet"] is None
-        assert step["apply_order"] is None
-        assert step["statement"] == NO_REMEDIATION_STATEMENT
+        if step["snippet"] is None:
+            # Nothing to apply, so no position in an application order.
+            assert step["apply_order"] is None
+            assert step["statement"] == NO_REMEDIATION_STATEMENT
+        else:
+            assert step["apply_order"] is not None, "a resolved step with no position"
+
+    # The lockout rule, on real snippets: whatever can strand the operator is
+    # sequenced after everything that cannot.
+    ordered = sorted(resolved, key=lambda step: step["apply_order"])
+    risks = [step["snippet"]["lockout_risk"] for step in ordered]
+    rank = {"none": 0, "low": 1, "high": 2}
+    assert risks == sorted(risks, key=lambda r: rank[r]), (
+        f"a high-lockout-risk change is not applied last: {risks}"
+    )
 
 
 def test_the_plan_says_nirikshak_does_not_apply_anything(client: TestClient) -> None:
@@ -243,12 +346,19 @@ def test_the_refusal_does_not_leak_the_configuration(client: TestClient) -> None
 
 def test_health_reports_the_pdf_state(client: TestClient) -> None:
     """So an operator can tell "PDF unavailable here" from "reporting is broken"."""
+    from api.remediate.library import load_library
+
+    library = load_library()
     body = client.get("/health").json()
 
     assert "pdf_reporting" in body
     assert body["pdf_reporting"]["available"] is availability().available
-    assert body["remediation_library"]["snippets"] == 0
-    assert body["remediation_library"]["version"] == "empty"
+
+    # The library's own count and digest, so "no remediation available" can be
+    # told apart from "the library failed to load".
+    assert body["remediation_library"]["snippets"] == len(library.snippets)
+    assert body["remediation_library"]["version"] == library.version
+    assert body["remediation_library"]["snippets"] > 0
 
 
 # ---------------------------------------------------------------------------
@@ -305,6 +415,11 @@ def test_the_chain_record_holds_no_configuration_content(client: TestClient) -> 
     The audit database holds identifiers, counts and hashes. A report entry that
     carried a finding's value or a cited line would put configuration content in
     the one store that must never hold any.
+
+    Now that remediation resolves, the same boundary is checked against the other
+    direction: a chain payload must not carry the *commands* either. They are not
+    the operator's data, but they are report content, and the chain attests that
+    a report was generated rather than reproducing what it said.
     """
     audit_id = audited(client)
     client.get(f"/compliance/audits/{audit_id}/report.html", auth=ALICE)
@@ -320,10 +435,14 @@ def test_the_chain_record_holds_no_configuration_content(client: TestClient) -> 
         if len(line.strip()) > 12:
             assert line.strip() not in blob
 
+    for command in _library_commands():
+        if len(command) > 12:
+            assert command not in blob, f"the chain payload quotes a command: {command!r}"
+
     assert payload["audit_id"] == audit_id
     assert payload["format"] == "html"
-    assert payload["snippet_library_version"] == "empty"
-    assert payload["remediation_resolved"] == 0
+    assert payload["snippet_library_version"] != "empty"
+    assert payload["remediation_resolved"] > 0
 
 
 def test_the_chain_record_does_not_call_the_subject_a_device(client: TestClient) -> None:

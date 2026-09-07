@@ -191,15 +191,21 @@ make the fleet-cache and peer-baseline numbers look better than the data support
 
 **Blocks:** every remediation command in the product. Added at P8.
 
-**State.** `snippets/` contains a JSON schema and a README. It contains **zero**
-snippets, so the resolver returns `NO_SNIPPET` for every rule on every device and
-every failing finding in every report reads:
+**State: CLOSED for the three shipped platforms.** `snippets/` holds twenty
+snippets — Cisco IOS and Juniper Junos across all seven canonical rules, Arista
+EOS across six. Each names the person who checked it and cites the vendor command
+reference or configuration guide the commands were checked against. The loader,
+schema, resolver, dependency ordering, lockout-risk sequencing and report
+integration now run on real snippets rather than only on constructed fixtures.
+
+One combination is deliberately unfilled: `(arista, eos, NRK-SSH-001)`. EOS
+exposes no SSH protocol-version setting, so there is no command to vet, and the
+resolver returns `NO_SNIPPET` there:
 
 > No vetted remediation is available for this platform and rule.
 
-The loader, schema, resolver, dependency ordering, lockout-risk sequencing and
-report integration are all built and tested against constructed fixtures
-(decision D27). None of them has ever handled a real snippet.
+That sentence is still what a fourth vendor, or a rule nobody has vetted a
+command for, produces. It is the correct output, not a gap.
 
 **Why it cannot be closed by writing YAML.** `RemediationSnippet` requires
 `vetted_by` and `reference`, in the contract and in the JSON schema, and
@@ -214,15 +220,23 @@ impact checked against it. `reference` records the document identifier and a
 locator; per `CONTENT_POLICY.md` that is identifiers and locators only, never
 transcribed vendor prose.
 
-**Smallest useful step.** Two vetted snippets for the two rules that fail on
-`corpus/cisco/dev/sw-access-02.cfg` would make the remediation path fire on real
-data for the first time, and would let a report show a command end to end.
+**What remains.** A fourth platform, and the version bounds. Every shipped
+snippet leaves `os_version_range` null, which the schema documents as "the vetter
+did not bound it" — an honest null, but a real limit: an operator on an old
+release is shown a command nobody confirmed applies to their release.
 
-**What must not happen.** Writing `transport input ssh` from general knowledge.
-The command would probably be correct, attributed to nobody, checked against
-nothing — and pasted into a production device on NIRIKSHAK's authority. Nor may
+**What must still not happen.** Adding a snippet from general knowledge. The
+command would probably be correct, attributed to nobody, checked against nothing
+— and pasted into a production device on NIRIKSHAK's authority. Nor may
 `vetted_by` name a model, a placeholder or the project generically: the field
-exists to name the person who is accountable for the commands.
+exists to name the person who is accountable for the commands, and
+`tests/architecture/test_rule_content_policy.py` still refuses a vetter whose
+name looks automated.
+
+Every command carrying a site-specific value — a syslog collector, a time
+source, banner wording — ships that value as a bracketed placeholder rather than
+a plausible default, and says so in `preconditions`. A snippet that silently
+pointed a fleet's logs at an address nobody chose would be worse than no snippet.
 
 ---
 

@@ -1,0 +1,41 @@
+snippet_id: juniper-junos-NRK-BANNER-001
+rule_id: NRK-BANNER-001
+vendor: juniper
+os_family: junos
+os_version_range: null
+
+# `message` is shown BEFORE the login prompt, which is what NRK-BANNER-001 is
+# about. `announcement` is shown AFTER a successful login and does not satisfy
+# the rule — the notice has to reach someone who has not authenticated yet.
+commands:
+  - configure
+  - set system login message "<YOUR ORGANISATION'S AUTHORISED-ACCESS NOTICE>"
+  - show | compare
+  - commit
+  - exit
+rollback:
+  - configure
+  - delete system login message
+  - commit
+  - exit
+preconditions:
+  - The notice text has been approved by whoever owns access policy at this site.
+  - Substitute the placeholder. NIRIKSHAK does not supply banner wording.
+  - Use \n in the string for line breaks; Junos does not accept a literal newline inside the quoted value.
+verification:
+  - show configuration system login
+
+impact:
+  service_affecting: false
+  requires_reload: false
+  lockout_risk: none
+  notes: Displayed before the login prompt. No access decision changes.
+
+depends_on: []
+order_hint: 600
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Junos OS User Access, 'Login Settings' — message at [edit system login] —
+  https://www.juniper.net/documentation/us/en/software/junos/user-access/topics/topic-map/junos-os-login-settings.html

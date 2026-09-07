@@ -47,19 +47,36 @@ def write(tmp_path: Path, name: str, body: str) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def test_the_shipped_library_is_empty_and_says_so() -> None:
-    """D27 — the honest state while no vendor documentation has been sourced."""
+def test_the_shipped_library_loads_and_names_itself() -> None:
+    """Was `test_the_shipped_library_is_empty_and_says_so` (D27 superseded).
+
+    The version is a digest over the library's own bytes, and it is what a report
+    footer prints. Two properties matter and neither is "how many": the library
+    loads, and it reports a version that is not the empty sentinel — because a
+    populated library still calling itself `empty` would put a false provenance
+    line in every document.
+    """
     library = load_library()
 
-    assert library.is_empty
-    assert library.snippets == ()
-    assert library.version == EMPTY_LIBRARY_VERSION
+    assert not library.is_empty
+    assert library.snippets
+    assert library.version != EMPTY_LIBRARY_VERSION
+    # Derived from the files on disk, so the footer changes when the library does.
+    assert library.version == compute_version(snippet_files())
 
 
-def test_an_empty_library_is_not_an_error() -> None:
-    """Loading nothing must succeed. Resolving nothing is a valid answer."""
+def test_the_library_resolves_a_shipped_platform_and_rule() -> None:
+    """Lookup is by the whole key, and the whole key has to match."""
     library = load_library()
-    assert library.lookup("cisco", "ios", "NRK-TELNET-001") is None
+
+    found = library.lookup("cisco", "ios", "NRK-TELNET-001")
+    assert found is not None
+    assert found.key == ("cisco", "ios", "NRK-TELNET-001")
+
+    # A rule nobody vetted a command for on this platform, and a platform that
+    # ships no pack at all. Both must be misses, not near-matches.
+    assert library.lookup("arista", "eos", "NRK-SSH-001") is None
+    assert library.lookup("paloalto", "panos", "NRK-TELNET-001") is None
 
 
 def test_an_empty_library_does_not_report_a_hash_as_its_version() -> None:

@@ -222,7 +222,6 @@ is real; the output is an honest refusal.
 | Not claimed | Why |
 | --- | --- |
 | **Coverage against CIS, NIST SP 800-53, DISA STIG or ISO/IEC 27001** | Every rule ships an empty framework list. Writing an identifier without having read the benchmark would be inventing it. |
-| **Any remediation command** | The vetted snippet library is empty. A snippet cannot exist without a person who read a vendor document and checked the commands, their rollback and their service impact against it. |
 | **Absence-aware evaluation accuracy** | No platform default and no capability claim ships, so the `EVALUATE` branch has never fired on real data. |
 | **ACL detection rates** | The corpus contains no access list in any split. The analyser has never seen a parsed one. |
 | **Exposure scores or a priority ranking** | Exposure needs interfaces and access lists; the corpus has zero of both. Severity alone must not determine remediation order, so no severity-sorted list is offered in their place. |
@@ -232,7 +231,16 @@ is real; the output is an honest refusal.
 | **Real-world accuracy** | Every corpus file is hand-written by one author. The harness measures a synthetic sample honestly; that is not field accuracy. |
 | **Independent ground truth** | The labels are unreviewed, and the Cisco labels share an author with the Cisco parsing patterns. |
 
-All ten trace to the eight entries in `docs/SOURCING_BACKLOG.md`:
+One item has since left this table. The vetted snippet library
+shipped empty until every entry could name the person who checked it
+and the vendor document they checked it against; twenty snippets covering
+three platforms now satisfy both, and `tests/architecture/test_remediate_boundaries.py` asserts those two
+properties directly rather than asserting that no snippet exists. A rule with no
+snippet for a platform still resolves to nothing and says so — the Arista SSH
+protocol-version rule is the live example, because EOS exposes no such setting
+and inventing one would be worse than abstaining.
+
+All nine trace to the eight entries in `docs/SOURCING_BACKLOG.md`:
 
 1. ACL-bearing configurations
 2. Vendor capability and default documentation
@@ -356,18 +364,46 @@ consumer**. It never evaluates a rule, computes a verdict, scores exposure, rank
 a finding or compares a baseline. Every number it shows was returned by the API
 or is a count of rows the API returned.
 
-Three levels of zoom, one question each: **fleet** (which devices need
-attention) → **device** (what is wrong with this one) → **finding** (why do you
-claim that, and what do I type). The training screen is the deliberate exception
-— spacious, one line at a time, because a cramped training screen produces
-careless confirmations and a careless confirmation enters a vendor pack
-permanently.
+Navigation follows the pipeline: **Devices** (ingest, parse) → **Compliance**
+(evaluate) → **Remediation** (resolve) → **Reports**, with the activity log and
+the capability status beside it rather than inside it. The drawer stays closed
+until it is asked for.
 
-`docs/ui_reference.html` is the visual specification. It contains **illustrative**
-framework identifiers, compliance percentages and remediation commands that exist
-to show a designer what the interface should look like. The application ships its
-structure and none of its data, and frontend tests assert that none of those
-values appears in the rendered document.
+The three levels of zoom are still one question each, but they are reached
+without leaving the screen. **Fleet** is the device list; **device** is the
+workspace beside it; **finding** expands in place inside that workspace, with its
+evidence, its remediation and its abstention reason. Nothing navigates to a
+separate page to answer the next question down.
+
+Inside a device the tabs are the pipeline again: *Overview* (what was read),
+*Findings* (what was decided), *Needs review* (what no pack recognised),
+*Remediation* (what to type), *Report*. The review tab is the deliberate
+exception to the product's density — spacious, one line at a time, because a
+cramped review produces careless confirmations and a careless confirmation
+enters a vendor pack permanently.
+
+**The report is gated.** A device's report opens once it has been audited, every
+unrecognised line has been decided (including "not security relevant"), and every
+vetted command has been marked reviewed. The gate is the interface's own workflow
+rule and says so; the backend renders a report for any persisted run and is not
+refusing. Review marks are `localStorage` notes, labelled as such on screen,
+because no remediation-approval endpoint exists — they never reach the
+hash-chained log, and the log says that too.
+
+`docs/ui_reference.html` is the visual vocabulary — palette, verdict treatments,
+density. It contains **illustrative** framework identifiers, compliance
+percentages and remediation commands that exist to show a designer what those
+components look like; the application ships their structure and none of their
+data, and frontend tests assert that none of those values appears in the rendered
+document. Its page-level layout predates the drawer navigation and the device
+workspace and is no longer followed screen for screen.
+
+Two typefaces are vendored under `ui/public/fonts/` with their OFL licences:
+Inter for the interface (it has true tabular figures, which §10's dense tables
+need) and Instrument Serif for the wordmark and the landing headline only, never
+for anything carrying a verdict. They are self-hosted rather than linked, because
+Rule 6 is offline-first and a font request at page load would both break an
+airgapped deployment and disclose that the tool is in use.
 
 Role checks in the interface are **UX controls, not security**. The backend
 refuses independently: admin endpoints answer 403, and a resource belonging to

@@ -1,0 +1,41 @@
+snippet_id: cisco-ios-NRK-BANNER-001
+rule_id: NRK-BANNER-001
+vendor: cisco
+os_family: ios
+os_version_range: null
+
+# ^C is the delimiter, not part of the text. The wording is the organisation's
+# to choose: NRK-BANNER-001 checks that a banner exists and takes no position on
+# what it says, so this snippet must not either.
+commands:
+  - configure terminal
+  - "banner login ^C"
+  - <YOUR ORGANISATION'S AUTHORISED-ACCESS NOTICE>
+  - "^C"
+  - end
+  - write memory
+rollback:
+  - configure terminal
+  - no banner login
+  - end
+  - write memory
+preconditions:
+  - The notice text has been approved by whoever owns access policy at this site.
+  - Substitute the placeholder line. NIRIKSHAK does not supply banner wording.
+verification:
+  - show running-config | begin banner
+
+impact:
+  service_affecting: false
+  requires_reload: false
+  lockout_risk: none
+  notes: Displayed before the login prompt. No access decision changes.
+
+depends_on: []
+order_hint: 600
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Cisco IOS Configuration Fundamentals Command Reference, 'banner login' —
+  https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/fundamentals/command/cf-command-ref.html

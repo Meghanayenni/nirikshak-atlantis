@@ -11,9 +11,11 @@ merely failed to render.
 before its prerequisite is how someone loses access to their own device, and the
 sequence is where that is prevented.
 
-The ordering tests run entirely on constructed snippets. **They have never
-ordered a real one**, because the shipped library is empty (decision D27), and no
-claim beyond "correct on the cases tested" is made anywhere.
+The ordering tests below run on constructed snippets, so the sequencing rules can
+be exercised in shapes the real library does not happen to contain. The shipped
+library is exercised separately, in `tests/integration/test_reporting.py`, which
+asserts the same ordering property over the snippets an operator would actually
+be handed. No claim beyond "correct on the cases tested" is made anywhere.
 """
 
 from __future__ import annotations
@@ -56,12 +58,18 @@ def test_an_empty_library_yields_the_mandated_sentence() -> None:
     assert not result.has_commands
 
 
-def test_the_shipped_library_resolves_nothing_for_any_real_rule() -> None:
+def test_the_shipped_library_resolves_every_cisco_rule() -> None:
     """Stated over the real rulepack rather than a fixture, because it is the claim.
 
-    Every rule NIRIKSHAK ships, against the platform it parses best, resolves to
-    no command. That is the honest state of the project and it should fail
-    visibly if it ever silently stops being true.
+    Was `test_the_shipped_library_resolves_nothing_for_any_real_rule`, which was
+    the honest state while `snippets/` was empty. Cisco IOS is the platform this
+    project parses best and it is now covered for every rule NIRIKSHAK ships, so
+    the claim inverts — and it should fail visibly if a rule ever quietly loses
+    its snippet, which is the same reason the original existed.
+
+    A resolved outcome is checked against the snippet's own key rather than only
+    against the outcome enum: `resolve` must return the snippet for *this*
+    platform and *this* rule, never a near neighbour.
     """
     from api.comply.rulepacks import load_rulepack
 
@@ -70,8 +78,29 @@ def test_the_shipped_library_resolves_nothing_for_any_real_rule() -> None:
         result = resolve(
             library, rule_id=rule.rule_id, vendor="cisco", os_family="ios", actionable=True
         )
-        assert result.outcome is ResolutionOutcome.NO_SNIPPET
-        assert result.statement == NO_REMEDIATION_STATEMENT
+        assert result.outcome is ResolutionOutcome.RESOLVED, rule.rule_id
+        assert result.snippet is not None
+        assert result.snippet.key == ("cisco", "ios", rule.rule_id)
+
+
+def test_a_platform_without_a_snippet_still_abstains() -> None:
+    """The NO_SNIPPET path is live, not vestigial.
+
+    `NRK-SSH-001` asks for SSH protocol version 2 and Arista EOS exposes no
+    protocol-version setting, so no command could be vetted for it. A populated
+    library must keep answering "nothing" there rather than reaching for the
+    nearest platform's command, which is the failure Rule 4 exists to prevent.
+    """
+    result = resolve(
+        load_library(),
+        rule_id="NRK-SSH-001",
+        vendor="arista",
+        os_family="eos",
+        actionable=True,
+    )
+    assert result.outcome is ResolutionOutcome.NO_SNIPPET
+    assert result.snippet is None
+    assert result.statement == NO_REMEDIATION_STATEMENT
 
 
 def test_an_unidentified_platform_does_not_guess() -> None:

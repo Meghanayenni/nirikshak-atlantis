@@ -1,0 +1,50 @@
+snippet_id: arista-eos-NRK-TIMEOUT-001
+rule_id: NRK-TIMEOUT-001
+vendor: arista
+os_family: eos
+os_version_range: null
+
+# EOS idle-timeout is in MINUTES, so 10 is the 600 seconds NRK-TIMEOUT-001
+# checks. 0 disables the timeout and is the failing state, never the fix.
+# SSH and the console are separate management modes and both are set: an
+# unattended console session is the same exposure as an unattended SSH one.
+commands:
+  - configure
+  - management ssh
+  - idle-timeout 10
+  - exit
+  - management console
+  - idle-timeout 10
+  - exit
+  - end
+  - write memory
+rollback:
+  - configure
+  - management ssh
+  - no idle-timeout
+  - exit
+  - management console
+  - no idle-timeout
+  - exit
+  - end
+  - write memory
+preconditions:
+  - Long-running operator tasks that hold an idle session are known and accounted for.
+verification:
+  - show management ssh
+  - show running-config section management ssh
+
+impact:
+  service_affecting: false
+  requires_reload: false
+  lockout_risk: none
+  notes: An idle session is closed after ten minutes; the operator reconnects.
+
+depends_on: []
+order_hint: 300
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Arista EOS User Manual, Session Management Commands — 'idle-timeout (SSH Management)' —
+  https://www.arista.com/en/um-eos/eos-session-management-commands

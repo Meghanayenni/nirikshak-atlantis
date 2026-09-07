@@ -1,0 +1,39 @@
+snippet_id: arista-eos-NRK-NTP-001
+rule_id: NRK-NTP-001
+vendor: arista
+os_family: eos
+os_version_range: null
+
+commands:
+  - configure
+  - ntp server <NTP-SERVER-IP>
+  - end
+  - write memory
+rollback:
+  - configure
+  - no ntp server <NTP-SERVER-IP>
+  - end
+  - write memory
+preconditions:
+  - The time source's address is known and reachable from this device.
+  - Substitute <NTP-SERVER-IP> before pasting. The placeholder is deliberate.
+verification:
+  - show ntp status
+  - show ntp associations
+
+impact:
+  service_affecting: false
+  requires_reload: false
+  lockout_risk: none
+  notes: >-
+    The clock may step on first synchronisation, which can invalidate an
+    in-flight certificate check. Nothing else is affected.
+
+depends_on: []
+order_hint: 500
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Arista EOS User Manual, Switch Administration Commands — 'ntp server' —
+  https://www.arista.com/en/um-eos/eos-switch-administration-commands

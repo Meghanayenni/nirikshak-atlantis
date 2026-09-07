@@ -1,0 +1,47 @@
+snippet_id: juniper-junos-NRK-TELNET-001
+rule_id: NRK-TELNET-001
+vendor: juniper
+os_family: junos
+os_version_range: null
+
+# Junos is candidate-and-commit. `commit confirmed 5` is not decoration here: if
+# this change strands the operator, the device rolls back on its own after five
+# minutes. That is the single best lockout protection any of these platforms
+# offers and it would be negligent to omit it from a snippet with this risk.
+commands:
+  - configure
+  - delete system services telnet
+  - show | compare
+  - commit confirmed 5
+  - commit
+  - exit
+rollback:
+  - configure
+  - set system services telnet
+  - commit
+  - exit
+preconditions:
+  - SSH is already working and has been tested from the operator's own workstation in a separate session.
+  - An out-of-band console path exists.
+verification:
+  - show configuration system services
+  - show system connections | match ":23"
+
+impact:
+  service_affecting: true
+  requires_reload: false
+  lockout_risk: high
+  notes: >-
+    Closes the telnet management path. `commit confirmed 5` gives the operator
+    five minutes to prove they still have access before the change becomes
+    permanent; the trailing `commit` is what makes it permanent.
+
+depends_on:
+  - juniper-junos-NRK-SSH-001
+order_hint: 900
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Junos OS CLI Reference, 'services (System Services)' —
+  https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/statement/services-edit-system.html

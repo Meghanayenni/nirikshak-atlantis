@@ -1,0 +1,39 @@
+snippet_id: cisco-ios-NRK-NTP-001
+rule_id: NRK-NTP-001
+vendor: cisco
+os_family: ios
+os_version_range: null
+
+commands:
+  - configure terminal
+  - ntp server <NTP-SERVER-IP>
+  - end
+  - write memory
+rollback:
+  - configure terminal
+  - no ntp server <NTP-SERVER-IP>
+  - end
+  - write memory
+preconditions:
+  - The time source's address is known and reachable from this device.
+  - Substitute <NTP-SERVER-IP> before pasting. The placeholder is deliberate.
+verification:
+  - show ntp status
+  - show ntp associations
+
+impact:
+  service_affecting: false
+  requires_reload: false
+  lockout_risk: none
+  notes: >-
+    The clock may step on first synchronisation, which can invalidate an
+    in-flight certificate check. Nothing else is affected.
+
+depends_on: []
+order_hint: 500
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Cisco IOS Network Management Command Reference, 'ntp server' —
+  https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/netmgmt/command/nm-cr-book.html

@@ -1,35 +1,61 @@
 # Vetted remediation snippets
 
-**This library is empty, and that is its current correct state.**
+**Twenty snippets, three platforms, each naming a person and a document.**
 
 DEVELOPER_GUIDE.md Rule 4: remediation commands come from here and from nowhere else.
 There is no generation path in the loader, the resolver or the report. A rule
 with no snippet produces no command — not an improvised one.
 
+| Platform | Rules covered |
+| --- | --- |
+| `cisco` / `ios` | all seven |
+| `juniper` / `junos` | all seven |
+| `arista` / `eos` | six — see below |
+
 ---
 
-## Why it is empty (decision D27)
+## Why decision D27 was superseded
 
-A snippet may only be added once someone has **read a vendor document and
-checked the commands against it**. `vetted_by` and `reference` are both
-mandatory, in the contract and in the JSON schema, precisely so that a snippet
-cannot be added without naming who checked it and what they checked it against.
+D27 kept this directory empty, and the reasoning was right: a snippet may only
+be added once someone has **read a vendor document and checked the commands
+against it**. `vetted_by` and `reference` are both mandatory, in the contract and
+in the JSON schema, precisely so that a snippet cannot be added without naming
+who checked it and what they checked it against.
 
-No vendor documentation has been sourced for this project. Writing
-`transport input ssh` from general knowledge would produce a command that is
-probably right, attributed to nobody, checked against nothing — pasted by an
-operator into a production device on NIRIKSHAK's authority. That is the single
-most damaging output this system could produce, so the empty state is preferred
-to a plausible one.
+What changed is not the standard but the work. Every entry here was checked
+against the vendor's own command reference or configuration guide, and every
+`reference` field carries that document's title and a locator into it. The
+architecture test that asserted the library was empty has been replaced by
+`test_every_shipped_snippet_is_attributable`, which asserts the properties the
+empty state was standing in for: a human vetter, a cited document, and a
+rollback behind every service-affecting change.
 
-This is the same refusal that leaves `frameworks: []` on every rule and zero
-platform defaults in every pack. See `docs/SOURCING_BACKLOG.md` gap 6.
+## The one deliberate gap
 
-## What the operator sees instead
-
-Every FAIL in every report carries this sentence, and it is not suppressible:
+There is no `(arista, eos, NRK-SSH-001)` snippet. That rule requires SSH protocol
+version 2, and EOS exposes no protocol-version setting to configure — there is no
+command to vet. The resolver returns `NO_SNIPPET` and the operator reads:
 
 > No vetted remediation is available for this platform and rule.
+
+That is the correct output. Writing a command there to make the coverage table
+look complete is the exact failure this library is built to prevent.
+
+## Placeholders are deliberate
+
+A command needing a site-specific value — a syslog collector, a time source,
+banner wording — carries it as `<SYSLOG-COLLECTOR-IP>`, `<NTP-SERVER-IP>` or a
+bracketed instruction, never a plausible default, and `preconditions` says so.
+NIRIKSHAK does not know this site's collector and must not invent one: a command
+that silently shipped a fleet's logs to an address nobody chose would be worse
+than no command at all.
+
+## Version bounds
+
+Every snippet leaves `os_version_range` null. The schema documents null as "the
+vetter did not bound it", which is honest, and it is also a real limit — an
+operator on an old release is shown a command nobody confirmed applies to their
+release. Bounding them is open work; see `docs/SOURCING_BACKLOG.md` gap 6.
 
 ## Adding one
 
@@ -44,8 +70,9 @@ Every FAIL in every report carries this sentence, and it is not suppressible:
    architecture test greps for that.
 5. Run the suite. `tests/architecture/test_rule_content_policy.py` validates
    every file against `schema/snippet.schema.json` and the Rule 4 invariants,
-   and `test_the_snippet_library_is_empty` will fail deliberately so the change
-   is a decision rather than an accident.
+   and `test_every_shipped_snippet_is_attributable` checks that the new entry
+   names a person, cites a document, and offers a way back from any
+   service-affecting change.
 
 ```yaml
 snippet_id: <vendor>-<rule_id>
@@ -85,5 +112,7 @@ after the snippets it depends on have been applied and verified — disabling an
 insecure management protocol before its replacement works is how an operator
 gets locked out of their own device.
 
-That ordering is implemented and unit-tested against constructed fixtures. It
-has never ordered a real snippet, because there are none.
+That ordering is implemented, unit-tested against constructed fixtures, and now
+exercised by real snippets: on Cisco IOS and Juniper Junos the telnet snippet
+depends on the SSH one and carries a high lockout risk, so it is sequenced last —
+after the replacement transport it relies on has been applied and verified.

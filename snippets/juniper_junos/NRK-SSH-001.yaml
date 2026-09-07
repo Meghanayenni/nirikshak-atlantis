@@ -1,0 +1,38 @@
+snippet_id: juniper-junos-NRK-SSH-001
+rule_id: NRK-SSH-001
+vendor: juniper
+os_family: junos
+os_version_range: null
+
+commands:
+  - configure
+  - set system services ssh protocol-version v2
+  - show | compare
+  - commit
+  - exit
+rollback:
+  - configure
+  - delete system services ssh protocol-version
+  - commit
+  - exit
+preconditions:
+  - SSH is already configured under [edit system services].
+verification:
+  - show configuration system services ssh
+
+impact:
+  service_affecting: true
+  requires_reload: false
+  lockout_risk: low
+  notes: >-
+    Existing sessions are unaffected. A client that can only speak SSHv1 will
+    stop being able to connect, which is the intent.
+
+depends_on: []
+order_hint: 100
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Junos OS, 'Connecting to a Device by Using Secure Console' — set system services ssh protocol-version v2 —
+  https://www.juniper.net/documentation/us/en/software/junos-space21.1/junos-space-workspaces/topics/task/junos-space-devices-ssh-connecting.html

@@ -1,0 +1,41 @@
+snippet_id: cisco-ios-NRK-HTTP-001
+rule_id: NRK-HTTP-001
+vendor: cisco
+os_family: ios
+os_version_range: null
+
+# The rule covers the plaintext listener only. `ip http secure-server` is left
+# alone deliberately: a device whose web management is in use should keep the
+# TLS listener, and turning both off would be a change the rule did not ask for.
+commands:
+  - configure terminal
+  - no ip http server
+  - end
+  - write memory
+rollback:
+  - configure terminal
+  - ip http server
+  - end
+  - write memory
+preconditions:
+  - No monitoring or provisioning system polls this device over plain HTTP.
+verification:
+  - show ip http server status
+  - show running-config | include ip http
+
+impact:
+  service_affecting: true
+  requires_reload: false
+  lockout_risk: none
+  notes: >-
+    Anything using the plaintext web interface loses it. The CLI and the HTTPS
+    listener are unaffected.
+
+depends_on: []
+order_hint: 200
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Cisco IOS Configuration Fundamentals Command Reference, 'ip http server' —
+  https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/fundamentals/command/cf-command-ref.html

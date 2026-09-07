@@ -1,0 +1,43 @@
+snippet_id: cisco-ios-NRK-SSH-001
+rule_id: NRK-SSH-001
+vendor: cisco
+os_family: ios
+os_version_range: null
+
+# Without `ip ssh version 2` IOS runs SSH in compatibility mode and honours
+# both version 1 and version 2 connections, which is the downgrade the rule is
+# about. The RSA key is a precondition of SSH working at all, not part of this
+# fix, so it is listed as one rather than issued here.
+commands:
+  - configure terminal
+  - ip ssh version 2
+  - end
+  - write memory
+rollback:
+  - configure terminal
+  - no ip ssh version
+  - end
+  - write memory
+preconditions:
+  - A hostname and an ip domain-name are set.
+  - An RSA key pair of at least 2048 bits exists (crypto key generate rsa).
+verification:
+  - show ip ssh
+  - show running-config | include ip ssh
+
+impact:
+  service_affecting: true
+  requires_reload: false
+  lockout_risk: low
+  notes: >-
+    Existing sessions are unaffected. A client that can only speak SSHv1 will
+    stop being able to connect, which is the intent.
+
+depends_on: []
+order_hint: 100
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Cisco IOS Secure Shell Configuration Guide, 'Secure Shell Version 2 Support' —
+  https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/sec_usr_ssh/configuration/15-s/sec-usr-ssh-15-s-book/sec-secure-shell-v2.html

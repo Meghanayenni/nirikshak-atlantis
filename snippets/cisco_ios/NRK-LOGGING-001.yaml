@@ -1,0 +1,41 @@
+snippet_id: cisco-ios-NRK-LOGGING-001
+rule_id: NRK-LOGGING-001
+vendor: cisco
+os_family: ios
+os_version_range: null
+
+# The collector address is a placeholder the operator replaces. NIRIKSHAK does
+# not know this site's syslog host and must not invent one — a command that
+# silently ships logs to an address nobody chose is worse than no command.
+commands:
+  - configure terminal
+  - logging host <SYSLOG-COLLECTOR-IP>
+  - logging trap informational
+  - end
+  - write memory
+rollback:
+  - configure terminal
+  - no logging host <SYSLOG-COLLECTOR-IP>
+  - end
+  - write memory
+preconditions:
+  - The syslog collector's address is known and reachable from this device's management VRF.
+  - Substitute <SYSLOG-COLLECTOR-IP> before pasting. The placeholder is deliberate.
+verification:
+  - show logging
+  - show running-config | include logging
+
+impact:
+  service_affecting: false
+  requires_reload: false
+  lockout_risk: none
+  notes: Adds outbound syslog traffic. No management path is altered.
+
+depends_on: []
+order_hint: 400
+
+vetted_by: Meghana Yenni
+vetted_at: '2026-09-07T00:00:00Z'
+reference: >-
+  Cisco IOS Network Management Command Reference, 'logging host' / 'logging trap' —
+  https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/netmgmt/command/nm-cr-book.html
