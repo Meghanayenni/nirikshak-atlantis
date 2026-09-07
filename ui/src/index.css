@@ -3,21 +3,35 @@
 @tailwind utilities;
 
 /**
- * Base layer.
+ * Typefaces, served from this origin.
  *
- * Numerals are tabular throughout so columns of counts align — §10 asks for
- * density, and misaligned digits are the fastest way to make a dense table
- * unreadable.
+ * Rule 6 is offline-first, so no stylesheet here reaches a font CDN: both faces
+ * are vendored under `public/fonts/` with their OFL licences. See
+ * `public/fonts/ATTRIBUTION.md`.
  */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-latin-var.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/instrument-serif-latin-400.woff2') format('woff2');
+}
+
 @layer base {
   html {
     color-scheme: light;
   }
 
   body {
-    @apply bg-surface text-ink font-sans antialiased;
-    font-size: 14px;
-    line-height: 1.5;
+    @apply bg-surface text-ink font-sans antialiased text-base;
   }
 
   /* Every numeric column in this product is a count, a line number, a version
@@ -28,8 +42,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* One visible focus treatment, on the accent, everywhere. Keyboard users get
-     the same affordance on links, buttons, inputs and dialog controls. */
+  /* One visible focus treatment, on the accent, everywhere. */
   :focus-visible {
     @apply outline-none ring-2 ring-accent ring-offset-1 ring-offset-paper;
   }
@@ -40,8 +53,6 @@
 }
 
 @layer components {
-  /* A hairline-separated card. §10: restraint in borders and shadows, not in
-     information — so a single border, no shadow stack. */
   .card {
     @apply bg-paper border border-border rounded-card;
   }
@@ -51,26 +62,22 @@
   }
 
   .card-title {
-    @apply text-[13px] font-semibold tracking-tight text-ink;
+    @apply text-lg font-semibold tracking-tight text-ink;
   }
 
   /* Tables use ONE separation mechanism — hairlines. No banding, no extra
      spacing on top of it (§10). */
   .table {
-    @apply w-full text-[13px] border-collapse;
+    @apply w-full text-base border-collapse;
   }
 
   .table th {
-    @apply text-left font-medium text-muted text-2xs uppercase tracking-wider
-           px-3 py-2 border-b border-border whitespace-nowrap;
+    @apply text-left font-medium text-muted text-micro uppercase tracking-wider
+           px-3 py-2.5 border-b border-border whitespace-nowrap;
   }
 
   .table td {
-    @apply px-3 py-2 border-b border-border align-top;
-  }
-
-  .table tbody tr:hover {
-    @apply bg-surface;
+    @apply px-3 py-2.5 border-b border-border align-top;
   }
 
   .table tbody tr:last-child td {
@@ -78,14 +85,31 @@
   }
 
   .mono {
-    @apply font-mono text-[12px];
+    @apply font-mono text-code;
   }
 
   .label {
-    @apply text-2xs uppercase tracking-wider text-muted font-medium;
+    @apply text-micro uppercase tracking-wider text-muted font-medium;
+  }
+
+  /* The wordmark.
+     One definition, used by the header and the drawer, so the two can never
+     drift apart. Instrument Serif ships a single 400 weight, so the weight is
+     bought with size and letter-spacing rather than with a synthetic bold —
+     a faux-bold serif at this size looks smeared rather than confident. */
+  .wordmark {
+    @apply font-display leading-none;
+    font-size: 2.125rem;
+    letter-spacing: 0.05em;
   }
 
   .link {
     @apply text-accent hover:underline underline-offset-2;
+  }
+
+  /* A row that opens a panel in place. The whole row is the target, and it
+     never navigates — §"minimise redirects". */
+  .row-button {
+    @apply cursor-pointer hover:bg-surface transition-colors;
   }
 }

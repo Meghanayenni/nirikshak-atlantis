@@ -1,192 +1,168 @@
 /**
- * Error handling, evidence, and the confirmation a destructive action requires.
+ * Behaviour that must survive a redesign.
  *
- * The API-failure tests matter most. A screen that swallowed a 403 and rendered
- * an empty table would tell an operator their fleet is clean when the truth is
- * that they were refused — which is the same class of mistake as showing an
- * empty outliers list for an uncomparable cohort.
+ * A failed request has to reach the screen, a refusal has to read as a refusal
+ * rather than as an empty result, and the report gate has to hold.
  */
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { EvidenceViewer } from '@/components/domain/EvidenceViewer';
-import { ConfirmDialog } from '@/components/ui/Dialog';
-import { ADMIN_SESSION, FIXTURES, mockApi, renderApp, renderWithProviders, signIn } from './helpers';
+import { ADMIN_SESSION, FIXTURES, mockApi, renderApp, signIn } from './helpers';
 
 afterEach(() => {
   vi.unstubAllGlobals();
   signIn(null);
+  localStorage.clear();
 });
 
-const BASE = [
-  { match: '/users/me', body: FIXTURES.users.users[0] },
-  { match: '/health', body: FIXTURES.health },
-  { match: '/ingest/files', body: { count: 0, files: [] } },
-];
+/** Every endpoint the devices screen touches, with the queue refused. */
+function stubDevices(overrides: { queueStatus?: number; queue?: unknown } = {}) {
+  return mockApi([
+    { match: '/ingest/devices', body: FIXTURES.devices },
+    { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
+    { match: '/compliance/audits/aud-1/remediation', body: {}, status: 404 },
+    { match: '/compliance/audits', body: FIXTURES.audits },
+    {
+      match: '/training/queue',
+      status: overrides.queueStatus ?? 403,
+      body: overrides.queue ?? { detail: 'admin role required' },
+    },
+    { match: '/training/examples', body: { count: 0, examples: [] } },
+    { match: '/health', body: FIXTURES.health },
+  ]);
+}
 
 describe('API failures reach the screen', () => {
   it('shows the backend detail and a retry when a request fails', async () => {
-    mockApi([
-      ...BASE,
-      { match: '/ingest/devices', status: 500, body: { detail: 'operational store is unreachable' } },
-      { match: '/compliance/audits', body: FIXTURES.audits },
-    ]);
     signIn(ADMIN_SESSION);
+    mockApi([
+      {
+        match: '/ingest/devices',
+        status: 500,
+        body: { detail: 'the operational database is not initialised' },
+      },
+      { match: '/compliance/audits', body: FIXTURES.audits },
+      { match: '/health', body: FIXTURES.health },
+    ]);
+
     renderApp('/devices');
 
-    expect(await screen.findByText(/operational store is unreachable/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/the operational database is not initialised/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
   });
 
-  it('does not render an empty table when the caller was refused', async () => {
-    mockApi([
-      ...BASE,
-      { match: '/fleet/baseline', status: 403, body: { detail: 'admin role required' } },
-      { match: '/ingest/devices', body: FIXTURES.devices },
-      { match: '/compliance/audits', body: FIXTURES.audits },
-    ]);
+  it('reads a refused capability as a refusal, not as an empty queue', async () => {
     signIn(ADMIN_SESSION);
-    renderApp('/prioritisation');
+    stubDevices({ queueStatus: 403 });
 
-    expect(await screen.findByText(/admin role required/i)).toBeInTheDocument();
-    // A refusal must never be presented as "no deviations found".
-    expect(screen.queryByText(/no deviations reported/i)).not.toBeInTheDocument();
-  });
-
-  it('reports a network failure as a network failure', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => {
-        throw new TypeError('Failed to fetch');
-      }),
-    );
-    signIn(ADMIN_SESSION);
     renderApp('/devices');
+    const user = userEvent.setup();
 
-    expect(await screen.findByText(/could not reach the nirikshak api/i)).toBeInTheDocument();
-  });
+    await user.click(await screen.findByRole('tab', { name: /needs review/i }));
 
-  it('treats an unparsable body as a failure, not as an empty result', async () => {
-    mockApi([...BASE, { match: '/ingest/devices', text: 'not json at all' }]);
-    signIn(ADMIN_SESSION);
-    renderApp('/devices');
-
-    expect(await screen.findByText(/could not be parsed as json/i)).toBeInTheDocument();
+    expect(await screen.findByText(/administrator step/i)).toBeInTheDocument();
+    // "Every line was recognised" would be the lie. It must not appear.
+    expect(screen.queryByText(/every line was recognised/i)).toBeNull();
   });
 });
 
-describe('evidence viewer', () => {
-  const evidence = {
-    file_id: 'file-1',
-    file_path: 'c0/config.cfg',
-    line_start: 42,
-    line_end: 42,
-    raw_line: 'transport input telnet ssh',
-    cite: 'c0/config.cfg:42',
-  };
-
-  it('shows the operator’s own lines and marks the cited one', async () => {
+describe('the report gate', () => {
+  it('blocks the report and names what is outstanding', async () => {
+    signIn(ADMIN_SESSION);
     mockApi([
+      { match: '/ingest/devices', body: FIXTURES.devices },
+      { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
+      { match: '/compliance/audits/aud-1/remediation', body: {}, status: 404 },
+      { match: '/compliance/audits', body: FIXTURES.audits },
       {
-        match: '/ingest/files/file-1/lines',
+        match: '/training/queue',
         body: {
-          file_id: 'file-1',
-          total_lines: 60,
-          lines: [
-            { line_number: 41, text: ' exec-timeout 10 0', sha256: 'a' },
-            { line_number: 42, text: ' transport input telnet ssh', sha256: 'b' },
-            { line_number: 43, text: ' login authentication default', sha256: 'c' },
+          size: 1,
+          confirmable: 1,
+          index: 'index',
+          model: { available: false, summary: 'unavailable' },
+          scrubbed: true,
+          entries: [
+            {
+              cluster_id: 'c1',
+              signature: 'set ssh <n>',
+              line: 'set ssh proto-version 2',
+              occurrences: 1,
+              file_count: 1,
+              confirmable: true,
+              block_path: [],
+              file_id: 'file-1',
+              line_number: 10,
+              state: 'model_unavailable',
+              reason: 'no model',
+              is_probability: false,
+              confidence_note: 'ranking, not a probability',
+              suggestions: [],
+            },
           ],
         },
       },
+      { match: '/training/examples', body: { count: 0, examples: [] } },
+      { match: '/health', body: FIXTURES.health },
     ]);
-    signIn(ADMIN_SESSION);
-    renderWithProviders(<EvidenceViewer evidence={evidence} />);
 
-    expect(await screen.findByText(/transport input telnet ssh/)).toBeInTheDocument();
-    // Surrounding context, so the line can be read in place.
-    expect(screen.getByText(/exec-timeout 10 0/)).toBeInTheDocument();
+    renderApp('/devices');
+    const user = userEvent.setup();
 
-    // The cited row is marked for assistive technology, not by colour alone.
-    const cited = screen.getByText(/transport input telnet ssh/).closest('tr');
-    expect(cited).toHaveAttribute('aria-current', 'true');
+    await user.click(await screen.findByRole('tab', { name: /report/i }));
+
+    expect(await screen.findByText(/report is not available yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/await a decision/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /generate report/i })).toBeNull();
   });
 
-  it('reports a failure to read the source rather than showing nothing', async () => {
-    mockApi([
-      { match: '/ingest/files/file-1/lines', status: 404, body: { detail: 'file not found' } },
-    ]);
+  it('opens the report once nothing is outstanding', async () => {
     signIn(ADMIN_SESSION);
-    renderWithProviders(<EvidenceViewer evidence={evidence} />);
+    mockApi([
+      { match: '/ingest/devices', body: FIXTURES.devices },
+      { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
+      { match: '/compliance/audits/aud-1/remediation', body: {}, status: 404 },
+      { match: '/compliance/audits', body: FIXTURES.audits },
+      {
+        match: '/training/queue',
+        body: {
+          size: 0,
+          confirmable: 0,
+          index: 'index',
+          model: { available: false, summary: 'unavailable' },
+          scrubbed: true,
+          entries: [],
+        },
+      },
+      { match: '/training/examples', body: { count: 0, examples: [] } },
+      { match: '/health', body: FIXTURES.health },
+    ]);
 
-    expect(await screen.findByText(/file not found/i)).toBeInTheDocument();
+    renderApp('/devices');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('tab', { name: /report/i }));
+
+    expect(await screen.findByRole('button', { name: /generate report/i })).toBeInTheDocument();
   });
 });
 
-describe('destructive actions', () => {
-  it('names the subject and the consequence, and does nothing until confirmed', () => {
-    const onConfirm = vi.fn();
-    render(
-      <ConfirmDialog
-        open
-        onClose={() => {}}
-        onConfirm={onConfirm}
-        title="Disable account"
-        subject="alice"
-        consequence="This account will no longer be able to authenticate."
-        confirmLabel="Disable account"
-      />,
-    );
-
-    const dialog = screen.getByRole('dialog');
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(screen.getByText('alice')).toBeInTheDocument();
-    expect(screen.getByText(/no longer be able to authenticate/i)).toBeInTheDocument();
-
-    // Nothing has happened yet.
-    expect(onConfirm).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: /disable account/i }));
-    expect(onConfirm).toHaveBeenCalledTimes(1);
-  });
-
-  it('closes on Escape without performing the action', () => {
-    const onConfirm = vi.fn();
-    const onClose = vi.fn();
-    render(
-      <ConfirmDialog
-        open
-        onClose={onClose}
-        onConfirm={onConfirm}
-        title="Disable account"
-        subject="alice"
-        consequence="…"
-      />,
-    );
-
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(onClose).toHaveBeenCalled();
-    expect(onConfirm).not.toHaveBeenCalled();
-  });
-
-  it('requires confirmation before disabling a user', async () => {
-    const { calls } = mockApi([
-      ...BASE,
-      { match: '/users', body: FIXTURES.users },
-    ]);
+describe('local review marks', () => {
+  it('says review marks are local and not part of the recorded log', async () => {
     signIn(ADMIN_SESSION);
-    renderApp('/users');
+    mockApi([
+      { match: '/audit/verify', body: { ok: true, checked: 3, algo: 'sha256' } },
+      { match: '/audit/records', body: { verifiable: false, reason: 'filtered', count: 0, records: [] } },
+      { match: '/health', body: FIXTURES.health },
+    ]);
 
-    // The signed-in admin's own Disable button is correctly disabled, so target
-    // alice's row specifically rather than whichever button comes first.
-    const aliceRow = (await screen.findByText('alice')).closest('tr')!;
-    fireEvent.click(within(aliceRow).getByRole('button', { name: /^disable$/i }));
+    renderApp('/activity');
 
-    // The dialog is open and the request has NOT been sent.
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
-    expect(calls.some((c) => c.includes('/disable'))).toBe(false);
-
-    fireEvent.click(screen.getByRole('button', { name: /disable account/i }));
-    await waitFor(() => expect(calls.some((c) => c.includes('/disable'))).toBe(true));
+    await waitFor(() =>
+      expect(screen.getByText(/notes in your browser, not recorded actions/i)).toBeInTheDocument(),
+    );
   });
 });

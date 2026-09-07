@@ -59,7 +59,10 @@ export default {
         accent: { DEFAULT: '#23527C', bg: '#EEF3F8', br: '#C3D4E5' },
       },
       fontFamily: {
+        // The wordmark and the landing headline only. Never on a verdict.
+        display: ['Instrument Serif', 'Iowan Old Style', 'Georgia', 'serif'],
         sans: [
+          'Inter',
           'ui-sans-serif',
           'system-ui',
           '-apple-system',
@@ -79,8 +82,23 @@ export default {
           'monospace',
         ],
       },
+      /**
+       * The type scale.
+       *
+       * Base is 16px. Everything in the interface is one of these seven steps;
+       * no screen invents its own size. §10 permits revising the scale without
+       * amending the principles, and this is that revision — the previous 14px
+       * base read as a prototype rather than as an operator tool.
+       */
       fontSize: {
-        '2xs': ['0.6875rem', { lineHeight: '1rem' }],
+        micro: ['0.75rem', { lineHeight: '1.1rem' }],   // 12px  column headers, labels
+        code: ['0.8125rem', { lineHeight: '1.25rem' }], // 13px  configuration lines
+        sm: ['0.875rem', { lineHeight: '1.35rem' }],    // 14px  secondary metadata
+        base: ['0.9375rem', { lineHeight: '1.5rem' }],  // 15px  body, tables, controls
+        lg: ['1rem', { lineHeight: '1.5rem' }],         // 16px  card titles
+        xl: ['1.4375rem', { lineHeight: '1.9rem' }],    // 23px  page titles
+        '2xl': ['2rem', { lineHeight: '2.4rem' }],      // 32px  counts
+        display: ['clamp(3rem, 9vw, 5.5rem)', { lineHeight: '1.04', letterSpacing: '-0.02em' }],
       },
       borderRadius: {
         DEFAULT: '4px',

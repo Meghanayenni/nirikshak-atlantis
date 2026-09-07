@@ -26,7 +26,7 @@ function CommandBlock({ title, commands }: { title: string; commands: string[] }
     <div>
       <p className="label mb-1">{title}</p>
       <pre
-        className="mono text-[12px] bg-surface border border-border rounded p-3
+        className="mono text-code bg-surface border border-border rounded p-3
                    overflow-x-auto whitespace-pre text-ink"
       >
         {commands.join('\n')}
@@ -44,8 +44,8 @@ export function RemediationPanel({ remediation }: { remediation: RemediationRef 
       <div className="flex items-start gap-2">
         <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0 text-muted" aria-hidden="true" />
         <div className="min-w-0">
-          <p className="text-[13px] text-ink-2 leading-relaxed">{remediation.statement}</p>
-          <p className="mt-1 text-2xs text-muted uppercase tracking-wider">
+          <p className="text-base text-ink-2 leading-relaxed">{remediation.statement}</p>
+          <p className="mt-1 text-micro text-muted uppercase tracking-wider">
             outcome: {remediation.outcome.replace(/_/g, ' ')}
           </p>
         </div>
@@ -57,7 +57,7 @@ export function RemediationPanel({ remediation }: { remediation: RemediationRef 
           {remediation.rollback.length > 0 && (
             <CommandBlock title="Rollback" commands={remediation.rollback} />
           )}
-          <div className="flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
+          <div className="flex flex-wrap gap-x-6 gap-y-1 text-base">
             {remediation.vetted_by && (
               <p className="text-muted">
                 <span className="label">Vetted by</span>{' '}
@@ -71,7 +71,7 @@ export function RemediationPanel({ remediation }: { remediation: RemediationRef 
               </p>
             )}
           </div>
-          <p className="text-2xs text-muted leading-relaxed">
+          <p className="text-micro text-muted leading-relaxed">
             NIRIKSHAK does not apply these commands. A human operator applies them, after
             checking the rollback and the service impact.
           </p>

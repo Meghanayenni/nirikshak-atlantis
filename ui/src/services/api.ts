@@ -55,6 +55,18 @@ export class ApiError extends Error {
   get isUnavailable(): boolean {
     return this.status === 503;
   }
+
+  /**
+   * 409 — the request was understood and correctly declined.
+   *
+   * NIRIKSHAK uses this for abstention, not for breakage: auditing a file whose
+   * platform was never identified has no answer to give, and the backend says so
+   * in as many words. Rendering that as "Audit failed" contradicts the sentence
+   * it is rendering (Rule 3 at the presentation layer), so callers branch here.
+   */
+  get isRefusal(): boolean {
+    return this.status === 409;
+  }
 }
 
 export class NetworkError extends Error {

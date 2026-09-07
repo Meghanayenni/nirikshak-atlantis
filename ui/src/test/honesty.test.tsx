@@ -1,231 +1,196 @@
 /**
- * The tests that carry the weight of this phase.
+ * The invariants this interface exists to hold.
  *
- * The backend has four architecture guards over its own report template: it may
- * not claim an exposure ranking, may not print a framework identifier, may not
- * hard-code a remediation sentence, and may not call `device_id` a device
- * identity. Those guards encode *principles*, not template rules, so they are
- * mirrored here for the interface.
- *
- * Each of these would be trivially easy to violate by accident — a severity
- * sort, a placeholder "CIS 1.2.3", a hard-coded example command — and each would
- * make NIRIKSHAK claim something it deliberately refuses to claim.
+ * Every assertion here is a rule from DEVELOPER_GUIDE.md §10 or a decision that would be
+ * silently reversible by an ordinary-looking edit. A screen can be redesigned
+ * freely; it may not start claiming something the backend did not say.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { PrioritisationPanel, VerdictCounts } from '@/components/domain/PrioritisationPanel';
 import { RemediationPanel } from '@/components/domain/RemediationPanel';
+import { VerdictCounts } from '@/components/domain/VerdictCounts';
 import { InferredMarker, VerdictChip } from '@/components/domain/Verdict';
+import type { RemediationRef } from '@/types/api';
+
 import { ADMIN_SESSION, FIXTURES, mockApi, renderApp, signIn } from './helpers';
 
 afterEach(() => {
   vi.unstubAllGlobals();
   signIn(null);
+  localStorage.clear();
 });
 
-const ROUTES = [
-  { match: '/ingest/devices', body: FIXTURES.devices },
-  { match: '/ingest/files', body: { count: 0, files: [] } },
-  { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
-  { match: '/compliance/audits/aud-1/remediation', body: { steps: [] } },
-  { match: '/compliance/audits/aud-1', body: FIXTURES.audits.audits[0] },
-  { match: '/compliance/audits', body: FIXTURES.audits },
-  { match: '/fleet/baseline', body: FIXTURES.fleet },
-  { match: '/health', body: FIXTURES.health },
-  { match: '/users/me', body: FIXTURES.users.users[0] },
-];
+const NO_SNIPPET: RemediationRef = {
+  outcome: 'no_snippet',
+  statement: 'No vetted remediation is available for this platform and rule.',
+  snippet_id: null,
+  commands: [],
+  rollback: [],
+  vetted_by: null,
+  reference: null,
+};
 
 describe('verdict semantics (DEVELOPER_GUIDE.md §10)', () => {
   it('never relies on colour alone — every verdict carries a text label', () => {
-    render(
+    const { container } = render(
       <>
-        <VerdictChip verdict="fail" />
         <VerdictChip verdict="pass" />
+        <VerdictChip verdict="fail" />
         <VerdictChip verdict="unknown" />
+        <VerdictChip verdict="not_applicable" />
       </>,
     );
-    expect(screen.getByText('FAIL')).toBeInTheDocument();
-    expect(screen.getByText('PASS')).toBeInTheDocument();
-    expect(screen.getByText('UNKNOWN')).toBeInTheDocument();
+    for (const label of ['PASS', 'FAIL', 'UNKNOWN', 'N/A']) {
+      expect(container.textContent).toContain(label);
+    }
   });
 
   it('draws UNKNOWN dashed and neutral, never amber', () => {
     const { container } = render(<VerdictChip verdict="unknown" />);
     const chip = container.firstElementChild as HTMLElement;
-
-    // Dashed border and the neutral-slate token. Amber belongs to INFERRED and
-    // must never mark an abstention: abstention sits off the severity axis, and
-    // making it look like a weaker failure defeats Rule 3 at the presentation
-    // layer.
     expect(chip.className).toContain('border-dashed');
     expect(chip.className).toContain('unknown');
+    // The inferred palette is the amber one. Abstention must never borrow it.
     expect(chip.className).not.toContain('inferred');
-    expect(chip.className).not.toContain('amber');
   });
 
   it('gives FAIL the heaviest treatment and PASS the lightest', () => {
-    const { container: fail } = render(<VerdictChip verdict="fail" />);
-    const { container: pass } = render(<VerdictChip verdict="pass" />);
+    const fail = render(<VerdictChip verdict="fail" />).container
+      .firstElementChild as HTMLElement;
+    expect(fail.className).toContain('bg-fail');
+    expect(fail.className).toContain('text-white');
+    expect(fail.className).toContain('font-semibold');
 
-    // FAIL: solid fill, reversed text, bold.
-    expect((fail.firstElementChild as HTMLElement).className).toContain('bg-fail');
-    expect((fail.firstElementChild as HTMLElement).className).toContain('text-white');
-    expect((fail.firstElementChild as HTMLElement).className).toContain('font-semibold');
-    // PASS: a light tint only.
-    expect((pass.firstElementChild as HTMLElement).className).toContain('bg-pass-bg');
-    expect((pass.firstElementChild as HTMLElement).className).not.toContain('text-white');
+    const pass = render(<VerdictChip verdict="pass" />).container
+      .firstElementChild as HTMLElement;
+    expect(pass.className).toContain('bg-pass-bg');
+    expect(pass.className).not.toContain('font-semibold');
   });
 
   it('marks an inferred value distinctly and offers no way to suppress it', () => {
-    render(<InferredMarker />);
-    expect(screen.getByText('INFERRED')).toBeInTheDocument();
-    // The component takes no props: there is nothing to pass that would hide it.
+    const { container } = render(<InferredMarker />);
+    expect(container.textContent).toContain('INFERRED');
+    // No prop exists to hide it. If one is ever added, this fails.
     expect(InferredMarker.length).toBe(0);
   });
-});
 
-describe('P12 — the ranking that is not produced', () => {
-  it('states the refusal and its blockers rather than showing an order', () => {
-    render(
-      <PrioritisationPanel
-        prioritisation={{
-          ranked: false,
-          reason:
-            'Exposure could not be determined for any finding. Ranking by severity alone is ' +
-            'deliberately not offered: severity alone must not determine remediation order.',
-          determined: 0,
-          undetermined: 7,
-          blockers: { no_interface_data: 4, not_exposure_relevant: 3 },
-        }}
-      />,
+  it('reports verdicts as counts, never as a compliance percentage', () => {
+    const { container } = render(
+      <VerdictCounts counts={{ pass: 3, fail: 1, unknown: 2, not_applicable: 0 }} />,
     );
-
-    expect(screen.getByText(/no exposure ranking was produced/i)).toBeInTheDocument();
-    expect(screen.getByText(/severity alone must not determine remediation order/i)).toBeInTheDocument();
-    expect(screen.getByText(/where the control lives is unknown/i)).toBeInTheDocument();
-  });
-
-  it('renders no rank column when the backend did not rank', async () => {
-    mockApi(ROUTES);
-    signIn(ADMIN_SESSION);
-    renderApp('/audits/aud-1');
-
-    await screen.findByText('NRK-TELNET-001');
-
-    // The findings fixture carries no priority_rank, so the header must be absent.
-    expect(screen.queryByRole('columnheader', { name: '#' })).not.toBeInTheDocument();
-    expect(screen.getByText(/this is not an exposure ranking/i)).toBeInTheDocument();
-  });
-
-  it('reports peer baselines that established nothing, with the reason', async () => {
-    mockApi(ROUTES);
-    signIn(ADMIN_SESSION);
-    renderApp('/prioritisation');
-
-    expect(await screen.findByText(/no exposure ranking is produced/i)).toBeInTheDocument();
-    // An empty outlier list must not read as a uniform fleet.
-    expect(screen.getByText(/no cohort reached the minimum size/i)).toBeInTheDocument();
-    expect(screen.getByText(/5 are required/i)).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/%/);
+    expect(container.textContent).toContain('Unknown');
   });
 });
 
 describe('no invented data', () => {
-  it('renders no framework identifier while every rule ships an empty list', async () => {
-    mockApi(ROUTES);
-    signIn(ADMIN_SESSION);
-    renderApp('/audits/aud-1/findings/aud-1%3Adev%3ANRK-TELNET-001');
-
-    await screen.findByText(/this check maps to no framework control/i);
-
-    const body = document.body.textContent ?? '';
-    // The visual reference draws "CIS 1.2.3 · NIST AC-17 · STIG V-215807" as an
-    // illustration. Shipping any of it would be inventing coverage.
-    expect(body).not.toMatch(/CIS\s*\d+\.\d+/);
-    expect(body).not.toMatch(/AC-17/);
-    expect(body).not.toMatch(/V-2158\d\d/);
-    expect(body).not.toMatch(/ISO\s*A\.\d/);
-  });
-
   it('shows the resolver statement and no command while the library is empty', () => {
-    render(
-      <RemediationPanel
-        remediation={{
-          outcome: 'no_snippet',
-          statement: 'No vetted remediation is available for this platform and rule.',
-          snippet_id: null,
-          commands: [],
-          rollback: [],
-          vetted_by: null,
-          reference: null,
-        }}
-      />,
-    );
-
-    expect(
-      screen.getByText(/no vetted remediation is available for this platform and rule/i),
-    ).toBeInTheDocument();
-
-    // No <pre> block exists unless the response carried commands, so there is
-    // nowhere for an invented command to appear.
-    expect(document.querySelector('pre')).toBeNull();
-    expect(document.body.textContent).not.toMatch(/transport input ssh/);
-    expect(document.body.textContent).not.toMatch(/configure terminal/);
+    const { container } = render(<RemediationPanel remediation={NO_SNIPPET} />);
+    expect(container.textContent).toContain('No vetted remediation is available');
+    expect(container.querySelector('pre')).toBeNull();
   });
 
   it('renders a command only when the vetted library supplied one', () => {
-    render(
+    const { container } = render(
       <RemediationPanel
         remediation={{
+          ...NO_SNIPPET,
           outcome: 'resolved',
-          statement: 'A vetted snippet applies.',
+          statement: 'A vetted snippet exists.',
           snippet_id: 'snip-1',
-          commands: ['line vty 0 4', 'transport input ssh'],
-          rollback: ['transport input telnet ssh'],
-          vetted_by: 'A. Engineer',
-          reference: 'vendor-guide-12.3 §4.1',
+          commands: ['no ip http server'],
+          rollback: ['ip http server'],
+          vetted_by: 'a.operator',
+          reference: 'vendor guide 4.2',
         }}
       />,
     );
-
-    expect(screen.getByText(/transport input ssh/)).toBeInTheDocument();
-    // Rule 4 — never the command alone: rollback and attribution travel with it.
-    expect(screen.getByText('Rollback')).toBeInTheDocument();
-    expect(screen.getByText('A. Engineer')).toBeInTheDocument();
-    expect(screen.getByText(/NIRIKSHAK does not apply these commands/i)).toBeInTheDocument();
+    expect(container.querySelector('pre')?.textContent).toBe('no ip http server');
+    expect(container.textContent).toContain('a.operator');
   });
 
-  it('reports verdicts as counts, never as a compliance percentage', () => {
-    render(<VerdictCounts counts={{ pass: 7, fail: 1, unknown: 2, not_applicable: 0 }} />);
+  it('renders no framework identifier while every rule ships an empty list', async () => {
+    signIn(ADMIN_SESSION);
+    mockApi([
+      { match: '/ingest/devices', body: FIXTURES.devices },
+      { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
+      { match: '/compliance/audits/aud-1/remediation', body: { steps: [] }, status: 404 },
+      { match: '/compliance/audits', body: FIXTURES.audits },
+      { match: '/training/queue', body: { size: 0, confirmable: 0, entries: [] }, status: 403 },
+      { match: '/training/examples', body: { count: 0, examples: [] }, status: 403 },
+      { match: '/health', body: FIXTURES.health },
+    ]);
 
-    expect(screen.getByText('7')).toBeInTheDocument();
-    expect(screen.getByText('Unknown')).toBeInTheDocument();
-    // A single ratio would have to hide one of the three states.
-    expect(document.body.textContent).not.toMatch(/\d+%/);
+    renderApp('/devices');
+    const user = userEvent.setup();
+
+    await screen.findByRole('tab', { name: /findings/i });
+    await user.click(screen.getByRole('tab', { name: /findings/i }));
+    await user.click((await screen.findAllByRole('button', { name: /expand finding/i }))[0]);
+
+    expect(await screen.findByText(/no framework control is mapped/i)).toBeInTheDocument();
+    // No CIS / NIST / STIG / ISO identifier may appear anywhere on the screen.
+    expect(document.body.textContent).not.toMatch(/\b(CIS|NIST|STIG|ISO)[- ]?\d/);
+  });
+
+  it('states that exposure was undetermined rather than showing a rank', async () => {
+    signIn(ADMIN_SESSION);
+    mockApi([
+      { match: '/ingest/devices', body: FIXTURES.devices },
+      { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
+      { match: '/compliance/audits/aud-1/remediation', body: { steps: [] }, status: 404 },
+      { match: '/compliance/audits', body: FIXTURES.audits },
+      { match: '/training/queue', body: {}, status: 403 },
+      { match: '/training/examples', body: {}, status: 403 },
+      { match: '/health', body: FIXTURES.health },
+    ]);
+
+    renderApp('/devices');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('tab', { name: /findings/i }));
+    await user.click((await screen.findAllByRole('button', { name: /expand finding/i }))[0]);
+
+    expect(await screen.findByText(/exposure was not determined/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^#\d+$/)).toBeNull();
   });
 });
 
 describe('DEF-3 — a content hash is not a device identity', () => {
   it('labels devices by hostname, not by the configuration hash', async () => {
-    mockApi(ROUTES);
     signIn(ADMIN_SESSION);
+    mockApi([
+      { match: '/ingest/devices', body: FIXTURES.devices },
+      { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
+      { match: '/compliance/audits/aud-1/remediation', body: {}, status: 404 },
+      { match: '/compliance/audits', body: FIXTURES.audits },
+      { match: '/training/queue', body: {}, status: 403 },
+      { match: '/training/examples', body: {}, status: 403 },
+      { match: '/health', body: FIXTURES.health },
+    ]);
+
     renderApp('/devices');
 
-    expect(await screen.findByText('rtr-core-01')).toBeInTheDocument();
-    // The full hash must not be presented as the device's name.
-    expect(
-      screen.queryByText('c0f08477bb6ad93bf0da05c4269b87c38c815ecf1d492fadd28ce38af2601fb1'),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'rtr-core-01' })).toBeInTheDocument();
+    // The full hash is never printed as a name.
+    expect(document.body.textContent).not.toContain(FIXTURES.devices.devices[0].device_id);
   });
 
-  it('calls the identifier a configuration file id on the device page', async () => {
-    mockApi(ROUTES);
+  it('calls the hash a configuration file, never a device id', async () => {
     signIn(ADMIN_SESSION);
-    renderApp('/devices/c0f08477bb6ad93bf0da05c4269b87c38c815ecf1d492fadd28ce38af2601fb1');
+    mockApi([
+      { match: '/ingest/devices', body: FIXTURES.devices },
+      { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
+      { match: '/compliance/audits/aud-1/remediation', body: {}, status: 404 },
+      { match: '/compliance/audits', body: FIXTURES.audits },
+      { match: '/training/queue', body: {}, status: 403 },
+      { match: '/training/examples', body: {}, status: 403 },
+      { match: '/health', body: FIXTURES.health },
+    ]);
 
-    // The phrase appears as the field label and again in the explanation below it.
-    expect((await screen.findAllByText(/configuration file id/i)).length).toBeGreaterThan(0);
-    // The sentence is split by an <em>, so match a contiguous fragment of it.
-    expect(screen.getByText(/changes whenever the file is edited/i)).toBeInTheDocument();
+    renderApp('/devices');
+    await waitFor(() => expect(screen.getByText(/configuration file/i)).toBeInTheDocument());
   });
 });

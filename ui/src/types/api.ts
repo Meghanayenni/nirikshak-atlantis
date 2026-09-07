@@ -253,13 +253,43 @@ export interface FindingList {
   findings: Finding[];
 }
 
-export interface RemediationStep {
-  rule_id: string;
-  outcome: string;
-  statement: string;
+/**
+ * The vetted snippet attached to a plan step, or `null` when none resolved.
+ *
+ * **Commands live here, not on the step.** `/compliance/audits/{id}/remediation`
+ * nests them, while `finding.remediation` from `/findings` is flat — two shapes
+ * for two endpoints, and this type describes the nested one. An earlier version
+ * of this interface declared `commands` and `rollback` at the step level with an
+ * `[key: string]: unknown` escape hatch; the escape hatch let the declaration
+ * disagree with the API without the compiler noticing, and the first code to
+ * dereference `step.commands` crashed the application. No index signature here:
+ * if the contract moves, this must fail to compile.
+ */
+export interface RemediationStepSnippet {
+  snippet_id: string;
+  vendor: string;
+  os_family: string;
   commands: string[];
   rollback: string[];
-  [key: string]: unknown;
+  preconditions: string[];
+  verification: string[];
+  lockout_risk: string;
+  service_affecting: boolean;
+  requires_reload: boolean;
+  depends_on: string[];
+  vetted_by: string | null;
+  reference: string | null;
+}
+
+export interface RemediationStep {
+  /** The backend's own sequence number. `null` when nothing resolved. */
+  apply_order: number | null;
+  rule_id: string;
+  severity: Severity;
+  expected: string;
+  outcome: string;
+  statement: string;
+  snippet: RemediationStepSnippet | null;
 }
 
 export interface RemediationPlan {
@@ -370,7 +400,8 @@ export interface ChainHead {
 
 export interface ChainVerification {
   ok: boolean;
-  checked: number;
+  /** The API's own field name. It is `records_checked`, not `checked`. */
+  records_checked: number;
   algo: string;
   tamper_evident_not_tamper_proof: boolean;
   first_failure_seq: number | null;
@@ -478,6 +509,58 @@ export interface DraftResult {
   examples: string[];
 }
 
+export interface PackPattern {
+  id: string;
+  field: string;
+  /** 'builtin' | 'admin-trained' | 'seed'. Governs whether it may be withdrawn. */
+  source: string;
+  match_type: string;
+  /** The regular expression, shown in full — §4 requires it be readable. */
+  pattern: string;
+  capture: string;
+  cast: string;
+  scope_block: string[];
+  examples: string[];
+  training_example_id: string | null;
+  audit_seq: number | null;
+  /** The backend's own rule, not re-derived here: only admin-trained may go. */
+  withdrawable: boolean;
+}
+
+export interface VendorPackSummary {
+  pack_id: string;
+  vendor: string;
+  os_family: string;
+  pack_version: string;
+  parent_version: string | null;
+  status: string;
+  /** 'builtin' (repository content) or 'trained' (written by the loop). */
+  origin: string;
+  is_active: boolean;
+  checksum: string | null;
+  created_at: string | null;
+  pattern_count: number;
+  admin_trained_count: number;
+  patterns: PackPattern[];
+}
+
+export interface VendorPackList {
+  count: number;
+  /** The canonical schema, served rather than hardcoded here (Rule 5). */
+  canonical_fields: string[];
+  casts: string[];
+  packs: VendorPackSummary[];
+}
+
+export interface WithdrawResult {
+  pack_id: string;
+  pack_version: string;
+  previous_version: string | null;
+  withdrawn_pattern_id: string;
+  checksum: string;
+  pattern_count: number;
+}
+
 export interface ActivationResult {
   pack_id: string;
   pack_version: string;
@@ -516,5 +599,16 @@ export interface Health {
     missing_libraries: string[];
     detail: string;
   };
-  remediation_library: Record<string, unknown>;
+  /**
+   * The vetted snippet library this deployment resolves against.
+   *
+   * Was `Record<string, unknown>` while the library was empty and nothing read
+   * it. `version` is a digest over the library's own bytes, or the literal
+   * `"empty"` — a hash of nothing looks exactly like a hash of something, so the
+   * empty case is named rather than hashed.
+   */
+  remediation_library: {
+    snippets: number;
+    version: string;
+  };
 }

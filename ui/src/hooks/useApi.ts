@@ -86,15 +86,22 @@ export function useMutation<TArgs extends unknown[], TResult>(
 ) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The thrown value, for the same reason `useApi` keeps it: a caller has to be
+  // able to tell a refusal from a fault. A 409 saying "this is UNKNOWN, not a
+  // failure" and a 500 both arrive here as a string, and only one of them should
+  // be announced to the operator as an error.
+  const [cause, setCause] = useState<unknown>(null);
 
   const run = useCallback(
     async (...args: TArgs): Promise<TResult | null> => {
       setPending(true);
       setError(null);
+      setCause(null);
       try {
         return await action(...args);
       } catch (thrown) {
         setError(describeError(thrown));
+        setCause(thrown);
         return null;
       } finally {
         setPending(false);
@@ -103,5 +110,14 @@ export function useMutation<TArgs extends unknown[], TResult>(
     [action],
   );
 
-  return { run, pending, error, clearError: () => setError(null) };
+  return {
+    run,
+    pending,
+    error,
+    cause,
+    clearError: () => {
+      setError(null);
+      setCause(null);
+    },
+  };
 }

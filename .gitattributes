@@ -1,1 +1,7 @@
 * text=auto eol=lf
+
+# Binary assets. `text=auto` guesses well, but a corrupted font is a silent
+# failure that only shows up as a fallback typeface on somebody else's checkout.
+*.woff2 binary
+*.woff binary
+*.pdf binary

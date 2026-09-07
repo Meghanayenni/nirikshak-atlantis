@@ -51,8 +51,8 @@ export function VerdictChip({ verdict }: { verdict: Verdict }) {
   const style = VERDICT_STYLE[verdict];
   return (
     <span
-      className={`inline-flex items-center gap-1 h-[22px] px-2 rounded border
-                  text-2xs tracking-wide ${style.cls}`}
+      className={`inline-flex items-center gap-1 h-[24px] px-2 rounded border
+                  text-micro tracking-wide ${style.cls}`}
     >
       <span aria-hidden="true">{style.glyph}</span>
       {style.label}
@@ -69,7 +69,7 @@ export function VerdictChip({ verdict }: { verdict: Verdict }) {
 export function InferredMarker() {
   return (
     <span
-      className="inline-flex items-center h-[22px] px-2 rounded border text-2xs tracking-wide
+      className="inline-flex items-center h-[24px] px-2 rounded border text-micro tracking-wide
                  bg-inferred-bg text-inferred border-inferred-br"
       title="Asserted from the platform's documented default, not observed in this configuration"
     >
@@ -90,7 +90,7 @@ export function SeverityLabel({ severity }: { severity: Severity }) {
   const { bars, cls } = weight[severity];
 
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[13px] ${cls}`}>
+    <span className={`inline-flex items-center gap-1.5 text-base ${cls}`}>
       <span className="inline-flex gap-px" aria-hidden="true">
         {[0, 1, 2, 3].map((i) => (
           <span
@@ -99,7 +99,7 @@ export function SeverityLabel({ severity }: { severity: Severity }) {
           />
         ))}
       </span>
-      <span className="uppercase text-2xs tracking-wider">{severity}</span>
+      <span className="uppercase text-micro tracking-wider">{severity}</span>
     </span>
   );
 }
@@ -112,7 +112,7 @@ const STATE_LABEL: Record<FieldState, string> = {
 };
 
 export function FieldStateLabel({ state }: { state: FieldState }) {
-  return <span className="text-[13px] text-ink-2">{STATE_LABEL[state]}</span>;
+  return <span className="text-base text-ink-2">{STATE_LABEL[state]}</span>;
 }
 
 const METHOD_LABEL: Record<ConfidenceMethod, string> = {
@@ -142,11 +142,11 @@ export function ConfidenceBadge({
 }) {
   const uncalibrated = method === 'uncalibrated_similarity';
   return (
-    <span className="inline-flex items-baseline gap-1.5 text-[13px]">
+    <span className="inline-flex items-baseline gap-1.5 text-base">
       <span className="mono text-ink">{confidence.toFixed(2)}</span>
       <span className="text-muted">— {METHOD_LABEL[method]}</span>
       {(uncalibrated || isProbability === false) && uncalibrated && (
-        <span className="text-2xs text-inferred">(not a probability)</span>
+        <span className="text-micro text-inferred">(not a probability)</span>
       )}
       {method === 'platform_default' && <InferredMarker />}
     </span>

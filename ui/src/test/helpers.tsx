@@ -76,7 +76,7 @@ export function signIn(session: Session | null) {
   setSession(session);
 }
 
-export function renderApp(initialPath = '/dashboard') {
+export function renderApp(initialPath = '/devices') {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <AuthProvider>
@@ -197,6 +197,59 @@ export const FIXTURES = {
           vetted_by: null,
           reference: null,
         },
+      },
+    ],
+  },
+  /**
+   * A remediation plan in the shape the API actually returns.
+   *
+   * Copied from a live `/compliance/audits/{id}/remediation` response. Commands
+   * are nested under `snippet`, and `snippet` is null when the vetted library
+   * resolved nothing — which is every step while that library is empty. The
+   * earlier fixtures stubbed this endpoint as 404 or `{steps: []}`, so nothing
+   * ever exercised a real step and a wrong assumption about its shape reached
+   * the browser.
+   */
+  remediation: {
+    audit_id: 'aud-1',
+    config_file_id: 'file-1',
+    platform: 'cisco/ios',
+    failing_findings: 2,
+    resolved: 1,
+    snippet_library_version: 'empty',
+    note: 'Steps that resolved to nothing carry no apply_order.',
+    steps: [
+      {
+        apply_order: 1,
+        rule_id: 'NRK-HTTP-001',
+        severity: 'high',
+        expected: 'disabled',
+        outcome: 'resolved',
+        statement: 'A vetted snippet is available.',
+        snippet: {
+          snippet_id: 'snip-1',
+          vendor: 'cisco',
+          os_family: 'ios',
+          commands: ['no ip http server'],
+          rollback: ['ip http server'],
+          preconditions: [],
+          verification: ['show running-config | include http'],
+          lockout_risk: 'none',
+          service_affecting: false,
+          requires_reload: false,
+          depends_on: [],
+          vetted_by: 'a.operator',
+          reference: 'vendor guide 4.2',
+        },
+      },
+      {
+        apply_order: null,
+        rule_id: 'NRK-TELNET-001',
+        severity: 'high',
+        expected: 'disabled',
+        outcome: 'no_snippet',
+        statement: 'No vetted remediation is available for this platform and rule.',
+        snippet: null,
       },
     ],
   },

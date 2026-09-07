@@ -87,24 +87,10 @@ export function EvidenceViewer({ evidence }: { evidence: Evidence }) {
       )}
 
       {!loading && !error && lines.length === 0 && (
-        <p className="px-3 py-3 text-[13px] text-muted">
+        <p className="px-3 py-3 text-base text-muted">
           The cited lines could not be resolved from the stored configuration.
         </p>
       )}
-    </div>
-  );
-}
-
-/**
- * The raw cited line, for a table cell where the full viewer will not fit.
- *
- * Still the operator's own text — never a description of it.
- */
-export function EvidenceLine({ evidence }: { evidence: Evidence }) {
-  return (
-    <div className="mono text-[12px] text-ink-2">
-      <span className="text-muted mr-2">{evidence.line_start}</span>
-      <span className="whitespace-pre-wrap break-all">{evidence.raw_line}</span>
     </div>
   );
 }

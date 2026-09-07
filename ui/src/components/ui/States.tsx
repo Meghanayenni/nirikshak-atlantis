@@ -23,7 +23,7 @@ import type { ReactNode } from 'react';
 
 export function Loading({ label = 'Loading' }: { label?: string }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-10 justify-center text-muted text-[13px]">
+    <div className="flex items-center gap-2 px-4 py-10 justify-center text-muted text-base">
       <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
       <span role="status">{label}…</span>
     </div>
@@ -60,8 +60,8 @@ export function EmptyState({
   return (
     <div className="px-6 py-12 text-center">
       <Inbox className="h-6 w-6 mx-auto text-muted" aria-hidden="true" />
-      <p className="mt-3 text-[13px] font-medium text-ink">{title}</p>
-      {detail && <p className="mt-1 text-[13px] text-muted max-w-lg mx-auto">{detail}</p>}
+      <p className="mt-3 text-base font-medium text-ink">{title}</p>
+      {detail && <p className="mt-1 text-base text-muted max-w-lg mx-auto">{detail}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
@@ -85,10 +85,10 @@ export function BlockedState({
       <div className="flex items-start gap-3">
         <Ban className="h-4 w-4 mt-0.5 shrink-0 text-unknown" aria-hidden="true" />
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-ink">{title}</p>
-          <p className="mt-1 text-[13px] text-ink-2 leading-relaxed">{reason}</p>
+          <p className="text-base font-medium text-ink">{title}</p>
+          <p className="mt-1 text-base text-ink-2 leading-relaxed">{reason}</p>
           {unblockedBy && (
-            <p className="mt-2 text-[13px] text-muted">
+            <p className="mt-2 text-base text-muted">
               <span className="label">Unblocked by</span> {unblockedBy}
             </p>
           )}
@@ -112,15 +112,15 @@ export function ErrorState({
       <div className="flex items-start gap-3">
         <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-fail" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-ink">{title}</p>
+          <p className="text-base font-medium text-ink">{title}</p>
           {/* The backend's own message. It is written for operators and is more
               useful than anything this layer could substitute. */}
-          <p className="mt-1 text-[13px] text-ink-2 leading-relaxed break-words">{message}</p>
+          <p className="mt-1 text-base text-ink-2 leading-relaxed break-words">{message}</p>
           {onRetry && (
             <button
               type="button"
               onClick={onRetry}
-              className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-accent
+              className="mt-3 inline-flex items-center gap-1.5 text-base text-accent
                          hover:underline underline-offset-2"
             >
               <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />

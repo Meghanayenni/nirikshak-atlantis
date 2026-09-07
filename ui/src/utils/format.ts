@@ -20,10 +20,6 @@ export function deviceLabel(device: Pick<Device, 'hostname' | 'device_id'>): str
   return device.hostname ?? `${device.device_id.slice(0, 12)}…`;
 }
 
-export function isHostnameKnown(device: Pick<Device, 'hostname'>): boolean {
-  return device.hostname !== null && device.hostname !== '';
-}
-
 export function platformLabel(vendor: string | null, osFamily: string | null): string {
   if (!vendor && !osFamily) return '—';
   if (vendor && osFamily) return `${vendor} / ${osFamily}`;
@@ -38,19 +34,19 @@ export function formatTimestamp(value: string | null | undefined): string {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(undefined, {
+  // `toLocaleString` puts a comma between the date and the time, which is where
+  // a narrow table column breaks the line. A middle dot is not a wrap
+  // opportunity, so the stamp stays on one row and the columns stay aligned.
+  const day = date.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: '2-digit',
+  });
+  const time = date.toLocaleTimeString(undefined, {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} kB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${day} · ${time}`;
 }
 
 /** Title-case a snake_case backend token for display. Never changes meaning. */

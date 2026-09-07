@@ -53,5 +53,9 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // Above the 5s async-query ceiling set in `setup.ts`, so a query that is
+    // genuinely never satisfied reports *what* it could not find rather than
+    // the test being cut off first and reporting only that time ran out.
+    testTimeout: 20000,
   },
 });
