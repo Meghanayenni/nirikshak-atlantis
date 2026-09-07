@@ -24,6 +24,7 @@ extra uninstalled.
 
 from __future__ import annotations
 
+import functools
 import importlib.util
 import os
 from dataclasses import dataclass
@@ -172,12 +173,27 @@ def embed(texts: list[str], *, airgap: bool = False) -> list[list[float]]:
     return [[float(x) for x in vector] for vector in vectors]
 
 
+@functools.lru_cache(maxsize=2)
 def _load(*, airgap: bool):  # type: ignore[no-untyped-def]  # pragma: no cover - needs the extra
-    """Load the model from the local cache only.
+    """Load the model from the local cache only, once per process.
 
     `local_files_only` is set from `airgap`: with it enabled the loader must not
     reach the network even if the weights turn out to be absent, so the failure
     is a clean refusal rather than a hanging fetch.
+
+    **Cached, unlike `availability()`.** ADR 0006 argues that a *probe* must not
+    be cached, because the stack can be installed while the service is running
+    and a cached negative would keep reporting the absence of something now
+    present. A loaded model is the opposite case: constructing it reads several
+    hundred megabytes off disk and initialises a torch graph, and doing that per
+    call made every training-queue request pay for it again. `require_model` runs
+    the uncached probe before this is ever reached, so an absent model is still
+    caught freshly on every call - what is reused is only the object, never the
+    judgement that it exists.
+
+    `maxsize=2` because `airgap` is the only key and it has two values. The
+    weights are identical either way; the flag only decides whether the loader is
+    permitted to reach the network, so caching per flag keeps that refusal exact.
     """
     from sentence_transformers import SentenceTransformer  # noqa: PLC0415
 
@@ -186,3 +202,8 @@ def _load(*, airgap: bool):  # type: ignore[no-untyped-def]  # pragma: no cover 
         device="cpu",
         local_files_only=airgap,
     )
+
+
+def clear_model_cache() -> None:
+    """Drop the loaded model. For tests, and for freeing the memory it holds."""
+    _load.cache_clear()
