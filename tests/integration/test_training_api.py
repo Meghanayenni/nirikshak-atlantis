@@ -14,6 +14,7 @@ somebody tried.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -388,3 +389,184 @@ def test_recorded_decisions_are_listed_without_an_accuracy_claim(client: TestCli
     assert body["examples"][0]["confirmed_by"] == "root"
     assert "top3_accuracy" not in body
     assert "accuracy" not in body
+
+
+# ---------------------------------------------------------------------------
+# The inventory, and taking a mapping back out
+# ---------------------------------------------------------------------------
+
+
+def test_the_pack_inventory_lists_superseded_versions_too(client: TestClient) -> None:
+    """Rollback selects between versions, so the inventory has to show them.
+
+    An inventory that listed only the active version would make the versioning
+    look decorative and leave an administrator with nothing to roll back to.
+    """
+    body = client.get("/training/packs", auth=ROOT).json()
+
+    assert body["count"] == len(body["packs"])
+    assert body["packs"], "no vendor packs on disk"
+
+    active = [p for p in body["packs"] if p["is_active"]]
+    superseded = [p for p in body["packs"] if not p["is_active"]]
+    assert active, "no active pack"
+    assert superseded, "the repository should carry a superseded version"
+
+    # Exactly one active version per platform - the rule the loader enforces.
+    ids = [p["pack_id"] for p in active]
+    assert len(ids) == len(set(ids))
+
+
+def test_a_builtin_pattern_cannot_be_withdrawn(client: TestClient) -> None:
+    """Repository content is changed by editing the pack, not by a button.
+
+    The refusal lives at the backend rather than only in the interface: a client
+    that decided for itself which patterns were removable would be one release
+    away from removing a shipped one.
+    """
+    packs = client.get("/training/packs", auth=ROOT).json()["packs"]
+    cisco = next(p for p in packs if p["pack_id"] == "cisco/ios" and p["is_active"])
+    builtin = next(p for p in cisco["patterns"] if p["source"] == "builtin")
+    assert builtin["withdrawable"] is False
+
+    refused = client.post(
+        "/training/withdraw",
+        json={"pack_id": "cisco/ios", "pattern_id": builtin["id"]},
+        auth=ROOT,
+    )
+    assert refused.status_code == 409
+    assert "not admin-trained" in refused.json()["detail"]
+
+    # And the pack is untouched: a refusal must not have written a version.
+    after = client.get("/training/packs", auth=ROOT).json()["packs"]
+    still = next(p for p in after if p["pack_id"] == "cisco/ios" and p["is_active"])
+    assert still["pack_version"] == cisco["pack_version"]
+    assert len(still["patterns"]) == len(cisco["patterns"])
+
+
+def _trained_mapping(client: TestClient) -> tuple[dict, dict]:
+    """Confirm, compile and activate one mapping. Returns (confirmation, draft)."""
+    file_id, _ = _upload_and_audit(client)
+    queue = client.get(f"/training/queue?file_id={file_id}", auth=ROOT).json()
+    entry = next(e for e in queue["entries"] if e["line"] == CONFIRMED_LINE)
+
+    confirmed = client.post(
+        "/training/confirm",
+        json={
+            "cluster_id": entry["cluster_id"],
+            "line": CONFIRMED_LINE,
+            "vendor": "arista",
+            "os_family": "eos",
+            "outcome": "corrected",
+            "field": "logging_hosts",
+        },
+        auth=ROOT,
+    ).json()
+
+    draft = client.post(
+        "/training/compile",
+        json={"example_id": confirmed["example_id"], "value_token": 2, "cast": "list"},
+        auth=ROOT,
+    ).json()
+
+    activated = client.post(
+        "/training/activate",
+        json={"pack_id": draft["pack_id"], "pack_version": draft["pack_version"]},
+        auth=ROOT,
+    )
+    assert activated.status_code == 200, activated.text
+    return confirmed, {**draft, "activated_version": activated.json()["pack_version"]}
+
+
+def test_withdrawing_a_mapping_is_a_new_version_not_a_deletion(client: TestClient) -> None:
+    """The confirmation loop, run backwards.
+
+    Confirm a line, compile it, activate it - then take it out again. What must
+    be true afterwards:
+
+      - the pattern is gone from the ACTIVE pack, so it reads nothing more;
+      - the version that contained it is still on disk, so an audit run under it
+        can still be explained;
+      - the training example survives, because a decision an administrator made
+        is an event that happened, and unlearning a mapping is not the same act
+        as pretending nobody ever confirmed it.
+    """
+    confirmed, draft = _trained_mapping(client)
+    pattern_id = draft["pattern_id"]
+    trained_version = draft["activated_version"]
+
+    packs = client.get("/training/packs", auth=ROOT).json()["packs"]
+    live = next(p for p in packs if p["pack_id"] == draft["pack_id"] and p["is_active"])
+    mapping = next(p for p in live["patterns"] if p["id"] == pattern_id)
+    assert mapping["withdrawable"] is True
+    assert mapping["training_example_id"] == confirmed["example_id"]
+
+    withdrawn = client.post(
+        "/training/withdraw",
+        json={
+            "pack_id": draft["pack_id"],
+            "pattern_id": pattern_id,
+            "reason": "the capture was wrong for this platform",
+        },
+        auth=ROOT,
+    )
+    assert withdrawn.status_code == 200, withdrawn.text
+    result = withdrawn.json()
+    assert result["previous_version"] == trained_version
+    assert result["pack_version"] != trained_version
+    assert result["withdrawn_pattern_id"] == pattern_id
+
+    after = client.get("/training/packs", auth=ROOT).json()["packs"]
+
+    # Gone from the live pack.
+    now_live = next(p for p in after if p["pack_id"] == draft["pack_id"] and p["is_active"])
+    assert now_live["pack_version"] == result["pack_version"]
+    assert all(p["id"] != pattern_id for p in now_live["patterns"])
+
+    # Still on disk in the version that had it. Not a deletion.
+    held = next(
+        p
+        for p in after
+        if p["pack_id"] == draft["pack_id"] and p["pack_version"] == trained_version
+    )
+    assert any(p["id"] == pattern_id for p in held["patterns"])
+
+    # The decision survives the mapping.
+    examples = client.get("/training/examples", auth=ROOT).json()["examples"]
+    assert any(e["example_id"] == confirmed["example_id"] for e in examples)
+
+
+def test_a_withdrawal_is_recorded_in_the_chain(client: TestClient) -> None:
+    """As attestable as the confirmation that created the mapping."""
+    _, draft = _trained_mapping(client)
+
+    client.post(
+        "/training/withdraw",
+        json={"pack_id": draft["pack_id"], "pattern_id": draft["pattern_id"], "reason": "wrong"},
+        auth=ROOT,
+    )
+
+    records = client.get("/audit/records", auth=ROOT).json()["records"]
+    withdrawals = [
+        r
+        for r in records
+        if r["action"] == "pack_created"
+        and json.loads(r["payload"]).get("withdrawn_pattern_id") == draft["pattern_id"]
+    ]
+    assert withdrawals, "the withdrawal was not written to the chain"
+
+    payload = json.loads(withdrawals[0]["payload"])
+    assert payload["reason"] == "wrong"
+    # D4 - the chain attests that a mapping was removed. It does not quote the
+    # device: the confirmed configuration line does not travel with it.
+    assert CONFIRMED_LINE not in str(payload)
+
+
+def test_withdrawing_is_admin_only(client: TestClient) -> None:
+    """Same boundary as every other training endpoint (D25)."""
+    body = {"pack_id": "cisco/ios", "pattern_id": "p-ssh-version-001"}
+
+    assert client.post("/training/withdraw", json=body).status_code == 401
+    assert client.post("/training/withdraw", json=body, auth=ALICE).status_code == 403
+    assert client.get("/training/packs").status_code == 401
+    assert client.get("/training/packs", auth=ALICE).status_code == 403

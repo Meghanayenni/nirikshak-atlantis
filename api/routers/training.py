@@ -31,7 +31,8 @@ from pydantic import Field as Constraint
 
 from api.audit.chain import AuditChain
 from api.db import training as store
-from api.models.enums import CastType, TrainingOutcome
+from api.models.csm import CANONICAL_FIELD_NAMES
+from api.models.enums import CastType, PatternSource, TrainingOutcome
 from api.routers.deps import AdminUser, AuditConn, Conn
 from api.train import service
 from api.train.compile import CompileRequest
@@ -315,4 +316,123 @@ def list_examples(
             }
             for e in found
         ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# The pack inventory
+# ---------------------------------------------------------------------------
+
+
+def _pattern_json(pattern: Any) -> dict[str, Any]:
+    """One mapping, as the administrator needs to read it.
+
+    The regex is shown in full. DEVELOPER_GUIDE.md §4 requires that a pattern be readable
+    by the person who has to stand behind it, and a screen that showed the field
+    name but hid the expression would leave them approving something they cannot
+    check.
+    """
+    provenance = pattern.provenance
+    return {
+        "id": pattern.id,
+        "field": pattern.field,
+        "source": str(pattern.source),
+        "match_type": str(pattern.match.type),
+        "pattern": pattern.match.pattern,
+        "capture": pattern.capture.value,
+        "cast": str(pattern.capture.cast),
+        "scope_block": list(pattern.scope.block or ()),
+        "examples": list(pattern.examples),
+        "training_example_id": provenance.training_example_id if provenance else None,
+        "audit_seq": provenance.audit_seq if provenance else None,
+        # Only an admin-trained pattern may be withdrawn (see
+        # `draft_without_pattern`). Compared against the enum rather than a
+        # string literal: the wire value is `admin_trained` and a hand-written
+        # spelling here would silently mark every trained mapping permanent.
+        # Stated in the payload so the UI does not re-derive the rule and cannot
+        # disagree with the backend about it.
+        "withdrawable": pattern.source is PatternSource.ADMIN_TRAINED,
+    }
+
+
+@router.get("/packs")
+def list_packs(_admin: AdminUser) -> dict[str, Any]:
+    """Every vendor pack version on disk, newest first, active one marked.
+
+    Superseded versions are included deliberately: they are what rollback selects
+    between, and an inventory that showed only the active version would make the
+    versioning look decorative.
+    """
+    summaries = service.pack_inventory()
+    return {
+        "count": len(summaries),
+        # The canonical schema and the cast vocabulary, served rather than
+        # duplicated in the client. Rule 5 — adding a field is a data change, and
+        # a hardcoded list in the interface would make it a frontend release too.
+        # It is also the honest list: a field the interface offers that the model
+        # does not have would produce a mapping that compiles and reads nothing.
+        "canonical_fields": sorted(CANONICAL_FIELD_NAMES),
+        "casts": [c.value for c in CastType],
+        "packs": [
+            {
+                "pack_id": s.pack.pack_id,
+                "vendor": s.pack.vendor,
+                "os_family": s.pack.os_family,
+                "pack_version": s.pack.pack_version,
+                "parent_version": s.pack.parent_version,
+                "status": str(s.pack.status),
+                "origin": s.origin,
+                "is_active": s.is_active,
+                "checksum": s.pack.checksum,
+                "created_at": (s.pack.created_at.isoformat() if s.pack.created_at else None),
+                "pattern_count": len(s.pack.patterns),
+                "admin_trained_count": sum(
+                    1 for p in s.pack.patterns if p.source is PatternSource.ADMIN_TRAINED
+                ),
+                "patterns": [_pattern_json(p) for p in s.pack.patterns],
+            }
+            for s in summaries
+        ],
+    }
+
+
+class WithdrawBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pack_id: str = Constraint(min_length=1)
+    pattern_id: str = Constraint(min_length=1)
+    reason: str | None = Constraint(default=None, max_length=500)
+
+
+@router.post("/withdraw")
+def withdraw(audit_conn: AuditConn, admin: AdminUser, body: WithdrawBody) -> dict[str, Any]:
+    """Retire one admin-trained mapping from the active pack.
+
+    Not a delete. A new pack version is drafted without the pattern, validated,
+    and activated; the version that contained it stays on disk so an audit run
+    under it can still be explained, and the training example that produced it is
+    left alone — a decision an administrator made is an event that happened.
+
+    `withdrawn_by` comes from the authenticated identity, never from the body,
+    for the same reason `confirmed_by` does.
+    """
+    chain = AuditChain(audit_conn)
+    try:
+        result = service.withdraw_pattern(
+            body.pack_id,
+            body.pattern_id,
+            withdrawn_by=admin.username,
+            reason=body.reason,
+            chain=chain,
+        )
+    except TrainError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    return {
+        "pack_id": result.pack_id,
+        "pack_version": result.version,
+        "previous_version": result.previous_version,
+        "withdrawn_pattern_id": body.pattern_id,
+        "checksum": result.checksum,
+        "pattern_count": len(result.pattern_ids),
     }

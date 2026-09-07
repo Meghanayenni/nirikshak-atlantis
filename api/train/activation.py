@@ -38,7 +38,7 @@ import yaml
 from api.ingest.pack_activation import ACTIVATION_RECORD, ActivationRecord
 from api.ingest.pack_checksum import compute, verify_bytes
 from api.ingest.packs import PACKS_ROOT, TRAINED_ROOT, load_pack, semver_key
-from api.models.enums import PackStatus
+from api.models.enums import PackStatus, PatternSource
 from api.models.pack import PatternDef, VendorPack
 from api.train.errors import ActivationError
 
@@ -91,6 +91,43 @@ def draft_with_pattern(base: VendorPack, pattern: PatternDef) -> VendorPack:
             "checksum": None,
             "created_at": datetime.now(UTC),
             "patterns": (*base.patterns, pattern),
+        }
+    )
+
+
+def draft_without_pattern(base: VendorPack, pattern_id: str) -> VendorPack:
+    """A new DRAFT of `base` with one pattern removed.
+
+    The inverse of `draft_with_pattern`, and deliberately built the same way: a
+    new version, not an edit. Withdrawing a mapping an administrator no longer
+    stands behind must leave the version that contained it intact on disk, so a
+    device audited last month can still be explained by the pack that audited it.
+    Mutating the active file would make that history unreadable.
+
+    Only an admin-trained pattern may be withdrawn through here. A builtin
+    pattern is repository content — removing it is a code change someone reviews,
+    not a button in the interface.
+    """
+    match = next((p for p in base.patterns if p.id == pattern_id), None)
+    if match is None:
+        raise ActivationError(
+            f"pattern id {pattern_id!r} is not in {base.pack_id} {base.pack_version}"
+        )
+    if match.source is not PatternSource.ADMIN_TRAINED:
+        raise ActivationError(
+            f"pattern {pattern_id!r} is {match.source}, not admin-trained. Only a "
+            "mapping an administrator created here may be withdrawn here; a builtin "
+            "pattern is repository content and is removed by editing the pack."
+        )
+
+    return base.model_copy(
+        update={
+            "pack_version": bump_patch(base.pack_version),
+            "parent_version": base.pack_version,
+            "status": PackStatus.DRAFT,
+            "checksum": None,
+            "created_at": datetime.now(UTC),
+            "patterns": tuple(p for p in base.patterns if p.id != pattern_id),
         }
     )
 

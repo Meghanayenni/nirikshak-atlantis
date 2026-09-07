@@ -33,12 +33,15 @@ from pathlib import Path
 from api.audit.chain import AuditChain
 from api.config import settings
 from api.db import training as store
+from api.ingest.pack_activation import ACTIVATION_RECORD
 from api.ingest.packs import (
     PACKS_ROOT,
     TRAINED_ROOT,
     clear_pack_cache,
     find_pack,
     load_active_packs,
+    load_pack,
+    semver_key,
 )
 from api.learn.cluster import cluster_id_for
 from api.learn.index import ExampleIndex, build_index
@@ -52,6 +55,7 @@ from api.train.activation import (
     ActivationResult,
     activate,
     draft_with_pattern,
+    draft_without_pattern,
     find_version,
     rollback,
     validate,
@@ -344,6 +348,120 @@ def activate_draft(
             },
         )
     return result
+
+
+# ---------------------------------------------------------------------------
+# The pack inventory, and withdrawing a mapping
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PackSummary:
+    """One pack version on disk, as the administrator's inventory shows it."""
+
+    pack: VendorPack
+    path: Path
+    origin: str
+    """'builtin' or 'trained' - which tree the file came from."""
+    is_active: bool
+
+
+def pack_inventory(
+    *, builtin_root: Path | None = None, trained_root: Path | None = None
+) -> list[PackSummary]:
+    """Every pack version on disk, newest first, with the active one marked.
+
+    Reads both trees. A version that is not active is still shown: the point of
+    a versioned pack is that the superseded ones remain, and an inventory that
+    hid them would make rollback look like a feature with nothing to roll back
+    to.
+    """
+    builtin_root = builtin_root if builtin_root is not None else PACKS_ROOT
+    trained_root = trained_root if trained_root is not None else TRAINED_ROOT
+
+    active = {p.pack_id: p.pack_version for p in load_active_packs(use_cache=False)}
+
+    summaries: list[PackSummary] = []
+    for origin, root in (("builtin", builtin_root), ("trained", trained_root)):
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*.yaml")):
+            if path.name == ACTIVATION_RECORD:
+                continue
+            pack = load_pack(path)
+            summaries.append(
+                PackSummary(
+                    pack=pack,
+                    path=path,
+                    origin=origin,
+                    is_active=active.get(pack.pack_id) == pack.pack_version,
+                )
+            )
+
+    summaries.sort(
+        key=lambda s: (s.pack.vendor, s.pack.os_family, semver_key(s.pack.pack_version)),
+        reverse=True,
+    )
+    return summaries
+
+
+def withdraw_pattern(
+    pack_id: str,
+    pattern_id: str,
+    *,
+    withdrawn_by: str,
+    reason: str | None = None,
+    chain: AuditChain | None = None,
+    trained_root: Path | None = None,
+    builtin_root: Path | None = None,
+) -> ActivationResult:
+    """Remove one admin-trained mapping from the active pack, as a new version.
+
+    The mirror image of the confirmation loop, and it runs through the same
+    machinery on purpose: draft, validate, activate, clear the cache. So a
+    withdrawal is a versioned, checksummed, audited event exactly as the addition
+    was, and the version that still contains the pattern stays on disk for the
+    audits that were run under it.
+
+    Deletion is not offered anywhere in this system, and this is not deletion.
+    The training example that produced the mapping is left untouched: an
+    administrator's decision is an event that happened, and unlearning what a
+    pattern does is a different act from pretending nobody ever confirmed it.
+    """
+    active = next(
+        (p for p in load_active_packs(use_cache=False) if p.pack_id == pack_id),
+        None,
+    )
+    if active is None:
+        raise ActivationError(
+            f"{pack_id} has no active version, so there is nothing to withdraw from"
+        )
+
+    draft = draft_without_pattern(active, pattern_id)
+    write_pack(draft, trained_root)
+
+    if chain is not None:
+        chain.append(
+            actor=Actor(type=ActorType.HUMAN, id=withdrawn_by, role="admin"),
+            action=AuditAction.PACK_CREATED,
+            subject=Subject(kind="vendor_pack", id=f"{draft.pack_id}@{draft.pack_version}"),
+            payload={
+                "pack_id": draft.pack_id,
+                "pack_version": draft.pack_version,
+                "parent_version": draft.parent_version,
+                "status": str(draft.status),
+                "withdrawn_pattern_id": pattern_id,
+                "reason": reason,
+            },
+        )
+
+    return activate_draft(
+        draft,
+        activated_by=withdrawn_by,
+        chain=chain,
+        trained_root=trained_root,
+        builtin_root=builtin_root,
+    )
 
 
 def rollback_pack(
