@@ -28,9 +28,28 @@ function apiProxy(): ProxyOptions {
     target: API_TARGET,
     changeOrigin: false,
     bypass(req) {
+      // `Sec-Fetch-Dest` is the browser's own statement of what it wants the
+      // response FOR, and it is the honest signal this needs. A navigation is
+      // `document`; a `fetch()` is `empty` and never `document`, whatever the
+      // request asks for in `Accept`.
+      //
+      // Accept alone cannot tell them apart, and that mattered: the application
+      // fetches its own HTML report with `Accept: text/html`, so the heuristic
+      // below used to answer that request with `index.html`. The report screen
+      // then rendered the application's own shell inside a sandboxed iframe —
+      // scripts blocked, nothing to show — as a blank white box, with no error
+      // anywhere, because the request had succeeded.
+      const dest = req.headers['sec-fetch-dest'];
+      if (typeof dest === 'string') return dest === 'document' ? '/index.html' : undefined;
+
+      const mode = req.headers['sec-fetch-mode'];
+      if (typeof mode === 'string') return mode === 'navigate' ? '/index.html' : undefined;
+
+      // Neither header: not a browser this application supports (curl, a test).
+      // Fall back to the old guess so a hand-typed URL still serves the app.
       const accept = req.headers.accept ?? '';
-      // A document request from the address bar: serve the application.
       if (req.method === 'GET' && accept.includes('text/html')) return '/index.html';
+
       // Anything else is an API call and is proxied.
       return undefined;
     },

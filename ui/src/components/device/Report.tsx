@@ -10,13 +10,13 @@
  * The gate is NIRIKSHAK's workflow rule, applied here. The backend will render
  * a report for any persisted run — it is not refusing.
  */
-import { Lock } from 'lucide-react';
+import { Download, Lock } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/Primitives';
 import { ErrorState, Loading } from '@/components/ui/States';
 import { useMutation } from '@/hooks/useApi';
-import { getHtmlReport, pdfReportUrl } from '@/services/audits';
+import { getHtmlReport, getPdfReport } from '@/services/audits';
 
 import type { DeviceWorkspace } from './useDeviceWorkspace';
 
@@ -24,6 +24,7 @@ export function ReportPanel({ workspace }: { workspace: DeviceWorkspace }) {
   const { auditId, blockers, gateLoading, reviewRestricted } = workspace;
   const [html, setHtml] = useState<string | null>(null);
   const fetchReport = useMutation(getHtmlReport);
+  const fetchPdf = useMutation(getPdfReport);
 
   // A gate whose inputs have not arrived is not an open gate. Until every
   // request behind `blockers` has answered, the honest state is "still
@@ -35,8 +36,34 @@ export function ReportPanel({ workspace }: { workspace: DeviceWorkspace }) {
 
   async function onGenerate() {
     if (!auditId) return;
-    const document = await fetchReport.run(auditId);
-    if (document) setHtml(document);
+    const rendered = await fetchReport.run(auditId);
+    if (rendered) setHtml(rendered);
+  }
+
+  /**
+   * Save the PDF.
+   *
+   * Fetched as a blob so the request carries the session's credentials, then
+   * handed to the browser as an object URL. A plain link to the endpoint sends
+   * no `Authorization` header and, opened in a new tab, has no session to read
+   * either — which is how a Download PDF button ended up delivering the sign-in
+   * screen.
+   */
+  async function onDownloadPdf() {
+    if (!auditId) return;
+    const file = await fetchPdf.run(auditId);
+    if (!file) return;
+
+    const href = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = `nirikshak-report-${auditId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Released on the next tick: revoking synchronously can cancel the save in
+    // some browsers before it has read the blob.
+    setTimeout(() => URL.revokeObjectURL(href), 0);
   }
 
   if (blocked) {
@@ -71,14 +98,10 @@ export function ReportPanel({ workspace }: { workspace: DeviceWorkspace }) {
         <Button variant="primary" onClick={onGenerate} disabled={fetchReport.pending}>
           {fetchReport.pending ? 'Generating…' : 'Generate report'}
         </Button>
-        <a
-          href={pdfReportUrl(auditId ?? '')}
-          target="_blank"
-          rel="noreferrer"
-          className="link"
-        >
-          Download PDF
-        </a>
+        <Button onClick={onDownloadPdf} disabled={fetchPdf.pending}>
+          <Download className="h-4 w-4" aria-hidden="true" />
+          {fetchPdf.pending ? 'Rendering PDF…' : 'Download PDF'}
+        </Button>
       </div>
 
       {reviewRestricted && (
@@ -90,6 +113,9 @@ export function ReportPanel({ workspace }: { workspace: DeviceWorkspace }) {
 
       {fetchReport.pending && <Loading label="Rendering report" />}
       {fetchReport.error && <ErrorState message={fetchReport.error} onRetry={onGenerate} />}
+      {/* A PDF failure is usually the GTK runtime being absent, and the backend
+          says which libraries are missing. That sentence is the useful part. */}
+      {fetchPdf.error && <ErrorState message={fetchPdf.error} onRetry={onDownloadPdf} />}
 
       {html && (
         <div className="mt-4 overflow-hidden rounded border border-border">

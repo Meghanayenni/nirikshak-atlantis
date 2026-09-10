@@ -134,6 +134,14 @@ export interface RequestOptions {
   token?: string;
   /** Return the raw text body instead of parsing JSON (the HTML report). */
   raw?: boolean;
+  /**
+   * Return the body as a `Blob` (the PDF report).
+   *
+   * The alternative — pointing an `<a href>` at the endpoint — cannot work here.
+   * Credentials are HTTP Basic held in memory and `sessionStorage`, and a
+   * browser navigation carries neither, so the request arrives unauthenticated.
+   */
+  blob?: boolean;
   signal?: AbortSignal;
 }
 
@@ -167,10 +175,17 @@ async function readDetail(response: Response): Promise<string> {
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, formData, query, token, raw, signal } = options;
+  const { method = 'GET', body, formData, query, token, raw, blob, signal } = options;
   const url = buildUrl(path, query);
 
-  const headers: Record<string, string> = { Accept: raw ? 'text/html' : 'application/json' };
+  // `*/*` for a raw or binary body rather than the specific type wanted.
+  // Saying `text/html` here is true but costly: the development proxy has to
+  // tell a navigation from a `fetch()`, and an in-app request claiming to want
+  // a document is exactly what made that judgement go wrong. The endpoints
+  // below do not content-negotiate, so asking for anything gains nothing.
+  const headers: Record<string, string> = {
+    Accept: raw || blob ? '*/*' : 'application/json',
+  };
   const auth = token ?? loadSession()?.token;
   if (auth) headers.Authorization = `Basic ${auth}`;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -192,6 +207,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     throw new ApiError(response.status, await readDetail(response), url);
   }
 
+  if (blob) return (await response.blob()) as unknown as T;
   if (raw) return (await response.text()) as unknown as T;
 
   const text = await response.text();
