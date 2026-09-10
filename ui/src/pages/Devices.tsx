@@ -20,6 +20,7 @@ import { listAudits } from '@/services/audits';
 import { listDevices, upload } from '@/services/devices';
 import type { AuditRun } from '@/types/api';
 import { deviceLabel, formatTimestamp, platformLabel } from '@/utils/format';
+import { describeUpload } from '@/utils/upload';
 
 function latestByDevice(audits: AuditRun[]): Map<string, AuditRun> {
   const latest = new Map<string, AuditRun>();
@@ -67,11 +68,10 @@ export function DevicesPage() {
     if (!list || list.length === 0) return;
     const result = await uploadFiles.run(Array.from(list));
     if (result) {
-      push(
-        result.rejected.length > 0 ? 'info' : 'success',
-        `${result.accepted.length} configuration(s) accepted`,
-        result.rejected.length > 0 ? `${result.rejected.length} rejected.` : undefined,
-      );
+      // Name each refusal and each unidentified platform. A bare count told the
+      // operator something was wrong and nothing about what.
+      const message = describeUpload(result);
+      push(message.kind, message.title, message.detail);
       devices.reload();
     } else if (uploadFiles.error) {
       push('error', 'Upload failed', uploadFiles.error);

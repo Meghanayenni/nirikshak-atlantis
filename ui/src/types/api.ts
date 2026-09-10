@@ -114,18 +114,49 @@ export interface IngestStats {
   deduplicated: number;
 }
 
+/**
+ * Whether ingestion identified the platform, and if not, why not.
+ *
+ * `vendor` and `os_family` live HERE, not on the accepted file. The previous
+ * declaration put them at the top level with an index signature, so reading
+ * `accepted[0].vendor` type-checked and always returned undefined.
+ */
+export interface UploadDetection {
+  outcome: 'detected' | 'no_signature_matched' | 'below_threshold' | 'ambiguous' | 'no_packs_available';
+  vendor: string | null;
+  os_family: string | null;
+  score: number;
+  margin: number;
+  /** The backend's own sentence, e.g. "best candidate cisco/ios scored 0.25, below the 0.60 threshold". */
+  explanation: string;
+}
+
 export interface UploadAccepted {
   file_id: string;
   filename: string;
-  vendor: string | null;
-  os_family: string | null;
-  [key: string]: unknown;
+  size_bytes: number;
+  line_count: number;
+  encoding: string;
+  format: string;
+  /** True when these exact bytes were already stored. Still an acceptance. */
+  duplicate: boolean;
+  detection: UploadDetection;
+  identity: Record<string, unknown>;
+}
+
+export interface UploadRejected {
+  filename: string;
+  /** Machine-readable `RejectionReason`, e.g. `empty`, `binary_content`. */
+  reason: string;
+  /** The operator-facing sentence, e.g. "the file is empty (0 bytes)". */
+  detail: string;
+  size_bytes: number;
 }
 
 export interface UploadResult {
+  batch_id: string;
   accepted: UploadAccepted[];
-  rejected: { filename: string; reason: string; [key: string]: unknown }[];
-  [key: string]: unknown;
+  rejected: UploadRejected[];
 }
 
 // ---------------------------------------------------------------------------

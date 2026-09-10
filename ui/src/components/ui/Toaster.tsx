@@ -39,7 +39,9 @@ export function Toaster() {
             <div className="min-w-0 flex-1">
               <p className="text-base font-medium">{toast.title}</p>
               {toast.detail && (
-                <p className="mt-0.5 text-base text-ink-2 break-words">{toast.detail}</p>
+                <p className="mt-0.5 whitespace-pre-line break-words text-base text-ink-2">
+                  {toast.detail}
+                </p>
               )}
             </div>
             <button
