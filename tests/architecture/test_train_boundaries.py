@@ -242,6 +242,22 @@ def test_no_trained_pack_quotes_an_evaluation_or_holdout_line() -> None:
     if not pack_files:
         pytest.skip("no trained pack on disk; the guard applies when one exists")
 
+    assert contaminated_examples(pack_files) == []
+
+
+def contaminated_examples(pack_files: list[Path]) -> list[str]:
+    """Examples quoting an evaluation line that appears in no development file.
+
+    Extracted from the test above so the *detection* can be exercised even when
+    no trained pack exists on disk — which, in this repository, is always.
+    `packs/trained/` is gitignored deployment state (D45), so the scan above
+    skips on every checkout and on CI, and the guard DEF-16 is about had never
+    once run against real input.
+
+    A guardrail that cannot fail is not a guardrail — the same argument
+    `test_detector_actually_fires` makes about the import detector — so the two
+    tests below drive this with constructed packs instead.
+    """
     protected = _corpus_lines({"eval"})
     development = _corpus_lines({"dev"})
 
@@ -253,7 +269,51 @@ def test_no_trained_pack_quotes_an_evaluation_or_holdout_line() -> None:
                 text = example.strip()
                 if text in protected and text not in development:
                     offenders.append(f"{path.name}:{pattern['id']} quotes {text!r}")
-    assert offenders == [], "\n".join(offenders)
+    return offenders
+
+
+def test_the_contamination_detector_actually_fires(tmp_path: Path) -> None:
+    """The real DEF-16 line, against a constructed trained pack.
+
+    `ip ssh server algorithm encryption aes128-cbc` appears in
+    `corpus/cisco/eval/edge-rtr-11.cfg` and in no development file. It is the
+    exact example compiled into `cisco/ios` 1.1.4 through 1.1.6, and the reason
+    for the P15 trained-pack reset — recoverable today only because ADR 0031
+    committed those packs to `packs/archive/`.
+
+    Driving the detector with it proves the scan above would catch a
+    recurrence, rather than proving only that it skips quietly.
+    """
+    contaminated = tmp_path / "1.1.5.yaml"
+    contaminated.write_text(
+        "patterns:\n"
+        "  - id: p-weak-ciphers-admin-002\n"
+        "    examples: ['ip ssh server algorithm encryption aes128-cbc']\n",
+        encoding="utf-8",
+    )
+
+    offenders = contaminated_examples([contaminated])
+
+    assert len(offenders) == 1
+    assert "p-weak-ciphers-admin-002" in offenders[0]
+    assert "aes128-cbc" in offenders[0]
+
+
+def test_the_contamination_detector_passes_a_development_example(tmp_path: Path) -> None:
+    """The converse, so the detector is not simply flagging every example.
+
+    `ip ssh version 2` is in the development split, which is where a pattern
+    example is supposed to come from.
+    """
+    clean = tmp_path / "1.0.1.yaml"
+    clean.write_text(
+        "patterns:\n"
+        "  - id: p-ssh-version-admin-001\n"
+        "    examples: ['ip ssh version 2']\n",
+        encoding="utf-8",
+    )
+
+    assert contaminated_examples([clean]) == []
 
 
 # ---------------------------------------------------------------------------

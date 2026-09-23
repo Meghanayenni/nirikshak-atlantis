@@ -257,6 +257,16 @@ endpoint needs the WeasyPrint/GTK stack, and where that is absent it answers 503
 naming the missing libraries rather than substituting another engine or
 returning the HTML document under a `.pdf` name.
 
+**Every skip guard is paired or registered.** A test that skips is a test that
+does not test: four PDF tests skipped wherever the runtime worked, so the
+endpoint was exercised by nothing for ten phases. An audit of all fourteen
+guards found two more of the same shape — `embed()` producing 384-dimension
+vectors that nothing asserted, and a training queue ranking suggestions that
+nothing asserted — plus a contamination guard that had **never run**, because it
+scans a gitignored directory that is empty on every checkout. All three are
+covered now, and `tests/architecture/test_skip_guards.py` fails the build if a
+new guard appears without something covering its other state.
+
 Until P17 three documents said this was blocked. It was not: the GTK runtime is
 installed here and the live probe had been reporting so on every request. **No
 test asserted the positive path**, so a working endpoint and three documents

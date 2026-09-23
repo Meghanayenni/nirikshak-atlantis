@@ -264,3 +264,79 @@ def test_no_suggestion_can_reach_a_canonical_field() -> None:
     from api.models.training import Suggestion
 
     assert "value" not in Suggestion.model_fields
+
+
+# ---------------------------------------------------------------------------
+# The model, where it is present
+# ---------------------------------------------------------------------------
+#
+# Every test above covers the REFUSAL and skips where the model is installed.
+# On a machine with the [ai] extra and the weights present, that left `embed` —
+# the entry point to the entire similarity layer — asserted by nothing. The same
+# shape as the PDF finding in ADR 0041: a capability that works, and a suite
+# that would stay green if it stopped.
+
+
+@pytest.mark.skipif(
+    not availability().available, reason="the embedding model is absent in this environment"
+)
+def test_embedding_produces_vectors_when_the_model_is_present() -> None:
+    """The positive path. Deliberately asserts shape, not values.
+
+    An embedding is not reproducible across versions of the model and pinning
+    numbers here would make a legitimate upgrade look like a regression. What
+    must hold is that the layer runs: one vector per line, a fixed width, and
+    finite numbers rather than NaNs a distance calculation would silently
+    propagate.
+    """
+    import math
+
+    lines = ["ip ssh version 2", "transport input telnet", "no ip http server"]
+    vectors = embed(lines)
+
+    assert len(vectors) == len(lines)
+    widths = {len(v) for v in vectors}
+    assert len(widths) == 1, f"ragged embedding widths: {widths}"
+    assert widths.pop() > 0
+
+    for vector in vectors:
+        assert all(math.isfinite(component) for component in vector)
+
+
+@pytest.mark.skipif(
+    not availability().available, reason="the embedding model is absent in this environment"
+)
+def test_embedding_is_deterministic_for_one_line() -> None:
+    """Two calls, one answer.
+
+    A retrieval layer that returned different neighbours for the same line on
+    consecutive runs would make the training queue unreproducible, and an
+    administrator would be confirming against a ranking nobody could recreate.
+    """
+    first = embed(["ip ssh version 2"])
+    second = embed(["ip ssh version 2"])
+
+    assert first == second
+
+
+@pytest.mark.skipif(
+    not availability().available, reason="the embedding model is absent in this environment"
+)
+def test_a_real_embedding_still_cannot_reach_a_verdict(index) -> None:
+    """The gate that matters, exercised with real vectors rather than constructed ones.
+
+    `test_retrieval_over_the_real_index_stays_uncalibrated` makes this claim
+    with hand-built vectors, which proves the arithmetic. This proves it on the
+    path a deployment actually takes: a real model, real embeddings, real
+    neighbours — and still UNCALIBRATED_SIMILARITY, still not evidence.
+    """
+    query = embed(["ip ssh version 2"])[0]
+    vectors = embed([entry.text for entry in index.entries])
+
+    suggestions = suggest_for_vectors(query, vectors, index)
+
+    assert suggestions
+    for suggestion in suggestions:
+        assert suggestion.confidence_method is ConfidenceMethod.UNCALIBRATED_SIMILARITY
+        assert suggestion.calibrated_confidence is None
+    assert suggestions_are_evidence(suggestions) is False

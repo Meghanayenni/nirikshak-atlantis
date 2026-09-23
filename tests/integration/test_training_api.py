@@ -25,6 +25,7 @@ from api.db import users as user_store
 from api.db.connection import connect
 from api.db.migrate import OPERATIONAL_MIGRATIONS, migrate
 from api.ingest import packs as pack_loader
+from api.learn.embedding import availability as model_availability
 from api.main import app
 from api.models.enums import Role
 from api.train import activation as activation_module
@@ -570,3 +571,38 @@ def test_withdrawing_is_admin_only(client: TestClient) -> None:
     assert client.post("/training/withdraw", json=body, auth=ALICE).status_code == 403
     assert client.get("/training/packs").status_code == 401
     assert client.get("/training/packs", auth=ALICE).status_code == 403
+
+
+@pytest.mark.skipif(
+    not model_availability().available,
+    reason="the embedding model is absent in this environment",
+)
+def test_a_present_model_actually_ranks_something(client: TestClient) -> None:
+    """The counterpart to the test above, which skips wherever the model works.
+
+    Between them the two cover both states. Alone, the refusal test left the
+    ranked path — the one a deployment with the [ai] extra takes — asserted by
+    nothing, which is the finding ADR 0041 recorded about PDF appearing again in
+    the training queue.
+
+    What is asserted is that ranking *happens* and stays labelled, never which
+    suggestion wins: the ordering is a retrieval result from an uncalibrated
+    model, and pinning it would turn a legitimate model change into a failure.
+    """
+    _upload_and_audit(client)
+    body = client.get("/training/queue", auth=ROOT).json()
+
+    assert body["model"]["available"] is True
+
+    ranked = [e for e in body["entries"] if e["state"] == "ranked"]
+    states = [e["state"] for e in body["entries"]]
+    assert ranked, f"no entry ranked with the model present: {states}"
+
+    for entry in ranked:
+        assert entry["suggestions"], "a ranked entry with no suggestions is not ranked"
+        assert len(entry["suggestions"]) <= 3, "D39 — at most three candidates"
+        assert entry["is_probability"] is False
+        assert "not probabilities" in entry["confidence_note"]
+        for suggestion in entry["suggestions"]:
+            assert suggestion["field"], "a suggestion names the field it proposes"
+            assert "value" not in suggestion, "Rule 1 — a suggestion carries no value"

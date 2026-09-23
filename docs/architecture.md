@@ -135,7 +135,7 @@ persist), `prioritise` cannot import `comply` (a ranking layer that could see
 verdict logic could start disagreeing with it), and `analyse` may import
 `api.models` and nothing else.
 
-Fourteen further architecture test files guard the same properties from other
+Fifteen further architecture test files guard the same properties from other
 angles: no ML library outside `learn`, no network capability, no vendor literal
 in a vendor-neutral layer, no raw configuration line in the training queue, and
 no path from the evaluation harness into any pipeline package.
@@ -432,7 +432,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and seven numbered decisions across 41 ADRs. (D63 and D64 were never issued; the
+One hundred and nine numbered decisions across 42 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -478,6 +478,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0039 | P17 | A container where the PDF endpoint works | D103, D104 |
 | 0040 | P17 | The stated stack and the installed one | D105, D106, D107 |
 | 0041 | P18 | A working deliverable described as blocked | D108, D109 |
+| 0042 | P18 | A test that skips is a test that does not test | D110, D111 |
 
 ---
 
