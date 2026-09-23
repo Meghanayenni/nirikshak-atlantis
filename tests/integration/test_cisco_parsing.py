@@ -22,7 +22,14 @@ DEV = Path("corpus/cisco/dev")
 
 @pytest.fixture(scope="module")
 def cisco():
-    pack = next(p for p in load_active_packs(use_cache=False) if p.vendor == "cisco")
+    pack = next(
+        # By platform, not by vendor. A second Cisco platform exists as of P17
+        # (cisco/nxos), and selecting on the vendor alone silently handed these
+        # IOS fixtures whichever pack sorted first.
+        p
+        for p in load_active_packs(use_cache=False)
+        if (p.vendor, p.os_family) == ("cisco", "ios")
+    )
     assert pack.pack_version == "1.3.0", "the active Cisco pack should be the parsing pack"
     return pack
 

@@ -76,9 +76,17 @@ directive means — the platform's documented default, a control the platform
 cannot express, or an honest UNKNOWN — and builds the canonical model the
 compliance engine will consume.
 
-The Cisco IOS pack reads eight canonical fields; every other pack is still
-detection-only, which is an honest state rather than a placeholder — the platform
-is recognised, and every field it cannot read says UNKNOWN.
+The Cisco IOS pack reads eight canonical fields and the Cisco NX-OS pack seven.
+Arista and Juniper read device identity and, for Juniper, firewall filters, but
+no canonical security field — an honest state rather than a placeholder: the
+platform is recognised, and every field no pack can read says UNKNOWN.
+
+**Four platforms are now detected and three parse access lists.**
+`corpus/cisco/dev/dc1-leaf-01.cfg` scored 0.25 against Cisco IOS — below the
+detection floor — and could not be audited at all until the NX-OS pack landed.
+Its detection signatures are constructs classic IOS does not write (`feature`,
+`vrf context`, a bare `line vty`, `logging server`), so it wins by a margin of
+0.85 and no other file's detection moved.
 
 The compliance engine reads only the canonical model and produces PASS, FAIL,
 UNKNOWN or NOT_APPLICABLE, each carrying the exact line it rests on or the reason

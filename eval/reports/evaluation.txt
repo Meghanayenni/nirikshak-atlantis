@@ -4,7 +4,7 @@ NIRIKSHAK — EVALUATION REPORT (P9–P10)
 
 Accuracy is reported as a measurement, not a claim.
 
-Generated      : 2026-09-23T17:44:57.551560+00:00
+Generated      : 2026-09-23T18:10:40.272174+00:00
 Rulepack       : 1.0.0
 Vendor packs   : arista/eos 1.1.0, cisco/ios 1.3.0, juniper/junos 1.1.0
 Files scored   : 5 (evaluation split only)

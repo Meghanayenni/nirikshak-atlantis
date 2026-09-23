@@ -350,6 +350,17 @@ class AclDialect(StrEnum):
     """`permit tcp 198.51.100.0 0.0.0.255 any eq 22` — wildcard masks, no
     sequence numbers on named entries."""
 
+    NXOS_CIDR = "nxos_cidr"
+    """`10 permit tcp 198.51.100.0/24 any eq 22` — the IOS entry shape with
+    prefix-length addresses instead of wildcard masks.
+
+    A separate dialect rather than a looser IOS parser. `198.51.100.0 0.0.0.255`
+    and `198.51.100.0/24` denote the same range and are read by different
+    arithmetic, and a parser accepting both would accept
+    `permit ip 10.0.0.0 0.0.0.255/24` too — a line no device writes, parsed
+    confidently into an interval nobody meant.
+    """
+
     JUNOS_SET_FILTER = "junos_set_filter"
     """`set firewall family inet filter F term T from protocol tcp` — a firewall
     filter in JunOS **flat `set` form**, where one term spans several lines and a
@@ -410,6 +421,7 @@ class CastType(StrEnum):
     LIST = "list"
     CIDR = "cidr"
     DURATION = "duration"
+    DURATION_MINUTES = "duration_minutes"
 
 
 # ---------------------------------------------------------------------------

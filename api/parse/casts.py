@@ -72,12 +72,39 @@ def cast_duration(raw: str) -> int:
     return seconds
 
 
+def cast_duration_minutes(raw: str) -> int:
+    """A bare number of **minutes**, to whole seconds.
+
+    `cast_duration` reads a single token as seconds, which is right for a
+    platform writing `exec-timeout 600` and wrong for one writing
+    `exec-timeout 10` to mean ten minutes. Those are the same characters with a
+    sixtyfold difference in meaning, so they get separate casts rather than a
+    heuristic — its own docstring already says a third form needs a new cast
+    rather than a looser one.
+
+    **The unit is a parsing convention, not a sourced platform claim.** Nothing
+    in this repository documents how any platform writes a timeout; the
+    minutes-and-seconds reading in `cast_duration` has the same standing and has
+    shipped since P4. Upgrading either from a convention to a citation is
+    `SOURCING_BACKLOG` gap 2.
+    """
+    text = raw.strip()
+    try:
+        minutes = int(text)
+    except ValueError as exc:
+        raise CastError(raw, "duration_minutes", "non-numeric") from exc
+    if minutes < 0:
+        raise CastError(raw, "duration_minutes", "negative duration")
+    return minutes * 60
+
+
 _SCALAR_CASTS = {
     CastType.INT: cast_int,
     CastType.BOOL: cast_bool,
     CastType.STR: cast_str,
     CastType.CIDR: cast_cidr,
     CastType.DURATION: cast_duration,
+    CastType.DURATION_MINUTES: cast_duration_minutes,
 }
 
 

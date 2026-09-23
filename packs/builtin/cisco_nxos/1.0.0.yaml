@@ -1,0 +1,189 @@
+# NIRIKSHAK vendor pack — cisco nxos
+#
+# Authored at P17 from corpus/cisco/dev/dc1-leaf-01.cfg, the DEVELOPMENT-split
+# file. Before this pack existed that device scored 0.25 against cisco/ios,
+# below the 0.60 detection floor, and could not be audited at all. Correct
+# abstention, and a platform nobody could reach.
+#
+# DETECTION MUST DISCRIMINATE FROM cisco/ios, or the min_margin ambiguity rule
+# fires and the file becomes unauditable a second way. Every signature below is
+# a construct classic IOS does not write:
+#
+#   feature / no feature       NX-OS gates services; IOS has no such command
+#   vrf context NAME           IOS writes `ip vrf NAME` / `vrf definition NAME`
+#   line vty        (no range) IOS always writes `line vty 0 4`
+#   logging server             IOS writes `logging host`
+#
+# Verified in both directions: none of these matches any Cisco IOS or Arista EOS
+# file in the corpus, and cisco/ios scores far below nxos on this file.
+#
+# Patterns use single-quoted YAML scalars: double quotes would process
+# backslashes as escapes and mangle every regex.
+
+vendor: cisco
+os_family: nxos
+pack_version: 1.0.0
+status: active
+created_by: team-atlantis
+checksum: sha256:ebec1dff85119d6b680dc653b80bc18dd99f44b647140013d2e777a6c94a969a
+
+comment_prefixes: ['!']
+
+detect:
+  - { type: regex, pattern: '^(no )?feature \S+$', weight: 0.35 }
+  - { type: regex, pattern: '^vrf context \S+$', weight: 0.3 }
+  - { type: regex, pattern: '^line vty$', weight: 0.25 }
+  - { type: regex, pattern: '^logging server \S+', weight: 0.2 }
+
+identity:
+  - field: hostname
+    match:   { type: regex, pattern: '^hostname (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['hostname dc1-leaf-01']
+  - field: os_version
+    match:   { type: regex, pattern: '^version (\S+) Bios:' }
+    capture: { value: '$1', cast: str }
+    examples: ['version 9.3(6) Bios:version 05.33']
+
+  # NO `model` AND NO `serial`. Neither appears in an NX-OS running-config --
+  # they are `show version` / `show inventory` output. See ADR 0037: a pattern
+  # no device could satisfy looks like support and produces UNKNOWN forever.
+
+# ---------------------------------------------------------------------------
+# Structure extraction
+#
+# NX-OS writes IOS-shaped entries with prefix-length addresses instead of
+# wildcard masks, so it names its own dialect. `198.51.100.0 0.0.0.255` and
+# `198.51.100.0/24` denote the same range by different arithmetic, and a parser
+# accepting both would also accept forms no device writes.
+# ---------------------------------------------------------------------------
+
+acl_extraction:
+  dialect: nxos_cidr
+  acl_type: extended
+  named_block: '^ip access-list (\S+)$'
+  applied: '^ip access-group (\S+) (in|out)$'
+  examples:
+    - 'ip access-list MGMT-IN'
+    - '10 permit tcp 198.51.100.0/24 any eq 22'
+    - '30 deny ip any any log'
+
+interface_extraction:
+  block: '^interface (\S+)$'
+  description: '^description (.+)$'
+  ip_address: '^ip address (\S+)$'
+  shutdown: '^shutdown$'
+  no_shutdown: '^no shutdown$'
+  examples:
+    - 'interface mgmt0'
+    - 'interface Ethernet1/1'
+    - 'description TO-SPINE1'
+    - 'ip address 10.10.12.1/30'
+    - 'no shutdown'
+
+# NO `interface_roles`. `mgmt0` is conventionally the management interface on
+# NX-OS and nothing in this repository documents that, so declaring it would be
+# the inference DEF-2 forbids wearing a citation field. See ADR 0034: the
+# construct exists and ships empty until vendor documentation is sourced.
+
+patterns:
+
+  # --- telnet_enabled ------------------------------------------------------
+  # NX-OS gates the service rather than the transport. Line 22 disables it;
+  # `feature telnet` would enable it, and both are asserted as literals because
+  # the line names no value to capture.
+  - id: p-nxos-telnet-001
+    field: telnet_enabled
+    scope: { block: null }
+    match:   { type: regex, pattern: '^no feature telnet$' }
+    capture: { value: 'false', cast: bool }
+    examples: ['no feature telnet']
+    negative_examples: ['feature telnet', 'no feature ssh']
+
+  - id: p-nxos-telnet-002
+    field: telnet_enabled
+    scope: { block: null }
+    match:   { type: regex, pattern: '^feature telnet$' }
+    capture: { value: 'true', cast: bool }
+    examples: []
+    negative_examples: ['no feature telnet', 'feature ssh']
+
+  # --- http_server_enabled -------------------------------------------------
+  - id: p-nxos-http-001
+    field: http_server_enabled
+    scope: { block: null }
+    match:   { type: regex, pattern: '^no ip http server$' }
+    capture: { value: 'false', cast: bool }
+    examples: ['no ip http server']
+    negative_examples: ['ip http server', 'no ip http secure-server']
+
+  # --- idle_timeout_seconds ------------------------------------------------
+  # NX-OS writes `exec-timeout <minutes>` -- one token, unlike the IOS
+  # `<minutes> <seconds>` pair -- so it uses the duration_minutes cast.
+  #
+  # THE UNIT IS A PARSING CONVENTION, NOT A SOURCED CLAIM. Nothing here
+  # documents it, exactly as nothing documents the IOS minutes-and-seconds
+  # reading that has shipped since P4. Both are SOURCING_BACKLOG gap 2. On this
+  # device the verdict is the same either way -- 10 seconds and 600 seconds both
+  # satisfy `gt 0 and lte 600` -- so no measurement rests on it today.
+  #
+  # Scoped to `line vty`, so the identical `exec-timeout 10` under
+  # `line console` is not read as a management idle timeout.
+  - id: p-nxos-idle-timeout-001
+    field: idle_timeout_seconds
+    scope: { block: ['^line vty$'] }
+    match:   { type: regex, pattern: '^exec-timeout (\d+)$' }
+    capture: { value: '$1', cast: duration_minutes }
+    examples: ['exec-timeout 10']
+    negative_examples: ['exec-timeout', 'session-limit 4']
+
+  # --- logging_hosts -------------------------------------------------------
+  # `logging server`, not the IOS `logging host`. Multi-valued: repetition
+  # accumulates rather than conflicts.
+  - id: p-nxos-logging-host-001
+    field: logging_hosts
+    scope: { block: null }
+    match:   { type: regex, pattern: '^logging server (\S+)' }
+    capture: { value: '$1', cast: list }
+    examples: ['logging server 198.51.100.40 6 use-vrf management']
+    negative_examples: ['logging timestamp milliseconds', 'logging monitor 5']
+
+  # --- ntp_servers ---------------------------------------------------------
+  - id: p-nxos-ntp-001
+    field: ntp_servers
+    scope: { block: null }
+    match:   { type: regex, pattern: '^ntp server (\S+)' }
+    capture: { value: '$1', cast: list }
+    examples:
+      - 'ntp server 192.0.2.10 use-vrf management'
+      - 'ntp server 192.0.2.11 use-vrf management'
+    negative_examples: ['ntp source-interface mgmt0']
+
+  # --- banner_present ------------------------------------------------------
+  # The header only. The body is a literal block the parser never turns into
+  # nodes, so a banner reading "telnet is prohibited" cannot become a fact.
+  - id: p-nxos-banner-001
+    field: banner_present
+    scope: { block: null }
+    match:   { type: regex, pattern: '^banner motd ' }
+    capture: { value: 'true', cast: bool }
+    examples: ['banner motd #']
+    negative_examples: ['banner exec #']
+
+  # --- aaa_enabled ---------------------------------------------------------
+  # NX-OS has no `aaa new-model`; AAA is on when a login method is configured.
+  - id: p-nxos-aaa-001
+    field: aaa_enabled
+    scope: { block: null }
+    match:   { type: regex, pattern: '^aaa authentication login default ' }
+    capture: { value: 'true', cast: bool }
+    examples: ['aaa authentication login default group CORP-TACACS local']
+    negative_examples: ['aaa accounting default group CORP-TACACS']
+
+# NO `ssh_version` PATTERN. NX-OS has no `ip ssh version` command; the platform
+# supports SSHv2 only, and mapping `feature ssh` to version 2 would be a
+# platform claim with no document behind it (gap 2). The field stays UNKNOWN,
+# and NRK-SSH-001 abstains on this device rather than passing it.
+#
+# NO `snmp_v3_only` PATTERN, for the reason in D73: no pack declares one, and
+# the merge policy that would make it safe is not opted in.

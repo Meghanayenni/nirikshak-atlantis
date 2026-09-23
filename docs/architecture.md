@@ -242,11 +242,16 @@ still measured on synthetic data written by this team, so no detection *rate* is
 claimed; what changed is that the machinery has run on a parsed access list at
 all. See ADR 0027.
 
-**Two dialects now, across two vendors.** P17 added JunOS firewall filters in
-flat `set` form (ADR 0033), where a list has no block header and one term spans
-several top-level lines — so the dialect table dispatches on the extraction
-*shape*, not only on the entry grammar. The corpus tally is **4 access lists
-analysed, 0 dropped**.
+**Three dialects now, across three vendors.** P17 added JunOS firewall filters
+in flat `set` form (ADR 0033), where a list has no block header and one term
+spans several top-level lines — so the dialect table dispatches on the
+extraction *shape*, not only on the entry grammar — and NX-OS prefix-length
+entries (ADR 0038). The corpus tally is **5 access lists analysed, 0 dropped**.
+
+`MGMT-IN` on the NX-OS leaf is the **first list in the corpus bound to an
+interface**. Every earlier one carried an empty `applied_to`, because no
+development file applied one; the Cisco pack's `applied` regex had been declared
+and unexercised since ADR 0027 and said so.
 
 The brace-nested form of the same JunOS filters is **not** read, and the blocker
 is upstream: vendor detection does not identify a brace-nested file at all, so
@@ -415,7 +420,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-Ninety-seven numbered decisions across 37 ADRs. (D63 and D64 were never issued; the
+One hundred numbered decisions across 38 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -457,6 +462,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0035 | P17 | Framework mappings against a content-addressed catalog | D91, D92, D93 |
 | 0036 | P17 | Selecting a benchmark, and refusing the ones we cannot | D94, D95, D96 |
 | 0037 | P17 | A model read from a line a device writes | D97, D98, D99 |
+| 0038 | P17 | A fourth platform, and the first bound access list | D100, D101, D102 |
 
 ---
 

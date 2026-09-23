@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
+from collections.abc import Callable
 from typing import Any
 
 from api.models.acl import (
@@ -207,13 +208,23 @@ def _take_port(tokens: list[str]) -> PortSpec | None | bool:
 # ---------------------------------------------------------------------------
 
 
-def _parse_ios_entry(
-    node: ConfigNode, seq: int, tree: ConfigTree, source_type: SourceType
+def _parse_entry(
+    node: ConfigNode,
+    seq: int,
+    tree: ConfigTree,
+    source_type: SourceType,
+    *,
+    take_address: Callable[[list[str]], AddrSpec | None],
 ) -> ACLEntry | None:
     """One `permit`/`deny` line, or None if this parser cannot read it.
 
     None is not a soft failure. The caller drops the whole access list, because
     an entry it could not read changes what the entries around it shadow.
+
+    The entry *shape* — `[seq] action protocol src [port] dst [port] [flags]` —
+    is shared between the IOS and NX-OS dialects; only how an address is written
+    differs, so only that is injected. Two copies of this function would drift
+    in the flag handling, which is where a silent difference would cost the most.
     """
     tokens = node.text.split()
     if not tokens:
@@ -231,7 +242,7 @@ def _parse_ios_entry(
         return None
     protocol = ProtocolSpec(name=tokens.pop(0).lower())
 
-    src = _take_address(tokens)
+    src = take_address(tokens)
     if src is None:
         return None
 
@@ -239,7 +250,7 @@ def _parse_ios_entry(
     if src_port is False:
         return None
 
-    dst = _take_address(tokens)
+    dst = take_address(tokens)
     if dst is None:
         return None
 
@@ -590,7 +601,64 @@ def _junos_set_node_ids(tree: ConfigTree, spec: AclExtraction) -> set[str]:
     return consumed
 
 
-_DIALECTS = {AclDialect.IOS_WILDCARD: _parse_ios_entry}
+def _parse_ios_entry(
+    node: ConfigNode, seq: int, tree: ConfigTree, source_type: SourceType
+) -> ACLEntry | None:
+    """The IOS binding: addresses written as `A.B.C.D W.W.W.W`."""
+    return _parse_entry(node, seq, tree, source_type, take_address=_take_address)
+
+
+def _take_cidr_address(tokens: list[str]) -> AddrSpec | None:
+    """Consume one NX-OS address specification.
+
+    Identical to the IOS form except that a bare address carries a prefix
+    length rather than being followed by a wildcard mask.
+    """
+    if not tokens:
+        return None
+
+    head = tokens.pop(0)
+
+    if head == "any":
+        return AddrSpec(kind=AddrKind.ANY, value="any")
+
+    if head == "host":
+        if not tokens:
+            return None
+        value = tokens.pop(0)
+        try:
+            ipaddress.IPv4Address(value)
+        except ValueError:
+            return None
+        return AddrSpec(kind=AddrKind.HOST, value=f"host {value}", resolved_cidrs=(f"{value}/32",))
+
+    if head == "addrgroup":
+        if not tokens:
+            return None
+        return AddrSpec(kind=AddrKind.OBJECT, value=tokens.pop(0))
+
+    if "/" not in head:
+        # A bare address with no prefix length. NX-OS writes /32 explicitly, so
+        # this is a form this dialect has not been shown and must not guess at.
+        return None
+    try:
+        network = ipaddress.ip_network(head, strict=False)
+    except ValueError:
+        return None
+    return AddrSpec(kind=AddrKind.CIDR, value=head, resolved_cidrs=(str(network),))
+
+
+def _parse_nxos_entry(
+    node: ConfigNode, seq: int, tree: ConfigTree, source_type: SourceType
+) -> ACLEntry | None:
+    """One NX-OS access-list entry, or None if this parser cannot read it."""
+    return _parse_entry(node, seq, tree, source_type, take_address=_take_cidr_address)
+
+
+_DIALECTS = {
+    AclDialect.IOS_WILDCARD: _parse_ios_entry,
+    AclDialect.NXOS_CIDR: _parse_nxos_entry,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -657,9 +725,19 @@ def _extract_ios_lists(
 
 _LIST_READERS = {
     AclDialect.IOS_WILDCARD: _extract_ios_lists,
+    # NX-OS writes the IOS *shape* -- a named block whose children are one-line
+    # entries -- and differs only in how an address is spelled, so it shares the
+    # reader and supplies its own entry parser through `_DIALECTS`.
+    AclDialect.NXOS_CIDR: _extract_ios_lists,
     AclDialect.JUNOS_SET_FILTER: _extract_junos_set_lists,
 }
-"""One reader per dialect. A dialect is a *shape plus a grammar*, not a vendor."""
+"""One reader per dialect. A dialect is a *shape plus a grammar*, not a vendor.
+
+A dialect present in `_DIALECTS` but absent here reads nothing at all, silently:
+`extract_acls` returns two empty tuples, which is indistinguishable from a
+device that filters nothing. `test_every_dialect_has_a_reader` asserts the two
+tables agree, because that failure cost an afternoon once.
+"""
 
 
 

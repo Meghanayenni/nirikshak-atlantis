@@ -81,7 +81,14 @@ def rig(tmp_path: Path):
         )
     conn.commit()
 
-    pack = next(p for p in load_active_packs(use_cache=False) if p.vendor == "cisco")
+    pack = next(
+        # By platform, not by vendor. A second Cisco platform exists as of P17
+        # (cisco/nxos), and selecting on the vendor alone silently handed these
+        # IOS fixtures whichever pack sorted first.
+        p
+        for p in load_active_packs(use_cache=False)
+        if (p.vendor, p.os_family) == ("cisco", "ios")
+    )
     parsed = parse_configuration(text, pack, file_id=file_id, file_path="sw-access-02.cfg")
     csm = build_csm(parsed, pack, device_id=file_id)
     rulepack = load_rulepack()
@@ -169,7 +176,7 @@ def test_provenance_survives(rig) -> None:
     finding = finding_store.read_findings(conn, "audit-1")[0]
 
     assert finding.provenance.rulepack_version == "1.0.0"
-    assert finding.provenance.pack_versions == {"cisco": "1.3.0"}
+    assert finding.provenance.pack_versions == {"cisco/ios": "1.3.0"}
     assert finding.provenance.engine_version
 
 

@@ -127,10 +127,11 @@ def test_baselines_are_established_now_that_a_cohort_clears_the_floor(
     _upload_fleet(client)
     body = client.get("/fleet/baseline", auth=ROOT).json()
 
-    assert body["devices"] == 17
-    # dc1-leaf-01.cfg (NX-OS) and core-rtr-01.conf (brace-nested JunOS) have no
-    # active pack, so they are counted as skipped rather than silently dropped.
-    assert body["skipped_files"] == 2
+    assert body["devices"] == 18
+    # Only core-rtr-01.conf (brace-nested JunOS) now has no active pack, and it
+    # is counted as skipped rather than silently dropped. dc1-leaf-01.cfg joined
+    # the fleet at P17 when the NX-OS pack landed, as its own cohort of one.
+    assert body["skipped_files"] == 1
     assert body["minimum_cohort_size"] == MIN_COHORT_SIZE
     assert body["comparable_baselines"] == 8
     assert body["outliers"] == []
@@ -148,7 +149,16 @@ def test_cohorts_are_platforms_and_are_never_mixed(client: TestClient) -> None:
     body = client.get("/fleet/baseline", auth=ROOT).json()
 
     cohorts = {c["cohort"]: c["size"] for c in body["cohorts"]}
-    assert cohorts == {"arista/eos": 4, "cisco/ios": 9, "juniper/junos": 4}
+    assert cohorts == {
+        "arista/eos": 4,
+        "cisco/ios": 9,
+        "cisco/nxos": 1,
+        "juniper/junos": 4,
+    }
+    # Two Cisco platforms, two cohorts. `cisco/nxos` holds one device and is far
+    # below the floor, so it establishes nothing -- which is the point: pooling
+    # it into `cisco/ios` would compare an NX-OS leaf against nine IOS routers
+    # and call the difference a deviation.
 
 
 def test_a_deviation_is_reported_as_an_observation_not_a_verdict(

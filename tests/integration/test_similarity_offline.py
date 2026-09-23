@@ -81,9 +81,14 @@ def unknown_lines_for(relative: str):
 
 
 def test_the_index_is_built_from_development_packs(index) -> None:
-    """D38 — 11 pairs, 8 fields, one vendor. Small, and stated."""
-    assert len(index.entries) == 11
-    assert len(index.fields) == 8
+    """D38 — small, and stated. 19 pairs across 9 fields at P17.
+
+    Was 11 pairs over 8 fields from one pack. The NX-OS pack added the rest,
+    so the index now spans two *platforms* — still one vendor, and still far
+    too small to support any claim about retrieval.
+    """
+    assert len(index.entries) == 19
+    assert len(index.fields) == 9
     assert index.vendors == {"cisco"}
 
 
@@ -93,16 +98,19 @@ def test_every_entry_traces_to_a_development_configuration(index, development_li
 
 
 def test_every_entry_is_a_seed_with_a_named_origin(index) -> None:
+    origins = {entry.origin.split(":")[0] for entry in index.entries}
+    assert origins == {"cisco/ios", "cisco/nxos"}
+
     for entry in index.entries:
         assert entry.source is ExampleSource.SEED
-        assert entry.origin.startswith("cisco/ios:p-")
+        assert ":p-" in entry.origin, "an entry must name the pattern it came from"
 
 
 def test_the_index_describes_its_own_size_honestly(index) -> None:
     """The sentence the report and the training screen print."""
     described = index.describe()
-    assert "11 labelled examples" in described
-    assert "8 fields" in described
+    assert "19 labelled examples" in described
+    assert "9 fields" in described
     assert "1 vendor" in described
 
 

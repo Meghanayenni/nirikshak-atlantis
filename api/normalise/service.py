@@ -114,8 +114,17 @@ def build_csm_from_sources(
             # rather than from whichever pack happens to be active now. A report
             # written later must say which pack read the line, not which pack
             # would read it today.
+            # Keyed by PACK ID -- vendor AND os_family -- rather than by
+            # vendor alone. A vendor key stopped identifying anything the moment
+            # one vendor had two platforms: two packs can carry the same version
+            # string, and a stored finding citing only the vendor could mean
+            # either. The version field exists so a verdict can name the data
+            # that produced it, and a key that cannot tell two packs apart does
+            # not do that.
             pack_versions={
-                r.vendor: r.pack_version for r in parse_results if r.vendor and r.pack_version
+                f"{r.vendor}/{r.os_family}": r.pack_version
+                for r in parse_results
+                if r.vendor and r.os_family and r.pack_version
             },
         ),
         fields=resolved,

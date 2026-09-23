@@ -61,12 +61,17 @@ dropped**. The JunOS material also supplied the corpus's first *isolated*
 redundancy — two byte-identical terms with nothing else overlapping — and the
 first address resolved through a prefix list the configuration itself defines.
 
+**P17 also added NX-OS** (ADR 0038), taking the tally to **5 analysed, 0
+dropped** across three dialects — and with it the corpus's **first access list
+bound to an interface**. Every earlier list carried an empty `applied_to`
+because no development file applied one, so the Cisco pack's `applied` regex had
+been declared and unexercised since ADR 0027.
+
 Still unread, and each for a different reason: the **brace-nested** JunOS form
 (vendor detection does not identify such a file, so it never reaches a pack —
-the blocker is upstream of extraction), **Arista** and **NX-OS** CIDR lists (no
-pack declares extraction), and JunOS **security policies**, which are a
-zone-based grammar rather than a filter and appear in the corpus as a single
-orphan line.
+the blocker is upstream of extraction), **Arista** CIDR lists (the pack declares
+no extraction), and JunOS **security policies**, which are a zone-based grammar
+rather than a filter and appear in the corpus as a single orphan line.
 
 The P12 exposure ranking is the half that did **not** open. Interfaces are read,
 but nothing establishes which one is the management plane, so exposure remains

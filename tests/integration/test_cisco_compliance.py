@@ -39,7 +39,14 @@ def rulepack():
 
 @pytest.fixture(scope="module")
 def cisco():
-    return next(p for p in load_active_packs(use_cache=False) if p.vendor == "cisco")
+    return next(
+        # By platform, not by vendor. A second Cisco platform exists as of P17
+        # (cisco/nxos), and selecting on the vendor alone silently handed these
+        # IOS fixtures whichever pack sorted first.
+        p
+        for p in load_active_packs(use_cache=False)
+        if (p.vendor, p.os_family) == ("cisco", "ios")
+    )
 
 
 def audit(name: str, pack, rulepack):
@@ -154,7 +161,7 @@ def test_no_absence_produces_a_pass(sw) -> None:
 
 def test_findings_record_the_pack_that_read_the_line(rtr) -> None:
     for finding in rtr:
-        assert finding.provenance.pack_versions == {"cisco": "1.3.0"}
+        assert finding.provenance.pack_versions == {"cisco/ios": "1.3.0"}
         assert finding.provenance.rulepack_version == "1.0.0"
         assert finding.provenance.engine_version
 
