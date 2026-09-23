@@ -14,7 +14,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from api.models.enums import CastType, ConfidenceMethod, FieldState, PatternSource, UnknownReason
+from api.models.csm import FIELD_MERGE_POLICY
+from api.models.enums import (
+    CastType,
+    ConfidenceMethod,
+    FieldState,
+    MergePolicy,
+    PatternSource,
+    UnknownReason,
+)
 from api.models.field import Field, FieldProvenance
 from api.models.pack import PatternDef, VendorPack
 from api.models.parsing import FieldMatch
@@ -76,6 +84,30 @@ def _cast_of(pack: VendorPack, field_name: str) -> CastType:
     return CastType.STR
 
 
+_UNDECIDED = object()
+"""Sentinel: this field declares no policy, so the disagreement stands.
+
+Distinct from `None`, which is a value a policy could legitimately resolve to.
+"""
+
+
+def _resolve_disagreement(field_name: str, distinct: set[Any]) -> Any:
+    """Apply the field's declared merge policy, or leave the disagreement alone.
+
+    Only booleans are resolvable: `WORST_CASE_TRUE` and `WORST_CASE_FALSE` name a
+    value, and a field whose disagreement does not contain that value has not
+    been settled by the policy — two different integers are not made comparable
+    by declaring one of them worse.
+    """
+    policy = FIELD_MERGE_POLICY.get(field_name, MergePolicy.UNDECIDED)
+
+    if policy is MergePolicy.WORST_CASE_TRUE and True in distinct:
+        return True
+    if policy is MergePolicy.WORST_CASE_FALSE and False in distinct:
+        return False
+    return _UNDECIDED
+
+
 def build_field(
     field_name: str,
     matches: list[FieldMatch],
@@ -114,9 +146,26 @@ def build_field(
     distinct = {m.value for m in matches}
 
     if len(distinct) > 1:
-        # Two lines disagree. Picking one by position would be inventing an
-        # answer the configuration does not give, so the field abstains and
-        # cites every line that contributed to the disagreement.
+        decided = _resolve_disagreement(field_name, distinct)
+        if decided is not _UNDECIDED:
+            # The field's own semantics settle it. `line vty 0 4` permitting ssh
+            # and `line vty 5 15` permitting telnet are both true, and together
+            # they say telnet is reachable — so this is reading the pair, not
+            # breaking a tie. Every contributing line stays cited, including the
+            # ones that said the safer thing: an operator closing the gap needs
+            # to know which range to change.
+            return Field[Any](
+                value=decided,
+                state=FieldState.PRESENT,
+                confidence=DETERMINISTIC_CONFIDENCE,
+                confidence_method=method,
+                evidence=evidence,
+                provenance=provenance,
+            )
+
+        # No policy, so two lines genuinely disagree. Picking one by position
+        # would be inventing an answer the configuration does not give, so the
+        # field abstains and cites every line that contributed.
         return Field[Any](
             value=None,
             state=FieldState.UNKNOWN,

@@ -242,6 +242,14 @@ files are reported as skipped rather than silently dropped — `dc1-leaf-01.cfg`
 is NX-OS and `core-rtr-01.conf` is brace-nested JunOS, and neither has an active
 pack.
 
+**The cohort is comparable, not representative.** Six of the nine Cisco devices
+were written by one author in one sitting, and `edge-rtr-11.cfg` is a deliberate
+near-twin of `edge-rtr-01.cfg` — it exists to test pattern reuse, not to add
+fleet diversity. `SOURCING_BACKLOG.md` already warns that near-copies flatter a
+peer-baseline figure, and this is that case: **zero deviations may be measuring
+one author's habits rather than agreement between independently configured
+devices.** Nothing here is evidence about real networks.
+
 The vetted snippet library
 shipped empty until every entry could name the person who checked it
 and the vendor document they checked it against; twenty snippets covering
@@ -295,7 +303,7 @@ can be run once, and it has not been spent.
 
 ## 9. Defect register
 
-Seventeen numbered defects. **Four are open.**
+Seventeen numbered defects. **Three are open.**
 
 | # | Description | Status |
 | --- | --- | --- |
@@ -315,7 +323,7 @@ Seventeen numbered defects. **Four are open.**
 | DEF-14 | `POST /compliance/audits` never appended `AUDIT_RUN` to the chain | Fixed (ADR 0021) |
 | DEF-15 | Detected device identity never reached the canonical model in the live pipeline | Fixed (ADR 0021) |
 | **DEF-16** | **The confirmation loop does not know about corpus splits, so an administrator working the Needs-review queue can compile a pattern from a file reserved for measuring the parser** | **OPEN** |
-| **DEF-17** | **Two patterns asserting different values for one field collapse to UNKNOWN, so a device whose weakest vty line enables telnet reports no FAIL** | **OPEN** |
+| DEF-17 | Two patterns asserting different values for one field collapsed to UNKNOWN, so a device whose weakest vty line enables telnet reported no FAIL | Fixed (ADR 0026) |
 
 ### Why the two open defects remain open
 
@@ -328,19 +336,6 @@ not longitudinal. The real consequence is recorded rather than hidden — **a
 configuration re-uploaded after an edit counts as a second device** in its cohort.
 Nothing anywhere presents a content hash as a stable device identity: the report
 names its field `config_file_id`, and the interface labels devices by hostname.
-
-**DEF-17** — the canonical model treats disagreement as abstention. Measured on
-`dist-sw-03.cfg` with shipped patterns and no training: `line vty 0 4` permits
-ssh only while `line vty 5 15` permits telnet, and `telnet_enabled` resolves to
-UNKNOWN rather than TRUE. `idle_timeout_seconds` does the same, which also masks
-DEF-8 on that file.
-
-It is safe — no value is picked, so no false PASS — but lossy, because a device
-is only as secure as its weakest line and the correct answer is readable. The fix
-is a merge policy of worst-case-wins for security-relevant fields, which changes
-what a canonical field asserts when its evidence disagrees. That is a contract
-change and needs its own ADR, so it is recorded rather than folded into a form
-commit. See ADR 0025.
 
 **DEF-16** — found at P15 by the corpus-policy suite, which reported that two
 admin-trained patterns in the active Cisco pack had been compiled from
@@ -368,7 +363,7 @@ current measurement depends on the defect either way.
 
 ## 10. Decision index
 
-Sixty-six numbered decisions across 24 ADRs.
+Sixty-nine numbered decisions across 25 ADRs.
 
 | ADR | Phase | Subject | Decisions |
 | --- | --- | --- | --- |
@@ -397,6 +392,7 @@ Sixty-six numbered decisions across 24 ADRs.
 | 0023 | P14 | This document | — |
 | 0024 | P15 | Corpus registration, and a training loop that could contaminate its own evaluation | D65, D66, D67, D68 |
 | 0025 | P15 | Presence assertion in the training form, and what happens when two lines disagree | D69, D70 |
+| 0026 | P16 | Per-field merge semantics, and why "undecided" is not universal | D71, D72, D73 |
 
 ---
 

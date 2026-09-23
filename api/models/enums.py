@@ -336,6 +336,45 @@ class MatchType(StrEnum):
     BLOCK = "block"
 
 
+class MergePolicy(StrEnum):
+    """What a canonical field means when two lines in one file disagree.
+
+    The default is `UNDECIDED`, and it is the right default: picking a winner is
+    inventing an answer the configuration does not give. But it is not right for
+    every field, and treating it as universal discards real information.
+
+    `line vty 0 4` permitting ssh only and `line vty 5 15` permitting telnet is
+    **not a contradiction**. Both statements are true, and together they say
+    telnet is reachable — because a device is reachable by any path that reaches
+    it. Abstaining there reports UNKNOWN on the single most common
+    misconfiguration in this problem domain, and an UNKNOWN is a finding an
+    operator dismisses.
+
+    Two vty ranges carrying *different idle timeouts* are a genuine "which one
+    did you mean" question, and that one must stay undecided. The difference is
+    the field's semantics, not the shape of the disagreement, which is why the
+    policy is declared per field and opting in is a deliberate act.
+    """
+
+    UNDECIDED = "undecided"
+    """Disagreement abstains with CONFLICTING_EVIDENCE. The default."""
+
+    WORST_CASE_TRUE = "worst_case_true"
+    """Any source asserting True decides the field.
+
+    For a reachability boolean: telnet reachable on one line out of twelve is
+    telnet reachable.
+    """
+
+    WORST_CASE_FALSE = "worst_case_false"
+    """Any source asserting False decides the field.
+
+    The mirror case, for a field where False is the unsafe answer: a v1/v2c SNMP
+    community is dispositive evidence that SNMP is *not* v3-only, however many
+    v3 users sit beside it.
+    """
+
+
 class CastType(StrEnum):
     INT = "int"
     BOOL = "bool"

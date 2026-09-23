@@ -46,10 +46,14 @@ otherwise.** No shipped pack declares an ACL or interface pattern, so neither
 reaches the canonical model — measured directly after registration:
 `CSM acls: 0`, `CSM interfaces: 0`, with the ACL lines sitting in residue.
 
-What changed is the *kind* of blockage. P7's interval logic and P12's ranking
-waited on material that had to come from outside the repository; they now wait on
-ACL and interface parsing patterns authored from the development split, which is
-ordinary engineering work nobody is prevented from doing.
+What changed is the *kind* of blockage, and only that. P7's interval logic and
+P12's ranking waited on material that had to come from outside the repository;
+they now wait on ACL and interface parsing patterns authored from the development
+split, which is ordinary engineering work nobody is prevented from doing.
+
+**A reader seeing "gap 1 closed" in the commit log should not infer that P7
+produces output.** It does not. This entry is closed only in the sense that
+nothing further needs sourcing — the patterns are what will actually close it.
 
 The P7 analyser is built and exhaustively tested against constructed `ACL`
 objects. It has never seen a parsed one.

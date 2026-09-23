@@ -20,7 +20,7 @@ from pydantic import BaseModel, ConfigDict
 from pydantic import Field as Constraint
 
 from api.models.acl import ACL
-from api.models.enums import Direction, FieldState
+from api.models.enums import Direction, FieldState, MergePolicy
 from api.models.evidence import Evidence
 from api.models.field import Field
 
@@ -47,6 +47,31 @@ CANONICAL_FIELD_NAMES: frozenset[str] = frozenset(
 
 Reference, not enforcement: the mapping accepts any key, because constraining it
 would make adding a canonical field a code change.
+"""
+
+
+FIELD_MERGE_POLICY: dict[str, MergePolicy] = {
+    # Reachability. A device is reachable by any path that reaches it, so one
+    # vty range permitting telnet decides the field however many refuse it.
+    # Demonstrated by corpus/cisco/dev/dist-sw-03.cfg, where `line vty 0 4`
+    # permits ssh only and `line vty 5 15` permits telnet.
+    "telnet_enabled": MergePolicy.WORST_CASE_TRUE,
+}
+"""How each field resolves when two lines in one file disagree (DEF-17).
+
+**Absence from this table is the safe answer**, not an oversight: every field not
+named here is `UNDECIDED` and abstains on disagreement. Opting a field in is a
+deliberate, reviewable act that changes what the field *asserts*, so it belongs
+in a decision record and needs a fixture that exercises it.
+
+`idle_timeout_seconds` is deliberately absent. Two vty ranges with different
+timeouts are a real "which one did you mean" question, and the honest answer is
+that the configuration does not say.
+
+`snmp_v3_only` is deliberately absent too, though `WORST_CASE_FALSE` expresses
+its semantics exactly — a v1/v2c community is dispositive. No pack declares an
+SNMP pattern yet, so opting it in would be a claim nothing could exercise. It
+belongs to the change that authors those patterns. See ADR 0026.
 """
 
 

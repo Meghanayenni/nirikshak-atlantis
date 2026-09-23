@@ -302,3 +302,116 @@ def test_residue_excludes_comments_and_literal_bodies() -> None:
     assert "! a comment" not in residue_text
     assert "prose" not in residue_text
     assert "unrecognised" in residue_text
+
+
+# ---------------------------------------------------------------------------
+# DEF-17 — per-field merge semantics (P16)
+# ---------------------------------------------------------------------------
+
+
+def _telnet_pattern(pid: str, regex: str, literal: str) -> PatternDef:
+    """A presence pattern asserting a literal boolean, as the compiler builds."""
+    return PatternDef(
+        id=pid,
+        field="telnet_enabled",
+        match=MatchSpec(type=MatchType.REGEX, pattern=regex),
+        capture=CaptureSpec(value=literal, cast=CastType.BOOL),
+    )
+
+
+def test_a_reachability_boolean_takes_the_worst_case_and_cites_both_lines() -> None:
+    """DEF-17 — `line vty 0 4` ssh-only and `line vty 5 15` telnet is not a tie.
+
+    Both statements are true. Together they say telnet is reachable, because a
+    device is reachable by any path that reaches it. Abstaining discarded that.
+    """
+    p = pack(
+        _telnet_pattern("p-telnet-off", r"^transport input ssh$", "false"),
+        _telnet_pattern("p-telnet-on", r"^transport input telnet ssh$", "true"),
+    )
+    t = tree("transport input ssh\ntransport input telnet ssh\n")
+    by_field, _ = apply_pack(p, t)
+    field = build_field("telnet_enabled", by_field["telnet_enabled"], p)
+
+    assert field.state is FieldState.PRESENT
+    assert field.value is True
+
+    # Every contributing line, including the one that said the safer thing: an
+    # operator closing the gap needs to know which range to change.
+    assert len(field.evidence) == 2
+    cited = {e.raw_line.strip() for e in field.evidence}
+    assert cited == {"transport input ssh", "transport input telnet ssh"}
+
+
+def test_the_worst_case_holds_whichever_line_comes_first() -> None:
+    """Order must not decide a security fact."""
+    p = pack(
+        _telnet_pattern("p-telnet-on", r"^transport input telnet ssh$", "true"),
+        _telnet_pattern("p-telnet-off", r"^transport input ssh$", "false"),
+    )
+    t = tree("transport input telnet ssh\ntransport input ssh\n")
+    by_field, _ = apply_pack(p, t)
+
+    assert build_field("telnet_enabled", by_field["telnet_enabled"], p).value is True
+
+
+def test_a_field_with_no_declared_policy_still_abstains() -> None:
+    """The default, and the reason the table is an opt-in.
+
+    Two vty ranges with different idle timeouts are a real "which one did you
+    mean" question. Nothing in the configuration answers it, so neither does the
+    canonical model.
+    """
+    p = pack(
+        pattern(
+            id="p-idle",
+            field="idle_timeout_seconds",
+            match=MatchSpec(type=MatchType.REGEX, pattern=r"^exec-timeout (\d+) 0$"),
+            capture=CaptureSpec(value="$1", cast=CastType.INT),
+        )
+    )
+    t = tree("exec-timeout 0 0\nexec-timeout 30 0\n")
+    by_field, _ = apply_pack(p, t)
+    field = build_field("idle_timeout_seconds", by_field["idle_timeout_seconds"], p)
+
+    assert field.state is FieldState.UNKNOWN
+    assert field.unknown_reason is UnknownReason.CONFLICTING_EVIDENCE
+    assert len(field.evidence) == 2
+
+
+def test_the_mirror_policy_resolves_to_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`WORST_CASE_FALSE` is the shape snmp_v3_only will need.
+
+    Exercised on a constructed field rather than by opting a real one in: a v1/v2c
+    community is dispositive evidence that SNMP is not v3-only, but no pack
+    declares an SNMP pattern yet, so opting the real field in would be a claim
+    nothing could exercise.
+    """
+    from api.models.enums import MergePolicy
+    from api.parse import fields as fields_module
+
+    monkeypatch.setitem(
+        fields_module.FIELD_MERGE_POLICY, "snmp_v3_only", MergePolicy.WORST_CASE_FALSE
+    )
+
+    p = pack(
+        PatternDef(
+            id="p-v3",
+            field="snmp_v3_only",
+            match=MatchSpec(type=MatchType.REGEX, pattern=r"^snmp-server user .*$"),
+            capture=CaptureSpec(value="true", cast=CastType.BOOL),
+        ),
+        PatternDef(
+            id="p-v2c",
+            field="snmp_v3_only",
+            match=MatchSpec(type=MatchType.REGEX, pattern=r"^snmp-server community .*$"),
+            capture=CaptureSpec(value="false", cast=CastType.BOOL),
+        ),
+    )
+    t = tree("snmp-server user netmon GRP v3 auth sha K\nsnmp-server community public RO\n")
+    by_field, _ = apply_pack(p, t)
+    field = build_field("snmp_v3_only", by_field["snmp_v3_only"], p)
+
+    assert field.value is False
+    assert field.state is FieldState.PRESENT
+    assert len(field.evidence) == 2

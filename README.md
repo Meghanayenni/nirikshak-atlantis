@@ -98,13 +98,21 @@ lists and the corpus contains **zero of both** on every device in every split. S
 input was missing, and no severity-sorted list is offered in their place —
 severity alone must not determine remediation order.
 
-**Peer baselines run and abstain.** Devices are grouped by platform and compared
-against their own cohort. The largest cohort in this corpus holds four devices
-against a floor of five, so no baseline is established and no device is called an
-outlier. The fleet view returns the cohorts, their sizes and the reason each
-produced no claim, because an empty outlier list on its own would read as a
-uniform fleet. An abstaining field is never counted as an absent one: a device we
-could not read is not a device without logging.
+**Peer baselines now run.** Devices are grouped by platform and compared against
+their own cohort. Until P15 the largest cohort held four devices against a floor
+of five and nothing was established; the P15 corpus took it to nine, and **eight
+baselines are computed with zero deviations**. A cohort still below the floor
+carries an explanation and an outcome that is not `compared`, so an abstention
+never reads as agreement. An abstaining field is never counted as an absent one:
+a device we could not read is not a device without logging.
+
+**The cohort is comparable, not representative.** Six of the nine Cisco devices
+were written by one author in one sitting, and `edge-rtr-11.cfg` is a deliberate
+near-twin of `edge-rtr-01.cfg` — it exists to test pattern reuse, not to add
+fleet diversity. `SOURCING_BACKLOG.md` already warns that near-copies flatter a
+peer-baseline figure, and this is that case: **zero deviations may be measuring
+one author's habits rather than agreement between independently configured
+devices.** Nothing here is evidence about real networks.
 
 ### What is deliberately not claimed
 

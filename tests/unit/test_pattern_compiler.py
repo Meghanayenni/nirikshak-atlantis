@@ -311,7 +311,7 @@ def test_a_presence_line_asserts_its_literal_value() -> None:
     assert re.compile(pattern.match.pattern).groups == 0
 
 
-def test_a_presence_line_can_assert_FALSE() -> None:
+def test_a_presence_line_can_assert_false() -> None:
     """The load-bearing half, and the one worth stating separately.
 
     `snmp-server community public RO` is a v1/v2c community. Its presence proves
