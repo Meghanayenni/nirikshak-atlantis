@@ -55,7 +55,25 @@ export function DeviceWorkspace({ deviceId }: { deviceId: string }) {
   async function onAudit() {
     const result = await workspace.audit.run(deviceId);
     if (result) {
-      push('success', 'Audit complete', `${result.rules_evaluated} rules evaluated.`);
+      // An access list recognised and then dropped is not the same as a device
+      // with no access lists, and both look like silence. If the backend names
+      // one, the operator hears about it here rather than discovering an empty
+      // ACL panel and drawing the wrong conclusion.
+      const notAnalysed = result.acl_analysis?.not_analysed ?? [];
+      if (notAnalysed.length > 0) {
+        push(
+          'info',
+          `Audit complete · ${notAnalysed.length} access list${
+            notAnalysed.length === 1 ? '' : 's'
+          } not analysed`,
+          [
+            `${result.rules_evaluated} rules evaluated.`,
+            ...notAnalysed.map((f) => f.summary),
+          ].join('\n'),
+        );
+      } else {
+        push('success', 'Audit complete', `${result.rules_evaluated} rules evaluated.`);
+      }
       workspace.reloadAll();
       return;
     }

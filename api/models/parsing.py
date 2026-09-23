@@ -14,7 +14,7 @@ from pydantic import Field as Constraint
 
 from api.models.acl import ACL
 from api.models.config_tree import ConfigNode, ConfigTree
-from api.models.csm import Interface
+from api.models.csm import AclExtractionFailure, Interface
 from api.models.evidence import Evidence
 from api.models.field import Field
 
@@ -56,6 +56,9 @@ class ParseResult(BaseModel):
     )
     acls: tuple[ACL, ...] = Constraint(
         default=(), description="Access lists read from the tree (P16)"
+    )
+    acl_failures: tuple[AclExtractionFailure, ...] = Constraint(
+        default=(), description="Lists recognised but dropped, and why (P16)"
     )
     interfaces: tuple[Interface, ...] = Constraint(
         default=(), description="Interfaces read from the tree (P16)"

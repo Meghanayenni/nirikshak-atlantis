@@ -192,6 +192,13 @@ export interface AclAnalysis {
     overly_permissive: number;
     undetermined: number;
   };
+  /**
+   * Lists recognised and then dropped because one entry could not be read.
+   *
+   * Carried separately because a dropped list and a device with no access lists
+   * both arrive as an empty analysis, and they call for opposite responses.
+   */
+  not_analysed: AclNotAnalysed[];
 }
 
 /**
@@ -208,6 +215,15 @@ export interface Prioritisation {
   determined: number;
   undetermined: number;
   blockers: Record<string, number>;
+}
+
+export interface AclNotAnalysed {
+  acl_name: string;
+  entry_line: number;
+  entry_text: string;
+  reason: string;
+  /** A ready-made operator-facing sentence from the backend. */
+  summary: string;
 }
 
 export interface AuditResult {

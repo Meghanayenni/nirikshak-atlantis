@@ -104,7 +104,7 @@ def test_a_wildcard_mask_becomes_a_cidr() -> None:
         " permit tcp 198.51.100.0 0.0.0.255 any eq 22\n"
         " deny   ip any any log\n"
     )
-    acl = extract_acls(t, pack())[0]
+    acl = extract_acls(t, pack())[0][0]
 
     assert acl.name == "MGMT-IN"
     assert len(acl.entries) == 2
@@ -128,7 +128,7 @@ def test_remarks_are_not_entries() -> None:
         " remark permit established return traffic\n"
         " permit tcp any any established\n"
     )
-    acl = extract_acls(t, pack())[0]
+    acl = extract_acls(t, pack())[0][0]
 
     assert len(acl.entries) == 1
     assert acl.entries[0].seq == 1
@@ -137,7 +137,7 @@ def test_remarks_are_not_entries() -> None:
 
 def test_the_overly_permissive_shape_is_recognised() -> None:
     t = tree("ip access-list extended R\n permit ip any any\n")
-    assert extract_acls(t, pack())[0].entries[0].is_permit_any_any is True
+    assert extract_acls(t, pack())[0][0].entries[0].is_permit_any_any is True
 
 
 def test_an_unreadable_entry_drops_the_whole_list() -> None:
@@ -154,7 +154,7 @@ def test_an_unreadable_entry_drops_the_whole_list() -> None:
         " permit tcp any any eq wildly-unknown-service\n"
         " deny   ip any any\n"
     )
-    assert extract_acls(t, pack()) == ()
+    assert extract_acls(t, pack())[0] == ()
 
 
 def test_a_non_contiguous_wildcard_drops_the_list_rather_than_inventing_a_range() -> None:
@@ -162,7 +162,7 @@ def test_a_non_contiguous_wildcard_drops_the_list_rather_than_inventing_a_range(
     for that, and inventing the nearest one would feed a wrong interval into
     shadowing analysis."""
     t = tree("ip access-list extended R\n permit ip 10.0.0.0 0.0.0.254 any\n")
-    assert extract_acls(t, pack()) == ()
+    assert extract_acls(t, pack())[0] == ()
 
 
 def test_a_list_records_where_it_is_bound() -> None:
@@ -174,7 +174,7 @@ def test_a_list_records_where_it_is_bound() -> None:
     )
     p = pack()
     interfaces = extract_interfaces(t, p)
-    acl = extract_acls(t, p, interfaces)[0]
+    acl = extract_acls(t, p, interfaces)[0][0]
 
     assert interfaces[0].applied_acls[0].acl_id == "MGMT-IN"
     assert interfaces[0].applied_acls[0].direction is Direction.IN
@@ -188,4 +188,51 @@ def test_a_pack_declaring_no_extraction_yields_nothing() -> None:
     bare = pack(acl_extraction=None, interface_extraction=None)
 
     assert extract_interfaces(t, bare) == ()
-    assert extract_acls(t, bare) == ()
+    assert extract_acls(t, bare)[0] == ()
+
+
+# ---------------------------------------------------------------------------
+# A dropped list is announced, not silently absent
+# ---------------------------------------------------------------------------
+
+
+def test_a_dropped_list_names_itself_and_the_entry_that_defeated_it() -> None:
+    """A dropped list and a device with no access lists are both `()`.
+
+    They call for opposite responses — "nobody has taught the parser this
+    syntax" against "this device filters nothing" — and the more alarming of the
+    two is the one that looks like silence.
+    """
+    t = tree(
+        "ip access-list extended EDGE-IN\n"
+        " permit tcp any any eq 22\n"
+        " permit ip 10.0.0.0 0.0.0.254 any\n"
+        " deny   ip any any\n"
+    )
+    acls, failures = extract_acls(t, pack())
+
+    assert acls == ()
+    assert len(failures) == 1
+
+    failure = failures[0]
+    assert failure.acl_name == "EDGE-IN"
+    assert failure.entry_line == 3
+    assert "non-contiguous" in failure.reason
+    assert "EDGE-IN was not analysed" in failure.describe()
+
+
+def test_an_unknown_port_keyword_is_named_in_the_reason() -> None:
+    """The reason points at one token, not at the whole list."""
+    t = tree("ip access-list extended R\n permit tcp any any eq wildly-unknown\n")
+    _, failures = extract_acls(t, pack())
+
+    assert "wildly-unknown" in failures[0].reason
+    assert "guessing its number" in failures[0].reason
+
+
+def test_a_fully_readable_list_reports_no_failure() -> None:
+    t = tree("ip access-list extended R\n permit ip any any\n")
+    acls, failures = extract_acls(t, pack())
+
+    assert len(acls) == 1
+    assert failures == ()

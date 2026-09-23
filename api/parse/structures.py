@@ -47,7 +47,7 @@ from api.models.acl import (
     ProtocolSpec,
 )
 from api.models.config_tree import ConfigNode, ConfigTree
-from api.models.csm import Interface, InterfaceAcl
+from api.models.csm import AclExtractionFailure, Interface, InterfaceAcl
 from api.models.enums import AclAction, AclDialect, AddrKind, Direction, PortOp, SourceType
 from api.models.evidence import Evidence
 from api.models.pack import VendorPack
@@ -279,6 +279,49 @@ _DIALECTS = {AclDialect.IOS_WILDCARD: _parse_ios_entry}
 # ---------------------------------------------------------------------------
 
 
+def _why_unreadable(node: ConfigNode) -> str:
+    """Name the specific thing that defeated the parser, not that it failed.
+
+    "could not be parsed" sends an operator to read the whole list. "uses a
+    non-contiguous wildcard mask, which has no CIDR equivalent" sends them to
+    one token, and tells whoever maintains the dialect what to add next.
+    """
+    tokens = node.text.split()
+    if tokens and tokens[0].isdigit():
+        tokens = tokens[1:]
+
+    if not tokens or tokens[0] not in ("permit", "deny"):
+        return "is not a permit or deny entry, and this parser reads no other form"
+
+    for index, token in enumerate(tokens):
+        if token in _PORT_OPS and index + 1 < len(tokens):
+            if _port_number(tokens[index + 1]) is None:
+                return (
+                    f"names the port {tokens[index + 1]!r}, which this dialect does not "
+                    "recognise; guessing its number would put a wrong interval into "
+                    "shadowing analysis"
+                )
+
+    for index, token in enumerate(tokens):
+        if _looks_like_ipv4(token) and index + 1 < len(tokens):
+            candidate = tokens[index + 1]
+            if _looks_like_ipv4(candidate) and _wildcard_to_cidr(token, candidate) is None:
+                return (
+                    f"uses the wildcard mask {candidate}, which is non-contiguous and "
+                    "has no CIDR equivalent"
+                )
+
+    return "uses syntax this dialect does not read"
+
+
+def _looks_like_ipv4(token: str) -> bool:
+    try:
+        ipaddress.IPv4Address(token)
+    except ValueError:
+        return False
+    return True
+
+
 def extract_interfaces(
     tree: ConfigTree, pack: VendorPack, source_type: SourceType = SourceType.CLI
 ) -> tuple[Interface, ...]:
@@ -343,15 +386,20 @@ def extract_acls(
     pack: VendorPack,
     interfaces: tuple[Interface, ...] = (),
     source_type: SourceType = SourceType.CLI,
-) -> tuple[ACL, ...]:
-    """Every access list the pack's declaration recognises, whole or not at all."""
+) -> tuple[tuple[ACL, ...], tuple[AclExtractionFailure, ...]]:
+    """Every access list the declaration recognises, and every one it dropped.
+
+    The failures are returned rather than logged because a dropped list and a
+    device with no access lists are the same empty tuple, and an operator needs
+    to tell them apart.
+    """
     spec = pack.acl_extraction
     if spec is None:
-        return ()
+        return (), ()
 
     parse_entry = _DIALECTS.get(spec.dialect)
     if parse_entry is None:  # pragma: no cover - a dialect with no parser
-        return ()
+        return (), ()
 
     named = re.compile(spec.named_block)
     remark = re.compile(spec.remark) if spec.remark else None
@@ -365,6 +413,7 @@ def extract_acls(
             )
 
     out: list[ACL] = []
+    failures: list[AclExtractionFailure] = []
     for node in tree.nodes.values():
         match = named.match(node.text)
         if match is None:
@@ -372,7 +421,7 @@ def extract_acls(
 
         name = match.group(1)
         entries: list[ACLEntry] = []
-        readable = True
+        defeated: ConfigNode | None = None
 
         for child in _children(tree, node):
             if remark and remark.match(child.text):
@@ -381,11 +430,19 @@ def extract_acls(
             if entry is None:
                 # One unreadable entry invalidates the ordering, and ordering is
                 # the whole of shadowing analysis.
-                readable = False
+                defeated = child
                 break
             entries.append(entry)
 
-        if not readable:
+        if defeated is not None:
+            failures.append(
+                AclExtractionFailure(
+                    acl_name=name,
+                    reason=_why_unreadable(defeated),
+                    entry_line=defeated.line_number,
+                    entry_text=defeated.text,
+                )
+            )
             continue
 
         out.append(
@@ -398,7 +455,7 @@ def extract_acls(
                 evidence=(_evidence(node, tree, source_type),),
             )
         )
-    return tuple(out)
+    return tuple(out), tuple(failures)
 
 
 def matched_node_ids(tree: ConfigTree, pack: VendorPack) -> set[str]:

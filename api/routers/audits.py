@@ -239,6 +239,22 @@ def run_audit_endpoint(
         "acl_analysis": {
             "analysed_nothing": acl_result.analysed_nothing,
             "summary": acl_result.summary(),
+            # A list recognised and then dropped is NOT the same as a device
+            # with no access lists, and both arrive as an empty tuple. Naming
+            # the list and the line that defeated the parser is what lets an
+            # operator tell "nobody has taught this syntax" from "this device
+            # filters nothing" — and tells whoever maintains the dialect what to
+            # add next.
+            "not_analysed": [
+                {
+                    "acl_name": f.acl_name,
+                    "entry_line": f.entry_line,
+                    "entry_text": f.entry_text,
+                    "reason": f.reason,
+                    "summary": f.describe(),
+                }
+                for f in csm.acl_failures
+            ],
         },
         # P12 — the Prioritise stage. On a model with no interfaces and no access
         # lists this reports that it could not rank, and which input was missing,

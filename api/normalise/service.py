@@ -121,6 +121,7 @@ def build_csm_from_sources(
         # P16 — these were hardcoded empty from P5 until the extractor existed,
         # which is why the P7 analyser and the P12 ranking produced nothing.
         acls=tuple(acl for result in parse_results for acl in result.acls),
+        acl_failures=tuple(f for result in parse_results for f in result.acl_failures),
         interfaces=tuple(i for result in parse_results for i in result.interfaces),
         residue=residue,
     )

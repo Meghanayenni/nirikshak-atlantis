@@ -67,7 +67,7 @@ def parse_configuration(
     # Structure extraction (P16). Interfaces first: an access list records where
     # it is bound, and that binding is written inside the interface block.
     interfaces = structures.extract_interfaces(tree, pack, source_type)
-    acls = structures.extract_acls(tree, pack, interfaces, source_type)
+    acls, acl_failures = structures.extract_acls(tree, pack, interfaces, source_type)
 
     # A line these read is recognised, so it must not also reach the training
     # queue — an administrator asked to classify a line the parser already
@@ -84,6 +84,7 @@ def parse_configuration(
         fields=parsed,
         residue=residue,
         acls=acls,
+        acl_failures=acl_failures,
         interfaces=interfaces,
     )
 

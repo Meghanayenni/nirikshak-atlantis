@@ -169,6 +169,33 @@ class CsmSource(BaseModel):
     )
 
 
+class AclExtractionFailure(BaseModel):
+    """An access list that was read, understood to be a list, and then dropped.
+
+    A dropped list and a device with no access lists produce the same empty
+    tuple, and they call for opposite responses: one means "nobody has taught
+    the parser this syntax", the other means "this device filters nothing".
+    Without this record an operator cannot tell them apart, and the more
+    alarming of the two is the one that looks like silence.
+
+    Emitted instead of the list, never alongside it — see ADR 0027 (D75) for why
+    a partially parsed access list is worse than none.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    acl_name: str = Constraint(min_length=1)
+    reason: str = Constraint(min_length=1, description="Operator-facing sentence")
+    entry_line: int = Constraint(ge=1, description="The line that defeated the parser")
+    entry_text: str = Constraint(min_length=1)
+
+    def describe(self) -> str:
+        return (
+            f"{self.acl_name} was not analysed: line {self.entry_line} "
+            f"({self.entry_text!r}) {self.reason}"
+        )
+
+
 class CanonicalSecurityModel(BaseModel):
     """One device, normalised. The only input the compliance engine accepts."""
 
@@ -181,6 +208,14 @@ class CanonicalSecurityModel(BaseModel):
     fields: dict[str, Field[Any]] = Constraint(default_factory=dict)
     acls: tuple[ACL, ...] = ()
     interfaces: tuple[Interface, ...] = ()
+    acl_failures: tuple[AclExtractionFailure, ...] = Constraint(
+        default=(),
+        description=(
+            "Access lists recognised and then dropped because an entry could not "
+            "be read. Carried beside `acls` because an empty `acls` tuple alone "
+            "cannot distinguish 'no access lists' from 'not analysed'."
+        ),
+    )
     residue: tuple[UnknownLine, ...] = ()
 
     # -- access ------------------------------------------------------------
