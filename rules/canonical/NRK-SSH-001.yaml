@@ -10,4 +10,11 @@ rationale: >-
 check:
   field: ssh_version
   condition: { op: equals, value: 2 }
-frameworks: []
+frameworks:
+  - framework: nist
+    control_id: "AC-17(02)"
+    version: "5.2.0"
+    citation: "NIST SP 800-53 Rev 5 — OSCAL catalog, edition 5.2.0, control AC-17(02)"
+    # Our judgement that this check evidences this control, not a
+    # published crosswalk. No catalog maps NIRIKSHAK's own rules.
+    mapping_provenance: project_asserted

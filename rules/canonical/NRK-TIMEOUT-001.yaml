@@ -16,4 +16,18 @@ check:
   all_of:
     - { op: gt,  value: 0 }
     - { op: lte, value: 600 }
-frameworks: []
+frameworks:
+  - framework: nist
+    control_id: "AC-12"
+    version: "5.2.0"
+    citation: "NIST SP 800-53 Rev 5 — OSCAL catalog, edition 5.2.0, control AC-12"
+    # Our judgement that this check evidences this control, not a
+    # published crosswalk. No catalog maps NIRIKSHAK's own rules.
+    mapping_provenance: project_asserted
+  - framework: nist
+    control_id: "SC-10"
+    version: "5.2.0"
+    citation: "NIST SP 800-53 Rev 5 — OSCAL catalog, edition 5.2.0, control SC-10"
+    # Our judgement that this check evidences this control, not a
+    # published crosswalk. No catalog maps NIRIKSHAK's own rules.
+    mapping_provenance: project_asserted

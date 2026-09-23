@@ -10,4 +10,18 @@ rationale: >-
 check:
   field: logging_hosts
   condition: { op: non_empty }
-frameworks: []
+frameworks:
+  - framework: nist
+    control_id: "AU-04(01)"
+    version: "5.2.0"
+    citation: "NIST SP 800-53 Rev 5 — OSCAL catalog, edition 5.2.0, control AU-04(01)"
+    # Our judgement that this check evidences this control, not a
+    # published crosswalk. No catalog maps NIRIKSHAK's own rules.
+    mapping_provenance: project_asserted
+  - framework: nist
+    control_id: "AU-09(02)"
+    version: "5.2.0"
+    citation: "NIST SP 800-53 Rev 5 — OSCAL catalog, edition 5.2.0, control AU-09(02)"
+    # Our judgement that this check evidences this control, not a
+    # published crosswalk. No catalog maps NIRIKSHAK's own rules.
+    mapping_provenance: project_asserted

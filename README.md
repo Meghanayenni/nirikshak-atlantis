@@ -143,11 +143,23 @@ be a guess wearing a citation, and a name matching no role stays *undocumented*
 rather than becoming *not management* (DEF-2). The path is proven end to end on
 a constructed pack, so an abstention here is a refusal rather than a breakage.
 
-**No framework control mappings ship.** Every rule has `frameworks: []`. Writing
-a CIS, NIST, DISA STIG or ISO/IEC 27001 identifier without having read the
-benchmark would be inventing it, so NIRIKSHAK currently evaluates its own checks
-and maps them to nothing. **No claim of coverage against any of those four
-frameworks is made or supported by this repository.**
+**One framework of four is mapped, and no mapping claims to be official.** All
+seven rules now carry NIST SP 800-53 Rev 5 control identifiers, each validated
+against the official OSCAL catalog — edition 5.2.0, pinned by the catalog's own
+sha256, with withdrawn controls listed so a plausible-but-retired identifier
+cannot ship. **Every mapping is `project_asserted`**: a catalog publishes
+*controls*, not *mappings*, and that a NIRIKSHAK check satisfies a given control
+is this project's judgement. No published crosswalk names our checks.
+
+**CIS, DISA STIG and ISO/IEC 27001 are unmapped**, each for its own reason: CIS
+Benchmarks are behind registration, DISA's STIG index is rendered client-side and
+exposed no resolvable file URL, and ISO/IEC 27001 is a purchased standard. A
+framework with no sourced catalog is **absent** from the selector rather than
+present and empty — an empty result reads as a clean bill of health, and "we
+never read this benchmark" is a different statement. **No claim of coverage
+against those three is made or supported by this repository**, and none of the
+four supports a claim of *certified* compliance. See
+`docs/adr/0035-framework-mappings-against-a-content-addressed-catalog.md`.
 
 **The corpus is synthetic and small.** Two Cisco development devices are enough to
 validate the *evaluator*; they are not enough to validate a *rule*.

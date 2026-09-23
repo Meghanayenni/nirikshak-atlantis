@@ -206,21 +206,38 @@ def test_the_document_explains_why_the_open_defects_stay_open(text: str) -> None
 # ---------------------------------------------------------------------------
 
 
-def test_no_framework_identifier_is_written(text: str) -> None:
-    """Every rule ships `frameworks: []`.
+def test_no_unsourced_framework_identifier_is_written(text: str) -> None:
+    r"""An identifier may appear only for a framework with a sourced catalog.
 
     A plausible-looking `CIS 1.2.3` in an architecture document is exactly the
     failure `docs/CONTENT_POLICY.md` exists to prevent: it would be read as
     coverage by anyone who did not open `rules/`.
+
+    Until P17 no framework had a catalog and the answer was "none, ever". NIST
+    now does — its identifiers are validated against a content-addressed OSCAL
+    edition (ADR 0035) — so the guard keys off `sourced_frameworks()` rather
+    than a fixed list. It re-tightens by itself if a catalog is withdrawn, and
+    relaxes only when one is added, which is the property a hand-maintained
+    list would lose on its first edit.
     """
-    forbidden = [
-        (r"CIS[\s-]?\d+\.\d+", "a CIS control identifier"),
-        (r"\bAC-\d+", "a NIST SP 800-53 control identifier"),
-        (r"\bV-\d{5,}", "a DISA STIG identifier"),
-        (r"ISO\s*A\.\d+\.\d+", "an ISO/IEC 27001 control identifier"),
-    ]
-    for pattern, description in forbidden:
-        assert re.search(pattern, text) is None, f"the document writes {description}"
+    from api.comply.frameworks import sourced_frameworks
+    from api.models.enums import Framework
+
+    patterns = {
+        Framework.CIS: (r"CIS[\s-]?\d+\.\d+", "a CIS recommendation number"),
+        Framework.NIST: (r"\bAC-\d+", "a NIST SP 800-53 control identifier"),
+        Framework.STIG: (r"\bV-\d{5,}", "a DISA STIG identifier"),
+        Framework.ISO: (r"ISO\s*A\.\d+\.\d+", "an ISO/IEC 27001 control identifier"),
+    }
+    sourced = sourced_frameworks()
+
+    for framework, (pattern, description) in patterns.items():
+        if framework in sourced:
+            continue
+        assert re.search(pattern, text) is None, (
+            f"the document writes {description}, and no {framework.value} catalog "
+            "has been sourced"
+        )
 
 
 def test_no_device_command_is_written(text: str) -> None:

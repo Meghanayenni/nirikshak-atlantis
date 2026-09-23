@@ -178,8 +178,31 @@ see decision D37 and ADR 0017.
 
 **Blocks:** any claim of CIS, NIST SP 800-53, DISA STIG or ISO/IEC 27001 coverage.
 
-**State.** Every rule ships `frameworks: []`. NIRIKSHAK evaluates its own seven
-checks and maps them to nothing.
+**State: ONE OF FOUR CLOSED at P17 (ADR 0035).** NIST SP 800-53 Rev 5 is
+published by NIST as OSCAL JSON and was obtained. All seven rules now carry
+control identifiers validated against edition 5.2.0, whose own sha256 is recorded
+in `rules/frameworks/`, with the catalog's 182 withdrawn controls listed
+separately — `AC-17(08)` and `AU-08(01)` are both withdrawn and are both exactly
+what a person would have written from memory for the telnet and NTP checks.
+
+**Every mapping is `project_asserted`, and always will be.** A catalog publishes
+controls, not mappings; no published crosswalk names NIRIKSHAK's own checks, so
+`OFFICIAL` would credit a judgement nobody else made.
+
+**The other three remain open, for three different reasons:**
+
+- **DISA STIG** — the DoD Cyber Exchange download index is rendered client-side
+  and serves no file URLs; five direct paths were probed and all 404'd. Needs
+  either a browser-driven fetch or a file obtained by hand. The XCCDF format is
+  machine readable and `lxml` is already a dependency, so this is a *retrieval*
+  problem, not an engineering one.
+- **CIS Benchmarks** — distribution is behind registration and terms acceptance,
+  with no free machine-readable edition.
+- **ISO/IEC 27001** — a purchased standard.
+
+**Open for the team, not answered here:** whether this repository may
+redistribute a catalog file. Only the derived index is committed; ADR 0005 set
+the precedent that this project makes no legal claims.
 
 This is the most visible gap against the problem statement, which asks explicitly
 for evaluation against user-selected benchmarks. It is also the one most tempting

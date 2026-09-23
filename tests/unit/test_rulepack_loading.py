@@ -67,34 +67,6 @@ def test_discovery_is_ordered() -> None:
     assert first == second == sorted(first)
 
 
-# ---------------------------------------------------------------------------
-# D16 — no framework mappings ship
-# ---------------------------------------------------------------------------
-
-
-def test_no_framework_mappings_are_claimed() -> None:
-    """D16 — zero CIS / NIST / STIG / ISO control IDs ship at P6.
-
-    Writing a control identifier without having read the benchmark would be
-    inventing it, and a mapping that cannot be produced on request is a claim of
-    coverage the project cannot stand behind.
-
-    **This test is expected to be deleted** by the change that adds the first
-    sourced mapping. It fails loudly at that point so the author has to confront
-    the sourcing requirement rather than adding identifiers quietly.
-    """
-    pack = load_rulepack()
-
-    offenders = [
-        f"{r.rule_id} claims {ref.framework.value}:{ref.control_id}"
-        for r in pack.rules
-        for ref in r.frameworks
-    ]
-
-    assert offenders == [], "\n".join(offenders)
-    assert pack.frameworks_covered == frozenset()
-
-
 def test_every_rule_carries_its_own_rationale() -> None:
     """R16 — our own words, and enough of them to explain the check."""
     pack = load_rulepack()
