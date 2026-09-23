@@ -371,7 +371,7 @@ current measurement depends on the defect either way.
 
 ## 10. Decision index
 
-Seventy-two numbered decisions across 26 ADRs.
+Seventy-three numbered decisions across 27 ADRs.
 
 | ADR | Phase | Subject | Decisions |
 | --- | --- | --- | --- |
@@ -402,6 +402,7 @@ Seventy-two numbered decisions across 26 ADRs.
 | 0025 | P15 | Presence assertion in the training form, and what happens when two lines disagree | D69, D70 |
 | 0026 | P16 | Per-field merge semantics, and why "undecided" is not universal | D71, D72, D73 |
 | 0027 | P16 | Reading access lists and interfaces, and what that did and did not start | D74, D75, D76 |
+| 0028 | P16 | The analyser caught an authoring error in its own test data | D77 |
 
 ---
 
