@@ -84,6 +84,17 @@ The compliance engine reads only the canonical model and produces PASS, FAIL,
 UNKNOWN or NOT_APPLICABLE, each carrying the exact line it rests on or the reason
 it abstained.
 
+**A check may bound a value at both ends.** `NRK-TIMEOUT-001` asked only for
+`lte: 600` and therefore passed `exec-timeout 0 0` — a management session that
+never expires, the least secure setting the platform offers, reported as
+compliant with a citation. `CheckSpec` now accepts `all_of`, a conjunction of
+conditions over one field, and the rule asks for `gt 0 and lte 600`. One corpus
+verdict moved; the 600 boundary still passes, so the value was bounded rather
+than narrowed, and no evaluation-split device was affected. Conjunction only —
+no disjunction, no negation, no nesting, because a rule needing disjunction is
+two rules and an expression language here is where vendor logic would reappear.
+DEF-8; see `docs/adr/0032-a-check-may-bound-a-value-at-both-ends.md`.
+
 **The interface shows what the backend says, and says where it cannot.** The
 P13 React application is a pure consumer: it never evaluates a rule, computes a
 verdict, scores exposure or ranks a finding. Where a capability has no data it

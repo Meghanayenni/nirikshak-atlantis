@@ -311,7 +311,7 @@ can be run once, and it has not been spent.
 
 ## 9. Defect register
 
-Eighteen numbered defects. **Four are open.**
+Eighteen numbered defects. **Three are open.**
 
 | # | Description | Status |
 | --- | --- | --- |
@@ -322,7 +322,7 @@ Eighteen numbered defects. **Four are open.**
 | DEF-5 | README misattributed exposure prioritisation to P7 | Fixed (ADR 0014) |
 | DEF-6 | Evaluation harness defect | Fixed (ADR 0016) |
 | DEF-7 | FAIL precision and recall undefined for the class that matters most | Closed by D32 (ADR 0016) |
-| **DEF-8** | **`NRK-TIMEOUT-001` passes `exec-timeout 0 0` — a session that never expires is reported as compliant** | **OPEN** |
+| DEF-8 | `NRK-TIMEOUT-001` passed `exec-timeout 0 0` — a session that never expires was reported as compliant | Fixed (ADR 0032) |
 | DEF-9 | Arista pack did not declare `!` as a comment prefix; 23 of 57 residue lines were comments | Fixed (ADR 0017) |
 | DEF-10 | Field provenance hard-coded `BUILTIN`, so a learned mapping would claim to be vendor-shipped | Fixed (ADR 0019) |
 | DEF-11 | Pack versions ordered by string comparison; `1.0.10` sorted below `1.0.9` | Fixed (ADR 0020) |
@@ -334,7 +334,7 @@ Eighteen numbered defects. **Four are open.**
 | DEF-17 | Two patterns asserting different values for one field collapsed to UNKNOWN, so a device whose weakest vty line enables telnet reported no FAIL | Fixed (ADR 0026) |
 | **DEF-18** | **Deleting a trained pack orphans every stored finding that cites it — two audit runs on this deployment can no longer name the pack that read them** | **OPEN** — evidence secured (ADR 0031) |
 
-### Why the two open defects remain open
+### Why the remaining defects are open
 
 **DEF-3** — fixing it means redefining `device_id`, which every `Finding`, every
 `audit_run` row, every report and the P9 evaluation already carry. Changing it
@@ -384,18 +384,23 @@ the contamination is gone, but nothing prevents it recurring. A guard belongs
 with the training workflow and needs its own ADR, so it is recorded rather than
 patched in a corpus commit.
 
-**DEF-8** — the correct check is "at most 600 seconds **and** greater than zero",
-and `CheckSpec` examines one field with one operator from a closed set. `lte`
-cannot express it. Fixing it needs either a new `ConditionOp` or a
-multi-condition `CheckSpec` — a compliance-engine contract change belonging to a
-rules phase with its own ADR. No corpus device uses `exec-timeout 0 0`, so no
-current measurement depends on the defect either way.
+**DEF-8 is fixed** (ADR 0032). `CheckSpec` gained `all_of`, a conjunction of
+conditions over one field, and `NRK-TIMEOUT-001` now asks for
+`gt 0 and lte 600`. `corpus/cisco/dev/edge-rtr-09.cfg` moved from PASS to FAIL
+and every other verdict in the corpus is unchanged, including the 600 boundary —
+so the value was bounded rather than narrowed. No evaluation-split device carries
+`exec-timeout 0 0` inside the vty scope, so the harness figures did not move.
+
+Conjunction only: no `any_of`, no negation, no nesting. A rule needing
+disjunction is two rules. That line is what keeps a closed operator set from
+becoming an expression language, which is where vendor logic and model calls
+would reappear inside a layer built to have neither.
 
 ---
 
 ## 10. Decision index
 
-Eighty numbered decisions across 31 ADRs. (D63 and D64 were never issued; the
+Eighty-two numbered decisions across 32 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -431,6 +436,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0029 | P16 | A dropped access list announces itself | D78, D79 |
 | 0030 | P16 | Pack provenance after a re-stamp, and what the trained-pack reset destroyed | D80 |
 | 0031 | P17 | A durable archive for superseded packs | D81, D82 |
+| 0032 | P17 | A check may bound a value at both ends | D83, D84 |
 
 ---
 

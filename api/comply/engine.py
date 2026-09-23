@@ -36,7 +36,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from api.comply.conditions import describe, evaluate
+from api.comply.conditions import describe_all, evaluate_all
 from api.models.csm import CanonicalSecurityModel
 from api.models.enums import AbsenceAction, FieldState, UnknownReason, Verdict
 from api.models.field import Field
@@ -150,7 +150,7 @@ def _from_condition(
     evaluated_at: datetime,
 ) -> Finding:
     """Run the condition, and refuse to answer if it cannot be run."""
-    outcome = evaluate(rule.check.condition, field.value)
+    outcome = evaluate_all(rule.check.conditions, field.value)
 
     if outcome is None:
         # The rule is wrong, not the device. Its own reason so it cannot be
@@ -194,7 +194,7 @@ def _finding(
         status=verdict,
         base_severity=rule.severity,
         observed=_observed(field),
-        expected=describe(rule.check.condition),
+        expected=describe_all(rule.check.conditions),
         evidence=field.evidence,
         # Copied from what P5 resolved, never composed here: the engine does not
         # author citations, it carries them.
@@ -230,7 +230,7 @@ def _abstain(
         status=Verdict.UNKNOWN,
         base_severity=rule.severity,
         observed=_observed(observed),
-        expected=describe(rule.check.condition),
+        expected=describe_all(rule.check.conditions),
         # Citations are kept even when abstaining: a conflicting-evidence field
         # carries the very lines an operator needs in order to see the conflict.
         evidence=observed.evidence if observed is not None else (),

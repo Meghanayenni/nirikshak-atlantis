@@ -145,7 +145,7 @@ def test_every_adr_on_disk_appears_in_the_index(text: str) -> None:
 # The defect register — the claim most costly to get wrong
 # ---------------------------------------------------------------------------
 
-OPEN_DEFECTS = {"DEF-3", "DEF-8"}
+OPEN_DEFECTS = {"DEF-3", "DEF-16", "DEF-18"}
 """The defects that are genuinely open at this commit.
 
 Kept here as an explicit constant rather than parsed from prose: the point of the
@@ -166,7 +166,7 @@ def test_the_document_lists_every_defect(text: str) -> None:
 
 
 def test_the_open_defects_are_marked_open(text: str) -> None:
-    """DEF-3 and DEF-8 must be visibly open, not softened into 'deferred'.
+    """An open defect must be visibly open, not softened into 'deferred'.
 
     A register that reported an open defect as handled would be the one failure
     this document could commit that actually misleads somebody making a decision.
@@ -179,7 +179,10 @@ def test_the_open_defects_are_marked_open(text: str) -> None:
 
 def test_no_fixed_defect_is_claimed_open(text: str) -> None:
     """The converse. A fixed defect still listed as open would understate the work."""
-    fixed = {f"DEF-{n}" for n in range(1, 16)} - OPEN_DEFECTS
+    # The upper bound is the highest defect number issued. It was left at 16
+    # when DEF-16, -17 and -18 were opened, so this guard silently stopped
+    # covering the three newest defects — including the two that were open.
+    fixed = {f"DEF-{n}" for n in range(1, 19)} - OPEN_DEFECTS
     for line in text.splitlines():
         if "| **OPEN**" not in line and "**OPEN**" not in line:
             continue
@@ -191,9 +194,11 @@ def test_no_fixed_defect_is_claimed_open(text: str) -> None:
 
 def test_the_document_explains_why_the_open_defects_stay_open(text: str) -> None:
     """Recording a defect without its reason invites somebody to 'just fix it'."""
-    assert "Why the two open defects remain open" in text
+    assert "Why the remaining defects are open" in text
     assert "content hash" in text, "DEF-3's actual consequence should be stated"
-    assert "exec-timeout 0 0" in text, "DEF-8's failing case should be stated"
+    assert "exec-timeout 0 0" in text, "DEF-8's failing case should stay stated"
+    assert "cannot name the pack" in text, "DEF-18's consequence should be stated"
+    assert "corpus split" in text, "DEF-16's consequence should be stated"
 
 
 # ---------------------------------------------------------------------------

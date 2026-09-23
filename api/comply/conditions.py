@@ -24,6 +24,7 @@ silently succeed — a comparison nobody meant to write.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from api.models.enums import ConditionOp
@@ -180,6 +181,30 @@ _HANDLERS = {
 }
 
 
+def evaluate_all(conditions: Sequence[Condition], value: Any) -> Outcome:
+    """Apply a conjunction of conditions to one canonical field value.
+
+    Conjunction only — see `CheckSpec` for why there is no disjunction here.
+
+    **An unevaluable conjunct dominates a false one.** `False and None` is `False`
+    in Kleene logic, and that is the wrong answer for this system. `None` here
+    does not mean "we do not know the device's value"; it means *this comparison
+    is not meaningful*, which is a defect in the rule. Returning FAIL from a rule
+    that is half-broken would deliver a verdict about a device while hiding an
+    authoring error, and the engine's whole reason for keeping
+    `rule_type_mismatch` separate from `no_match` is that a broken rule must
+    route to whoever wrote it rather than disappear into a coverage gap.
+
+    In practice the mixed case barely arises: every ordered operator abstains on
+    the same value shapes, so a conjunction over one field either evaluates
+    throughout or not at all. The rule is stated for the case where it does not.
+    """
+    outcomes = [evaluate(condition, value) for condition in conditions]
+    if any(outcome is None for outcome in outcomes):
+        return None
+    return all(outcomes)
+
+
 def describe(condition: Condition) -> str:
     """Human-readable expectation, for `Finding.expected`.
 
@@ -193,6 +218,16 @@ def describe(condition: Condition) -> str:
     if condition.op is ConditionOp.NON_EMPTY:
         return "at least one value configured"
     return f"{condition.op.value.replace('_', ' ')} {condition.value!r}"
+
+
+def describe_all(conditions: Sequence[Condition]) -> str:
+    """The expectation a conjunction states, for `Finding.expected`.
+
+    Joined with "and" rather than summarised, so the sentence an operator reads
+    names every comparison that actually ran. A rule that checked two things and
+    reported one would be describing an expectation the engine did not apply.
+    """
+    return " and ".join(describe(condition) for condition in conditions)
 
 
 SAMPLE_VALUES: dict[str, Any] = {

@@ -60,12 +60,74 @@ class Condition(BaseModel):
 
 
 class CheckSpec(BaseModel):
-    """Which canonical field is examined, and how."""
+    """Which canonical field is examined, and how.
+
+    One field, and either one condition or a **conjunction** of them.
+
+    `all_of` exists because DEF-8: `NRK-TIMEOUT-001` asked for `lte: 600` and so
+    passed `exec-timeout 0 0`, a management session that never expires. The
+    correct check is *at most ten minutes **and** greater than zero*, and a
+    single operator from a closed set cannot say it. The alternative — an
+    `in_range` operator taking a two-part operand — would make `Condition.value`
+    structured, and the next rule would want the next shape.
+
+    **Conjunction only.** No `any_of`, no negation, no nesting. That is the line
+    between a conjunction and an expression language, and it is where vendor
+    logic and model calls would reappear inside a layer built to have neither
+    (the argument in `api/comply/conditions.py`). A rule needing disjunction is
+    two rules, and saying so out loud is the point.
+
+    `all_of` requires at least two conditions. One condition written as a
+    conjunction of one is the same rule said a second way, and a contract with
+    two spellings for one meaning is a contract that gets diffed wrong.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     field: str = Constraint(min_length=1)
-    condition: Condition
+    condition: Condition | None = None
+    all_of: tuple[Condition, ...] = ()
+
+    @model_validator(mode="after")
+    def _exactly_one_form(self) -> CheckSpec:
+        if (self.condition is None) == (not self.all_of):
+            raise ValueError(
+                f"check on {self.field!r} must declare either `condition` or `all_of`, "
+                "not both and not neither"
+            )
+        if self.all_of:
+            if len(self.all_of) < 2:
+                raise ValueError(
+                    f"check on {self.field!r} declares `all_of` with one condition; "
+                    "write it as `condition` instead"
+                )
+            seen: set[tuple[Any, Any]] = set()
+            for cond in self.all_of:
+                key = (cond.op, _hashable(cond.value))
+                if key in seen:
+                    raise ValueError(
+                        f"check on {self.field!r} repeats the condition "
+                        f"{cond.op.value} {cond.value!r}"
+                    )
+                seen.add(key)
+        return self
+
+    @property
+    def conditions(self) -> tuple[Condition, ...]:
+        """Every condition this check applies, however it was written.
+
+        The engine and the rulepack self-check read this rather than branching on
+        which form the author used, so a conjunction cannot be half-evaluated by
+        a caller that only knew about the singular field.
+        """
+        return self.all_of if self.all_of else (self.condition,)  # type: ignore[return-value]
+
+
+def _hashable(value: Any) -> Any:
+    """A comparable key for a condition operand, which may be a list."""
+    if isinstance(value, list | set):
+        return tuple(value)
+    return value
 
 
 class AbsencePolicy(BaseModel):

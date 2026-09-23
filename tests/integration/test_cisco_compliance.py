@@ -118,7 +118,10 @@ def test_idle_timeout_fails_with_its_citation(sw) -> None:
     assert finding.status is Verdict.FAIL
     assert finding.observed.value == 1800
     assert [e.line_start for e in finding.evidence] == [18]
-    assert finding.expected == "lte 600"
+    # Both bounds, because the rule now applies both (DEF-8). The sentence an
+    # operator reads is rendered from the conditions that actually ran, so a
+    # rule that checked two things cannot report one.
+    assert finding.expected == "gt 0 and lte 600"
 
 
 @pytest.mark.parametrize("rule_id", ["NRK-SSH-001", "NRK-BANNER-001"])
@@ -278,3 +281,52 @@ def test_the_audit_payload_is_counts_and_identifiers(cisco, rulepack) -> None:
         "rules_evaluated",
         "verdicts",
     }
+
+
+# ---------------------------------------------------------------------------
+# DEF-8 — a session that never expires is the worst case, not the best
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def never_expires(cisco, rulepack):
+    """`edge-rtr-09.cfg` — console and vty both `exec-timeout 0 0`.
+
+    Chosen over `dist-sw-03.cfg` deliberately. That file also carries
+    `exec-timeout 0 0`, but on one of two vty ranges whose members declare
+    different timeouts, so `idle_timeout_seconds` resolves to UNKNOWN by the
+    per-field merge policy (D71) and the rule never sees a value at all. Here
+    there is no disagreement: the field resolves to `0, state=present`, which is
+    exactly the input the old rule passed.
+    """
+    return audit("edge-rtr-09.cfg", cisco, rulepack)
+
+
+def test_a_timeout_of_zero_fails_rather_than_passing(never_expires) -> None:
+    """The defect, stated as the verdict it produced.
+
+    Before DEF-8 was fixed this finding was PASS: `0 <= 600` is true, and the
+    single-operator check had no way to say "and greater than zero". A device
+    whose management sessions never expire was reported compliant, with a
+    citation, which is the worst output this system can produce.
+    """
+    finding = by_rule(never_expires)["NRK-TIMEOUT-001"]
+
+    assert finding.observed.value == 0
+    assert finding.status is Verdict.FAIL
+    assert finding.expected == "gt 0 and lte 600"
+    assert finding.is_actionable
+
+
+def test_the_zero_timeout_finding_cites_the_line_that_set_it(never_expires) -> None:
+    """Rule 2 — the verdict points at the vty line, not the console line.
+
+    The pack scopes `idle_timeout_seconds` to `line vty`, so the console
+    `exec-timeout 0 0` is correctly not read as a management idle timeout. A FAIL
+    citing the wrong one of two identical lines would send an operator to edit a
+    setting that was never evaluated.
+    """
+    finding = by_rule(never_expires)["NRK-TIMEOUT-001"]
+
+    assert [e.line_start for e in finding.evidence] == [66]
+    assert finding.evidence[0].raw_line.strip() == "exec-timeout 0 0"

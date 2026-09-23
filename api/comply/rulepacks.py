@@ -63,7 +63,12 @@ def discover_rules(root: Path = RULES_ROOT) -> list[ComplianceRule]:
 
 def validate_rulepack(pack: Rulepack) -> dict[str, list[str]]:
     """Rules whose conditions could never produce a verdict. Empty means clean."""
-    failures = {rule.rule_id: self_check(rule.check.condition) for rule in pack.rules}
+    failures = {
+        rule.rule_id: [
+            problem for condition in rule.check.conditions for problem in self_check(condition)
+        ]
+        for rule in pack.rules
+    }
     return {rule_id: msgs for rule_id, msgs in failures.items() if msgs}
 
 

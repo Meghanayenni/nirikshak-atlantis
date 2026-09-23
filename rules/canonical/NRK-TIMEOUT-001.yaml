@@ -7,8 +7,13 @@ rationale: >-
   NIRIKSHAK's own operational default, chosen as a balance between that exposure
   and interrupting legitimate work; it is data, and an operator with a different
   policy edits it. A timeout of zero means the session never expires and is
-  therefore the worst case, not the best.
+  therefore the worst case, not the best — so the check is bounded at both ends.
+  Until DEF-8 was fixed this rule asked only for 'at most 600', which zero
+  satisfies numerically, and the least secure setting the platform offers was
+  reported as compliant.
 check:
   field: idle_timeout_seconds
-  condition: { op: lte, value: 600 }
+  all_of:
+    - { op: gt,  value: 0 }
+    - { op: lte, value: 600 }
 frameworks: []
