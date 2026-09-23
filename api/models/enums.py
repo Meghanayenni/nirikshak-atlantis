@@ -350,6 +350,19 @@ class AclDialect(StrEnum):
     """`permit tcp 198.51.100.0 0.0.0.255 any eq 22` — wildcard masks, no
     sequence numbers on named entries."""
 
+    JUNOS_SET_FILTER = "junos_set_filter"
+    """`set firewall family inet filter F term T from protocol tcp` — a firewall
+    filter in JunOS **flat `set` form**, where one term spans several lines and a
+    list has no block header at all.
+
+    Named for the form and not for the vendor, because JunOS writes the same
+    filter two ways. The brace-nested hierarchy
+    (`firewall { family inet { filter { term { … } } } }`) is the same language
+    with a different surface, and it is **not** this dialect: it needs its own
+    reader, and until vendor detection recognises a brace-nested file nothing
+    could exercise one. See ADR 0033.
+    """
+
 
 class MergePolicy(StrEnum):
     """What a canonical field means when two lines in one file disagree.

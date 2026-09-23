@@ -55,6 +55,19 @@ split, which is ordinary engineering work nobody is prevented from doing.
 P7 analyser now reports overly-permissive, redundant and shadowed entries on real
 corpus configurations, and reports none on a deliberately clean list.
 
+**P17 added a second dialect and a second vendor** (ADR 0033): JunOS firewall
+filters in flat `set` form, taking the tally to **4 access lists analysed, 0
+dropped**. The JunOS material also supplied the corpus's first *isolated*
+redundancy — two byte-identical terms with nothing else overlapping — and the
+first address resolved through a prefix list the configuration itself defines.
+
+Still unread, and each for a different reason: the **brace-nested** JunOS form
+(vendor detection does not identify such a file, so it never reaches a pack —
+the blocker is upstream of extraction), **Arista** and **NX-OS** CIDR lists (no
+pack declares extraction), and JunOS **security policies**, which are a
+zone-based grammar rather than a filter and appear in the corpus as a single
+orphan line.
+
 The P12 exposure ranking is the half that did **not** open. Interfaces are read,
 but nothing establishes which one is the management plane, so exposure remains
 indeterminate — the blocker moved from `no_interface_data` to

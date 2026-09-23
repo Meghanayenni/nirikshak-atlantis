@@ -143,10 +143,19 @@ frameworks is made or supported by this repository.**
 **The corpus is synthetic and small.** Two Cisco development devices are enough to
 validate the *evaluator*; they are not enough to validate a *rule*.
 
-**No ACL parsing coverage.** The corpus contains no access control lists at all,
-so the semantic ACL analyser — shadowed, redundant and overly permissive entries,
-by interval logic — is tested against constructed model objects and has never seen
-a parsed one. No detection rate against real access lists is claimed.
+**No ACL detection rate is claimed.** The analyser does now read parsed access
+lists — four across Cisco IOS and JunOS, none dropped — and reports shadowed,
+redundant and overly-permissive entries on them, including **none** on a
+deliberately clean list. Every one of those files was written by this team, so
+what is demonstrated is that the interval logic runs on real parsed structure,
+not a rate at which it would find problems on a real network.
+
+**Two ACL dialects, and a third that is unreachable.** Cisco IOS wildcard lists
+and JunOS `set`-form filter terms are read. The brace-nested form of the same
+JunOS filters is not, and the blocker is vendor detection rather than
+extraction: a brace-nested file matches no JunOS signature and never reaches a
+pack. Arista and NX-OS declare no extraction at all. See
+`docs/adr/0033-junos-filter-terms-and-the-half-that-detection-blocks.md`.
 
 **Similarity scores are not confidence, and no calibrator is fitted.** Every
 suggestion carries `UNCALIBRATED_SIMILARITY`, which forces the field to UNKNOWN

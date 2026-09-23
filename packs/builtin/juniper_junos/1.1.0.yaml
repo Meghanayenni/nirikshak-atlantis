@@ -1,0 +1,66 @@
+# NIRIKSHAK vendor pack — juniper junos
+#
+# 1.1.0 adds ACL extraction for JunOS firewall filters written in the flat
+# `set` form. Packs are immutable, so this is a new version rather than an edit
+# to 1.0.0, which is deprecated and re-stamped.
+#
+# WHAT THIS PACK STILL DOES NOT READ, stated so nobody infers otherwise:
+#
+#   * The brace-nested form of the same filters
+#     (`firewall { family inet { filter { term { … } } } }`). Vendor detection
+#     does not identify a brace-nested JunOS file at all — corpus/juniper/dev/
+#     core-rtr-01.conf scores 0.25 as cisco/ios and falls below the threshold —
+#     so extraction declarations for it could not be exercised by anything.
+#     See ADR 0033.
+#   * Interfaces. `interface_extraction` is absent, so `applied` below is null:
+#     a filter's binding to an interface is read from the interface, and there
+#     are no interfaces. A binding that is absent is better than one that is
+#     guessed, and an ACL with no `applied_to` says only that.
+#   * Canonical security fields. `patterns` is still empty, so every field on
+#     every JunOS device remains UNKNOWN. This version reads structure, not
+#     facts.
+#
+# Patterns use single-quoted YAML scalars: double quotes would process
+# backslashes as escapes and mangle every regex.
+
+vendor: juniper
+os_family: junos
+pack_version: 1.1.0
+status: active
+created_by: team-atlantis
+checksum: sha256:bf9ca9b25cef20801f48419645b677b6bc8b15584ba09ff8d29b677e4b36ac12
+
+detect:
+  - { type: regex, pattern: '^set system host-name ', weight: 0.35 }
+  - { type: regex, pattern: '^set version ', weight: 0.25 }
+  - { type: regex, pattern: '^set interfaces \S+ unit \d+', weight: 0.25 }
+  - { type: regex, pattern: '^set security ', weight: 0.2 }
+
+identity:
+  - field: hostname
+    match:   { type: regex, pattern: '^set system host-name (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['set system host-name srx-edge-01']
+  - field: os_version
+    match:   { type: regex, pattern: '^set version (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['set version 21.4R3']
+
+# A JunOS filter in `set` form has no block header: one term is several
+# top-level lines. `named_block` therefore locates the *path prefix* up to and
+# including the filter name — `family inet` is a configuration detail an
+# operator can legitimately differ on, so it belongs in data — and the
+# junos_set_filter reader parses the `term … from/then …` tail that follows.
+#
+# `applied` is null: see the note at the top of this file.
+acl_extraction:
+  dialect: junos_set_filter
+  acl_type: extended
+  named_block: '^set firewall family inet filter (\S+) '
+  examples:
+    - 'set firewall family inet filter PROTECT-RE term allow-mgmt-ssh from protocol tcp'
+    - 'set firewall family inet filter PROTECT-RE term allow-mgmt-ssh from destination-port ssh'
+    - 'set firewall family inet filter PROTECT-RE term allow-mgmt-ssh then accept'
+    - 'set firewall family inet filter PROTECT-RE term log-and-deny then discard'
+
+patterns: []

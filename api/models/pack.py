@@ -483,11 +483,12 @@ class AclExtraction(BaseModel):
         min_length=1,
         description="Anchored regex opening a named list; group 1 is the name.",
     )
-    applied: str = Constraint(
-        min_length=1,
+    applied: str | None = Constraint(
+        default=None,
         description=(
             "Anchored regex binding a list inside an interface block; group 1 is "
-            "the name and group 2 the direction."
+            "the name and group 2 the direction. None when the platform's binding "
+            "syntax is not read yet — bindings are then absent rather than wrong."
         ),
     )
     remark: str | None = Constraint(
@@ -499,6 +500,8 @@ class AclExtraction(BaseModel):
     @model_validator(mode="after")
     def _check(self) -> AclExtraction:
         for name, raw in (("named_block", self.named_block), ("applied", self.applied)):
+            if raw is None:
+                continue
             if not raw.startswith("^"):
                 raise ValueError(f"{name} regex {raw!r} is not anchored with ^")
             try:

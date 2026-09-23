@@ -240,6 +240,19 @@ still measured on synthetic data written by this team, so no detection *rate* is
 claimed; what changed is that the machinery has run on a parsed access list at
 all. See ADR 0027.
 
+**Two dialects now, across two vendors.** P17 added JunOS firewall filters in
+flat `set` form (ADR 0033), where a list has no block header and one term spans
+several top-level lines — so the dialect table dispatches on the extraction
+*shape*, not only on the entry grammar. The corpus tally is **4 access lists
+analysed, 0 dropped**.
+
+The brace-nested form of the same JunOS filters is **not** read, and the blocker
+is upstream: vendor detection does not identify a brace-nested file at all, so
+`corpus/juniper/dev/core-rtr-01.conf` never reaches a pack. A reader for it
+could be written today and nothing would call it, which is a declaration no test
+could show right or wrong. The blocker is pinned by a test that is expected to
+fail when detection is fixed.
+
 **Peer-baseline outliers.** Until P15 every cohort held fewer than the five
 devices a baseline needs, so none was established. Registering the P15 corpus
 took the Cisco IOS cohort to nine and **eight baselines are now computed**, with
@@ -400,7 +413,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-Eighty-two numbered decisions across 32 ADRs. (D63 and D64 were never issued; the
+Eighty-five numbered decisions across 33 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -437,6 +450,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0030 | P16 | Pack provenance after a re-stamp, and what the trained-pack reset destroyed | D80 |
 | 0031 | P17 | A durable archive for superseded packs | D81, D82 |
 | 0032 | P17 | A check may bound a value at both ends | D83, D84 |
+| 0033 | P17 | JunOS filter terms, and the half that detection blocks | D85, D86, D87 |
 
 ---
 
