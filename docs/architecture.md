@@ -112,7 +112,7 @@ Fifteen packages under `api/`, 111 modules.
 | `analyse/` | Semantic ACL analysis by interval logic — shadowed, redundant, overly permissive. Observations, not verdicts. |
 | `prioritise/` | Exposure assessment and peer baselines. Ranks findings when exposure can be determined, and abstains when it cannot. |
 | `remediate/` | Resolves a vetted snippet for a failing finding, or states that none exists. |
-| `report/` | Renders a persisted run as a self-contained HTML document with its own disclosures. |
+| `report/` | Renders a persisted run as a self-contained HTML document with its own disclosures, and to PDF through WeasyPrint behind a live availability probe. |
 | `learn/` | The advisory branch: token-shape clustering, the labelled-example index, embedding adapter, top-3 retrieval, calibration machinery. Proposes; never decides. |
 | `train/` | The confirmation loop: queue, pattern compiler, pack lifecycle, and the audit records for each. The only package permitted to compose `learn` with storage. |
 | `routers/` | The HTTP surface. Performs the I/O and the authorisation checks; the layers below stay free of both. |
@@ -169,7 +169,10 @@ spine. Each arrow is a typed contract.
 10. **Attest** — an `AUDIT_RUN` record is appended to the hash chain: counts,
     identifiers and versions only.
 11. **Report** — `report.html` is regenerated from the persisted run on request,
-    never stored as a second copy that could drift.
+    never stored as a second copy that could drift. `report.pdf` renders the
+    same document through WeasyPrint where the GTK runtime is present — seven A4
+    pages for a Cisco access switch — and answers 503 naming the missing
+    libraries where it is not. It never falls back to HTML under a `.pdf` name.
 
 Every finding carries a `FindingProvenance`: engine version, rulepack version and
 the vendor pack versions that read the lines. A verdict is reproducible only if
@@ -231,7 +234,16 @@ is real; the output is an honest refusal.
 | **Real-world accuracy** | Every corpus file is hand-written by one author. The harness measures a synthetic sample honestly; that is not field accuracy. |
 | **Independent ground truth** | The labels are unreviewed, and the Cisco labels share an author with the Cisco parsing patterns. |
 
-Three items have since left this table.
+Four items have since left this table.
+
+**PDF rendering.** ADR 0006 recorded at P0, and again at P8, that the GTK
+runtime was absent on the development machine, and three documents repeated it
+until P17. It is installed, and the endpoint returns a seven-page PDF. Nothing
+was broken — the probe is live and re-ran correctly on every request, and four
+tests carrying `skipif(availability().available)` simply skipped. What was
+missing is the opposite assertion: **no test covered the positive path**, so a
+working deliverable and three documents calling it blocked could coexist
+indefinitely. See the P17 resolution appended to ADR 0006.
 
 **ACL analysis.** The P7 interval analyser produced nothing until P16, because
 `build_csm` returned `acls=()` unconditionally and no extractor existed. It now
@@ -420,7 +432,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and five numbered decisions across 40 ADRs. (D63 and D64 were never issued; the
+One hundred and seven numbered decisions across 41 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -465,6 +477,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0038 | P17 | A fourth platform, and the first bound access list | D100, D101, D102 |
 | 0039 | P17 | A container where the PDF endpoint works | D103, D104 |
 | 0040 | P17 | The stated stack and the installed one | D105, D106, D107 |
+| 0041 | P18 | A working deliverable described as blocked | D108, D109 |
 
 ---
 

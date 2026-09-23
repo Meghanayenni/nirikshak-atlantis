@@ -154,3 +154,67 @@ machine cannot render it to PDF.** That is an environment gap, recorded here,
 and not a missing capability in the product.
 
 See ADR 0015 (decision D28) for the reporting design this resolution sits inside.
+
+---
+
+## Resolution, P17 — the runtime is present and the endpoint returns bytes
+
+**Appended, not rewritten.** The reasoning above was right about the machine it
+probed. The machine changed.
+
+The GTK3 runtime is installed here through MSYS2. Probed directly:
+
+```
+libgobject-2.0-0    -> C:\msys64\mingw64\bin\libgobject-2.0-0.dll
+… eight of eight resolved …
+weasyprint installed: True
+```
+
+`GET /compliance/audits/{id}/report.pdf` returns **200** with
+`application/pdf`. A report for `corpus/cisco/dev/sw-access-02.cfg` renders to
+**seven A4 pages**, 48,666 bytes, carrying seven findings, two failures with
+their cited configuration lines, and five disclosures.
+
+So the sentence this ADR closed on — *"NIRIKSHAK produces the report; this
+machine cannot render it to PDF"* — is no longer true, and had not been true for
+some time while three documents went on repeating it.
+
+### What kept the code honest while the prose went stale
+
+This ADR's own decision: *"the probe is the same one ADR 0006 ran, kept in code
+rather than in prose so it re-runs on every request instead of describing a
+machine from August."*
+
+That is exactly what happened. The probe re-ran and reported availability
+correctly on every request. Four tests carrying
+`skipif(availability().available)` began skipping and kept skipping. **Nothing
+was broken.** What went wrong is that the documents asserted an environment fact
+as a permanent one, and no test asserted the *positive* path — so a passing
+suite and a working endpoint could sit beside three documents saying it was
+blocked, indefinitely.
+
+A live probe protects the behaviour. It does not protect the claims made about
+the behaviour, and those need their own assertion.
+
+### What changed in P17
+
+- `api/report/pdf.py` probes **platform-appropriate library names**.
+  `find_library("libpango-1.0-0")` returns `None` on Linux *with Pango
+  installed* — it adds the `lib` prefix and `.so` suffix itself — so the Windows
+  DLL names recorded above would report a complete stack as entirely missing.
+  The **set** of eight components is unchanged; only the spelling varies by
+  platform, and a test pairs the two lists positionally. See ADR 0039 (D103).
+- A positive assertion exists at both levels: `render_pdf` returning `%PDF-`
+  bytes, and the endpoint returning `application/pdf` from a persisted run.
+  Both skip where GTK is absent, which remains correct.
+- `Dockerfile` installs the runtime so the endpoint works regardless of host,
+  and fails the build rather than shipping an image that answers 503. It has
+  **not been built** — no Docker daemon on this machine (ADR 0039).
+
+### What is unchanged
+
+Every decision. WeasyPrint only; no second engine; no headless browser; no HTML
+under a `.pdf` name; `render_pdf` returns bytes or raises and an AST test
+enforces the single `return`. The 503 path is still the correct behaviour where
+the runtime is absent, still names the missing libraries, and is still tested —
+on a machine without GTK, which this one is not.

@@ -215,3 +215,51 @@ def test_the_gtk_state_of_this_machine_is_whatever_it_is() -> None:
     if absent:
         assert not state.available
         assert "unavailable" in state.summary
+
+
+# ---------------------------------------------------------------------------
+# Rendering — the half that had no assertion for ten phases
+# ---------------------------------------------------------------------------
+#
+# Every test above this line covers the REFUSAL and skips where GTK is present.
+# On a machine with the runtime installed that left `render_pdf` — the function
+# a Problem Statement deliverable rests on — exercised by nothing at all, while
+# three documents said the capability was blocked. A live probe protects the
+# behaviour; it does not protect the claims made about it.
+
+
+@pytest.mark.skipif(not availability().available, reason="GTK is absent in this environment")
+def test_rendering_returns_pdf_bytes_when_the_runtime_is_present() -> None:
+    """The positive path, at the adapter rather than through the API.
+
+    Asserted here as well as in `tests/integration/test_reporting.py` because
+    the two can fail separately: the endpoint could stop calling this, and this
+    could stop producing a PDF, and either alone would leave the other green.
+    """
+    out = render_pdf("<html><body><h1>NIRIKSHAK</h1><p>evidence</p></body></html>")
+
+    assert isinstance(out, bytes)
+    assert out.startswith(b"%PDF-"), "a renderer that returns non-PDF bytes is the whole risk"
+    assert out.rstrip().endswith(b"%%EOF"), "a truncated PDF opens as a damaged file"
+
+
+@pytest.mark.skipif(not availability().available, reason="GTK is absent in this environment")
+def test_a_multi_page_report_renders_every_page() -> None:
+    """A report is not one page, and a renderer that silently truncates is worse
+    than one that fails: the document looks complete and is missing findings.
+    """
+    from weasyprint import HTML  # noqa: PLC0415 - optional [report] dependency
+
+    body = "".join(f"<h2>Finding {n}</h2><p>{'evidence ' * 80}</p>" for n in range(40))
+    document = HTML(string=f"<html><body>{body}</body></html>").render()
+
+    assert len(document.pages) > 1
+
+
+@pytest.mark.skipif(not availability().available, reason="GTK is absent in this environment")
+def test_the_probe_and_the_renderer_agree() -> None:
+    """A probe that passes while rendering fails is the gap the Dockerfile's
+    build-time check exists to close, checked here for the host as well.
+    """
+    assert availability().available
+    assert render_pdf("<html><body>x</body></html>").startswith(b"%PDF-")

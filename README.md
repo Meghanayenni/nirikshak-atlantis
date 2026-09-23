@@ -249,12 +249,20 @@ version**, because every archived file declares itself active and reinstating on
 would give a platform two active versions. Recorded as DEF-18; see
 `docs/adr/0030-...` and `docs/adr/0031-a-durable-archive-for-superseded-packs.md`.
 
-**PDF rendering works where the GTK runtime is installed, and refuses where it
-is not.** HTML reporting is complete and has no native dependency. The PDF
-endpoint needs the WeasyPrint/GTK stack; where that is present the endpoint
-returns a PDF, and where it is absent it answers 503 naming the missing
-libraries rather than substituting another engine or returning the HTML document
-under a `.pdf` name.
+**PDF rendering works here, and refuses where the runtime is absent.** A report
+for `corpus/cisco/dev/sw-access-02.cfg` renders to **seven A4 pages** carrying
+seven findings, two failures with their cited configuration lines, and five
+disclosures. HTML reporting is complete and has no native dependency; the PDF
+endpoint needs the WeasyPrint/GTK stack, and where that is absent it answers 503
+naming the missing libraries rather than substituting another engine or
+returning the HTML document under a `.pdf` name.
+
+Until P17 three documents said this was blocked. It was not: the GTK runtime is
+installed here and the live probe had been reporting so on every request. **No
+test asserted the positive path**, so a working endpoint and three documents
+calling it blocked sat side by side for ten phases. Both levels are asserted
+now — `render_pdf` returning `%PDF-` bytes, and the endpoint returning
+`application/pdf` from a persisted run.
 
 `Dockerfile` and `docker-compose.yml` are the supported way to get it working
 regardless of the host, and the build fails rather than producing an image whose
