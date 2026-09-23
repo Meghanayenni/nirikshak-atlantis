@@ -97,7 +97,7 @@ contract, not by intention.
 
 ## 4. Packages and responsibilities
 
-Fifteen packages under `api/`, 109 modules.
+Fifteen packages under `api/`, 110 modules.
 
 | Package | Responsibility |
 | --- | --- |
@@ -223,14 +223,22 @@ is real; the output is an honest refusal.
 | --- | --- |
 | **Coverage against CIS, NIST SP 800-53, DISA STIG or ISO/IEC 27001** | Every rule ships an empty framework list. Writing an identifier without having read the benchmark would be inventing it. |
 | **Absence-aware evaluation accuracy** | No platform default and no capability claim ships, so the `EVALUATE` branch has never fired on real data. |
-| **ACL detection rates** | The corpus contains no access list in any split. The analyser has never seen a parsed one. |
-| **Exposure scores or a priority ranking** | Exposure needs interfaces and access lists; the corpus has zero of both. Severity alone must not determine remediation order, so no severity-sorted list is offered in their place. |
+| **Exposure scores or a priority ranking** | Interfaces and access lists are now read, but nothing establishes which interface is the management plane, so exposure stays indeterminate. Severity alone must not determine remediation order, so no severity-sorted list is offered in its place. |
 | **Held-out generalisation** | Blocked: the metric is defined over the held-out vendor's commands, reading them needs an XML parser, and that parser waits on a sample independent of the holdout. |
 | **Top-3 mapping accuracy or a calibrated confidence** | No line-level ground truth exists, and no calibrator is fitted. Every similarity score is a ranking, never a probability. |
 | **Real-world accuracy** | Every corpus file is hand-written by one author. The harness measures a synthetic sample honestly; that is not field accuracy. |
 | **Independent ground truth** | The labels are unreviewed, and the Cisco labels share an author with the Cisco parsing patterns. |
 
-Two items have since left this table.
+Three items have since left this table.
+
+**ACL analysis.** The P7 interval analyser produced nothing until P16, because
+`build_csm` returned `acls=()` unconditionally and no extractor existed. It now
+reports overly-permissive, redundant and shadowed entries on real corpus
+configurations — and reports **none** on a deliberately clean list, which is the
+result that shows it is reading rather than pattern-matching for alarm. It is
+still measured on synthetic data written by this team, so no detection *rate* is
+claimed; what changed is that the machinery has run on a parsed access list at
+all. See ADR 0027.
 
 **Peer-baseline outliers.** Until P15 every cohort held fewer than the five
 devices a baseline needs, so none was established. Registering the P15 corpus
@@ -363,7 +371,7 @@ current measurement depends on the defect either way.
 
 ## 10. Decision index
 
-Sixty-nine numbered decisions across 25 ADRs.
+Seventy-two numbered decisions across 26 ADRs.
 
 | ADR | Phase | Subject | Decisions |
 | --- | --- | --- | --- |
@@ -393,6 +401,7 @@ Sixty-nine numbered decisions across 25 ADRs.
 | 0024 | P15 | Corpus registration, and a training loop that could contaminate its own evaluation | D65, D66, D67, D68 |
 | 0025 | P15 | Presence assertion in the training form, and what happens when two lines disagree | D69, D70 |
 | 0026 | P16 | Per-field merge semantics, and why "undecided" is not universal | D71, D72, D73 |
+| 0027 | P16 | Reading access lists and interfaces, and what that did and did not start | D74, D75, D76 |
 
 ---
 

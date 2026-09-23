@@ -93,10 +93,12 @@ fleet is clean when nothing was measured.
 
 **Prioritisation runs and abstains.** The Prioritise stage exists as of P12 and
 produces no ranking on this corpus, because exposure needs interfaces and access
-lists and the corpus contains **zero of both** on every device in every split. So
-`exposure_score` and `priority_rank` stay `None`, the audit response says which
-input was missing, and no severity-sorted list is offered in their place —
-severity alone must not determine remediation order.
+lists. Both are now read from Cisco IOS configurations, and the ACL analyser
+reports shadowed, redundant and overly-permissive entries. Exposure still
+abstains: nothing establishes which interface is the management plane, so
+`exposure_score` and `priority_rank` stay `None`, the audit response names
+`indeterminate_interfaces` as the blocker, and no severity-sorted list is offered
+in their place — severity alone must not determine remediation order.
 
 **Peer baselines now run.** Devices are grouped by platform and compared against
 their own cohort. Until P15 the largest cohort held four devices against a floor

@@ -151,7 +151,7 @@ def test_no_absence_produces_a_pass(sw) -> None:
 
 def test_findings_record_the_pack_that_read_the_line(rtr) -> None:
     for finding in rtr:
-        assert finding.provenance.pack_versions == {"cisco": "1.1.0"}
+        assert finding.provenance.pack_versions == {"cisco": "1.2.0"}
         assert finding.provenance.rulepack_version == "1.0.0"
         assert finding.provenance.engine_version
 

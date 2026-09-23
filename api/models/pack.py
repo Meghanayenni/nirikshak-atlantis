@@ -19,6 +19,8 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from pydantic import Field as Constraint
 
 from api.models.enums import (
+    AclDialect,
+    AclType,
     CastType,
     MatchType,
     PackStatus,
@@ -464,6 +466,79 @@ class PlatformCapability(BaseModel):
         return self.provenance is not None and self.provenance.is_admissible
 
 
+class AclExtraction(BaseModel):
+    """How one platform writes access lists, declared as data (Rule 5).
+
+    The regexes locate the *structure* — where a list opens, where it is bound
+    to an interface. The entries themselves are read by the named `dialect`,
+    because turning `0.0.0.255` into `/24` is arithmetic, not matching.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    dialect: AclDialect
+    acl_type: AclType = AclType.EXTENDED
+
+    named_block: str = Constraint(
+        min_length=1,
+        description="Anchored regex opening a named list; group 1 is the name.",
+    )
+    applied: str = Constraint(
+        min_length=1,
+        description=(
+            "Anchored regex binding a list inside an interface block; group 1 is "
+            "the name and group 2 the direction."
+        ),
+    )
+    remark: str | None = Constraint(
+        default=None,
+        description="Anchored regex for a comment line inside a list. Not an entry.",
+    )
+    examples: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def _check(self) -> AclExtraction:
+        for name, raw in (("named_block", self.named_block), ("applied", self.applied)):
+            if not raw.startswith("^"):
+                raise ValueError(f"{name} regex {raw!r} is not anchored with ^")
+            try:
+                re.compile(raw)
+            except re.error as exc:
+                raise ValueError(f"{name} regex {raw!r} is invalid: {exc}") from exc
+        return self
+
+
+class InterfaceExtraction(BaseModel):
+    """How one platform writes interfaces, declared as data (Rule 5)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    block: str = Constraint(
+        min_length=1, description="Anchored regex opening an interface; group 1 is the name."
+    )
+    description: str | None = None
+    ip_address: str | None = Constraint(
+        default=None, description="Group 1 address, optional group 2 mask."
+    )
+    shutdown: str | None = None
+    no_shutdown: str | None = None
+    examples: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def _check(self) -> InterfaceExtraction:
+        for name in ("block", "description", "ip_address", "shutdown", "no_shutdown"):
+            raw = getattr(self, name)
+            if raw is None:
+                continue
+            if not raw.startswith("^"):
+                raise ValueError(f"{name} regex {raw!r} is not anchored with ^")
+            try:
+                re.compile(raw)
+            except re.error as exc:
+                raise ValueError(f"{name} regex {raw!r} is invalid: {exc}") from exc
+        return self
+
+
 class VendorPack(BaseModel):
     """A versioned, immutable description of one platform's syntax."""
 
@@ -494,6 +569,12 @@ class VendorPack(BaseModel):
         ),
     )
     patterns: tuple[PatternDef, ...] = ()
+    acl_extraction: AclExtraction | None = Constraint(
+        default=None, description="How this platform writes access lists (P16)"
+    )
+    interface_extraction: InterfaceExtraction | None = Constraint(
+        default=None, description="How this platform writes interfaces (P16)"
+    )
     defaults: tuple[PlatformDefault, ...] = ()
     capabilities: tuple[PlatformCapability, ...] = ()
 

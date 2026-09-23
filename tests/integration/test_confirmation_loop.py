@@ -230,7 +230,7 @@ def test_a_builtin_field_still_reports_as_builtin(tmp_path: Path) -> None:
     by a hand-written pattern is still `BUILTIN` / `DETERMINISTIC`, and that is
     what an operator needs in order to tell a shipped mapping from a learned one.
     """
-    cisco = load_pack(PACKS_ROOT / "cisco_ios" / "1.1.0.yaml")
+    cisco = load_pack(PACKS_ROOT / "cisco_ios" / "1.2.0.yaml")
     text = (REPO_ROOT / "corpus" / "cisco" / "dev" / "rtr-core-01.cfg").read_text(encoding="utf-8")
 
     csm = build_csm(

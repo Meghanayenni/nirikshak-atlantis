@@ -16,6 +16,7 @@ from api.models.enums import SourceType, SyntaxMode
 from api.models.pack import VendorPack
 from api.models.parsing import ParseResult
 from api.parse import fields as field_builder
+from api.parse import structures
 from api.parse.block_parser import build_tree
 from api.parse.pack_engine import apply_pack
 
@@ -62,7 +63,16 @@ def parse_configuration(
 
     by_field, matched_nodes = apply_pack(pack, tree, source_type=source_type)
     parsed = field_builder.build_fields(by_field, pack)
-    residue = collect_residue(tree, matched_nodes)
+
+    # Structure extraction (P16). Interfaces first: an access list records where
+    # it is bound, and that binding is written inside the interface block.
+    interfaces = structures.extract_interfaces(tree, pack, source_type)
+    acls = structures.extract_acls(tree, pack, interfaces, source_type)
+
+    # A line these read is recognised, so it must not also reach the training
+    # queue — an administrator asked to classify a line the parser already
+    # understood is being wasted.
+    residue = collect_residue(tree, matched_nodes | structures.matched_node_ids(tree, pack))
 
     return ParseResult(
         file_id=file_id,
@@ -73,6 +83,8 @@ def parse_configuration(
         tree=tree,
         fields=parsed,
         residue=residue,
+        acls=acls,
+        interfaces=interfaces,
     )
 
 

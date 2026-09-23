@@ -23,7 +23,7 @@ DEV = Path("corpus/cisco/dev")
 @pytest.fixture(scope="module")
 def cisco():
     pack = next(p for p in load_active_packs(use_cache=False) if p.vendor == "cisco")
-    assert pack.pack_version == "1.1.0", "the active Cisco pack should be the parsing pack"
+    assert pack.pack_version == "1.2.0", "the active Cisco pack should be the parsing pack"
     return pack
 
 
@@ -61,7 +61,7 @@ def test_cisco_pack_is_no_longer_detection_only(cisco) -> None:
     # 9, not 12: three patterns were removed at review because no line in the
     # development corpus could verify them. See ADR 0011.
     assert len(cisco.patterns) == 9
-    assert cisco.parent_version == "1.0.0"
+    assert cisco.parent_version == "1.1.0"
 
 
 def test_all_patterns_self_check(cisco) -> None:
@@ -241,7 +241,7 @@ def test_provenance_records_the_pack_version(rtr) -> None:
 
     assert provenance is not None
     assert provenance.pack_id == "cisco/ios"
-    assert provenance.pack_version == "1.1.0"
+    assert provenance.pack_version == "1.2.0"
     assert provenance.pattern_id == "p-ssh-version-001"
 
 

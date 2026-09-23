@@ -31,7 +31,7 @@ DEV = Path("corpus/cisco/dev")
 @pytest.fixture(scope="module")
 def cisco():
     pack = next(p for p in load_active_packs(use_cache=False) if p.vendor == "cisco")
-    assert pack.pack_version == "1.1.0"
+    assert pack.pack_version == "1.2.0"
     return pack
 
 
@@ -69,7 +69,7 @@ def test_the_csm_records_the_pack_version_that_actually_applied(rtr) -> None:
     """Not whichever pack is active when a report is generated later."""
     parsed, csm = rtr
 
-    assert csm.source.pack_versions == {"cisco": "1.1.0"}
+    assert csm.source.pack_versions == {"cisco": "1.2.0"}
     assert csm.source.pack_versions["cisco"] == parsed.pack_version
 
 
@@ -217,12 +217,22 @@ def test_residue_carries_no_comments_or_banner_prose(rtr) -> None:
     assert not any("Authorised access only" in t for t in texts)
 
 
-def test_acls_and_interfaces_are_empty_and_that_is_deliberate(rtr) -> None:
-    """The corpus contains no ACL in any split — see CORPUS_PREREQUISITES.md."""
+def test_acls_and_interfaces_are_extracted(rtr) -> None:
+    """P16 — replaces `test_acls_and_interfaces_are_empty_and_that_is_deliberate`.
+
+    That test was correct for as long as `build_csm` returned `acls=()` and
+    `interfaces=()` unconditionally, which it did from P5 until the extractor
+    existed. It is deleted by the change that earned it.
+
+    `rtr-core-01.cfg` carries two interfaces and no access list, so the empty
+    tuple here is a reading of the file rather than a hardcoded constant — which
+    is exactly the distinction the old test could not make.
+    """
     _, csm = rtr
 
-    assert csm.acls == ()
-    assert csm.interfaces == ()
+    assert len(csm.interfaces) == 2
+    assert csm.acls == (), "rtr-core-01 declares no access list"
+    assert all(i.evidence for i in csm.interfaces), "an interface must cite its source"
 
 
 # ---------------------------------------------------------------------------

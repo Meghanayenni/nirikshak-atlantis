@@ -12,7 +12,9 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 from pydantic import Field as Constraint
 
+from api.models.acl import ACL
 from api.models.config_tree import ConfigNode, ConfigTree
+from api.models.csm import Interface
 from api.models.evidence import Evidence
 from api.models.field import Field
 
@@ -51,6 +53,12 @@ class ParseResult(BaseModel):
     fields: dict[str, Field[Any]] = Constraint(default_factory=dict)
     residue: tuple[ConfigNode, ...] = Constraint(
         default=(), description="Nodes no pattern matched — the P10 training queue"
+    )
+    acls: tuple[ACL, ...] = Constraint(
+        default=(), description="Access lists read from the tree (P16)"
+    )
+    interfaces: tuple[Interface, ...] = Constraint(
+        default=(), description="Interfaces read from the tree (P16)"
     )
 
     @property

@@ -253,7 +253,10 @@ def test_the_document_states_what_is_not_claimed(text: str) -> None:
         # so the phrase is replaced rather than dropped: a claim quietly
         # disappearing from §7 is exactly what §7 exists to prevent.
         "shipped empty until every entry could name",
-        "no access list in any split",
+        # Was "no access list in any split", true until P16 put access lists in
+        # the corpus and a parser behind them. The claim §7 must still carry is
+        # the one that replaced it: the analyser runs, on data this team wrote.
+        "still measured on synthetic data written by this team",
         "never been opened",
     ]:
         assert phrase.lower() in text.lower(), f"the document should state: {phrase!r}"

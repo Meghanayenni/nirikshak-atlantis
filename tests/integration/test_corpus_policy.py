@@ -226,6 +226,17 @@ def _pack_examples() -> list[tuple[str, str, str]]:
             out += [(pack.pack_id, pattern.id, ex) for ex in pattern.examples]
         for identity in pack.identity:
             out += [(pack.pack_id, f"identity:{identity.field}", ex) for ex in identity.examples]
+        # P16 — structure extraction declares examples too, and the same
+        # provenance rule applies: an example is the evidence the declaration
+        # was authored from, so it must be a line someone actually read in a
+        # development file.
+        if pack.acl_extraction is not None:
+            out += [(pack.pack_id, "acl_extraction", ex) for ex in pack.acl_extraction.examples]
+        if pack.interface_extraction is not None:
+            out += [
+                (pack.pack_id, "interface_extraction", ex)
+                for ex in pack.interface_extraction.examples
+            ]
     return out
 
 

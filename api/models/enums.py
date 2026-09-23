@@ -336,6 +336,21 @@ class MatchType(StrEnum):
     BLOCK = "block"
 
 
+class AclDialect(StrEnum):
+    """Which access-list grammar a platform writes.
+
+    A dialect names a *grammar*, not a vendor. Adding a platform that writes an
+    existing grammar is a pack change; a genuinely new grammar needs an entry
+    here and a parser beside it, because an access-control entry is a structured
+    statement and no regular expression in YAML converts a wildcard mask into a
+    CIDR. That is the limit of Rule 5's "wherever the architecture permits".
+    """
+
+    IOS_WILDCARD = "ios_wildcard"
+    """`permit tcp 198.51.100.0 0.0.0.255 any eq 22` — wildcard masks, no
+    sequence numbers on named entries."""
+
+
 class MergePolicy(StrEnum):
     """What a canonical field means when two lines in one file disagree.
 

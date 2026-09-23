@@ -51,9 +51,15 @@ P12's ranking waited on material that had to come from outside the repository;
 they now wait on ACL and interface parsing patterns authored from the development
 split, which is ordinary engineering work nobody is prevented from doing.
 
-**A reader seeing "gap 1 closed" in the commit log should not infer that P7
-produces output.** It does not. This entry is closed only in the sense that
-nothing further needs sourcing — the patterns are what will actually close it.
+**CLOSED IN FULL at P16.** The extraction subsystem landed (ADR 0027) and the
+P7 analyser now reports overly-permissive, redundant and shadowed entries on real
+corpus configurations, and reports none on a deliberately clean list.
+
+The P12 exposure ranking is the half that did **not** open. Interfaces are read,
+but nothing establishes which one is the management plane, so exposure remains
+indeterminate — the blocker moved from `no_interface_data` to
+`indeterminate_interfaces`. That is gap 2 (vendor capability documentation) in a
+new place, not this gap, and it is recorded there.
 
 The P7 analyser is built and exhaustively tested against constructed `ACL`
 objects. It has never seen a parsed one.
