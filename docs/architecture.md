@@ -295,7 +295,7 @@ can be run once, and it has not been spent.
 
 ## 9. Defect register
 
-Sixteen numbered defects. **Three are open.**
+Seventeen numbered defects. **Four are open.**
 
 | # | Description | Status |
 | --- | --- | --- |
@@ -315,6 +315,7 @@ Sixteen numbered defects. **Three are open.**
 | DEF-14 | `POST /compliance/audits` never appended `AUDIT_RUN` to the chain | Fixed (ADR 0021) |
 | DEF-15 | Detected device identity never reached the canonical model in the live pipeline | Fixed (ADR 0021) |
 | **DEF-16** | **The confirmation loop does not know about corpus splits, so an administrator working the Needs-review queue can compile a pattern from a file reserved for measuring the parser** | **OPEN** |
+| **DEF-17** | **Two patterns asserting different values for one field collapse to UNKNOWN, so a device whose weakest vty line enables telnet reports no FAIL** | **OPEN** |
 
 ### Why the two open defects remain open
 
@@ -327,6 +328,19 @@ not longitudinal. The real consequence is recorded rather than hidden — **a
 configuration re-uploaded after an edit counts as a second device** in its cohort.
 Nothing anywhere presents a content hash as a stable device identity: the report
 names its field `config_file_id`, and the interface labels devices by hostname.
+
+**DEF-17** — the canonical model treats disagreement as abstention. Measured on
+`dist-sw-03.cfg` with shipped patterns and no training: `line vty 0 4` permits
+ssh only while `line vty 5 15` permits telnet, and `telnet_enabled` resolves to
+UNKNOWN rather than TRUE. `idle_timeout_seconds` does the same, which also masks
+DEF-8 on that file.
+
+It is safe — no value is picked, so no false PASS — but lossy, because a device
+is only as secure as its weakest line and the correct answer is readable. The fix
+is a merge policy of worst-case-wins for security-relevant fields, which changes
+what a canonical field asserts when its evidence disagrees. That is a contract
+change and needs its own ADR, so it is recorded rather than folded into a form
+commit. See ADR 0025.
 
 **DEF-16** — found at P15 by the corpus-policy suite, which reported that two
 admin-trained patterns in the active Cisco pack had been compiled from
@@ -354,7 +368,7 @@ current measurement depends on the defect either way.
 
 ## 10. Decision index
 
-Sixty-four numbered decisions across 23 ADRs.
+Sixty-six numbered decisions across 24 ADRs.
 
 | ADR | Phase | Subject | Decisions |
 | --- | --- | --- | --- |
@@ -382,6 +396,7 @@ Sixty-four numbered decisions across 23 ADRs.
 | 0022 | P13 | The interface, and what it refuses to draw | D58, D59, D60, D61, D62 |
 | 0023 | P14 | This document | — |
 | 0024 | P15 | Corpus registration, and a training loop that could contaminate its own evaluation | D65, D66, D67, D68 |
+| 0025 | P15 | Presence assertion in the training form, and what happens when two lines disagree | D69, D70 |
 
 ---
 

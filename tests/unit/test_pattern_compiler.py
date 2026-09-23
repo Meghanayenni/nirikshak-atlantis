@@ -287,3 +287,52 @@ def test_pattern_ids_do_not_collide_with_existing_ones() -> None:
 def test_a_generated_id_says_it_was_admin_trained() -> None:
     """Readable provenance: a person scanning a pack sees which lines were learned."""
     assert "-admin-" in next_pattern_id("ssh_version", ())
+
+
+# ---------------------------------------------------------------------------
+# Presence assertion, and the negative case (P15)
+# ---------------------------------------------------------------------------
+
+
+def test_a_presence_line_asserts_its_literal_value() -> None:
+    """A boolean control is asserted by a line existing, not by a token in it.
+
+    `aaa new-model` carries nothing to capture. The literal value is what the
+    field becomes when the pattern matches.
+    """
+    pattern = compile_pattern(
+        example("aaa new-model", field="aaa_enabled"),
+        CompileRequest(value_token=None, literal_value="true", cast=CastType.BOOL),
+    )
+
+    assert pattern.capture.value == "true"
+    assert pattern.capture.cast is CastType.BOOL
+    # No capturing group: there is nothing in the line to capture.
+    assert re.compile(pattern.match.pattern).groups == 0
+
+
+def test_a_presence_line_can_assert_FALSE() -> None:
+    """The load-bearing half, and the one worth stating separately.
+
+    `snmp-server community public RO` is a v1/v2c community. Its presence proves
+    SNMP is **not** v3-only, so the mapping must be able to assert FALSE. If a
+    pattern could only ever assert TRUE on match, that line would be
+    unconfirmable and the SNMP check would abstain on a device that fails it —
+    an abstention standing in for a FAIL.
+    """
+    pattern = compile_pattern(
+        example("snmp-server community public RO", field="snmp_v3_only"),
+        CompileRequest(value_token=None, literal_value="false", cast=CastType.BOOL),
+    )
+
+    assert pattern.capture.value == "false"
+    assert pattern.capture.cast is CastType.BOOL
+
+
+def test_a_decision_that_neither_captures_nor_declares_is_refused() -> None:
+    """The message the training form used to produce for every boolean field."""
+    with pytest.raises(PatternCompileError, match="either capture a token or declare"):
+        compile_pattern(
+            example("aaa new-model", field="aaa_enabled"),
+            CompileRequest(value_token=None, literal_value=None, cast=CastType.BOOL),
+        )

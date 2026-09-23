@@ -56,6 +56,23 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
   const [field, setField] = useState('');
   const [valueType, setValueType] = useState('str');
   const [valueToken, setValueToken] = useState<number | ''>('');
+  /**
+   * What the field becomes when the line's PRESENCE is the fact.
+   *
+   * A boolean control is asserted by a line existing, not by a token inside it:
+   * `aaa new-model` carries no value to capture, and neither does
+   * `snmp-server community public RO` — what matters is that the line is there.
+   * The compiler has always accepted this (`literal_value`), and the backend
+   * refuses a decision that captures nothing and declares nothing:
+   *
+   *   "a pattern must either capture a token or declare the literal value its
+   *    presence asserts; this one does neither, so it would produce no fact"
+   *
+   * Until now this form sent only `value_token`, so every boolean field failed
+   * to compile with that message and no boolean mapping could be confirmed at
+   * all.
+   */
+  const [literalValue, setLiteralValue] = useState('true');
   const [draft, setDraft] = useState<DraftResult | null>(null);
   const [pattern, setPattern] = useState('');
 
@@ -68,6 +85,7 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
     setField('');
     setValueType('str');
     setValueToken('');
+    setLiteralValue('true');
     setDraft(null);
     setPattern('');
   }
@@ -129,7 +147,11 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
 
     const compiled = await doCompile.run({
       example_id: recorded.example_id,
-      value_token: valueToken === '' ? null : Number(valueToken),
+      // A boolean field asserts its literal value; everything else captures a
+      // token. The two are exclusive, which is why the form offers one or the
+      // other rather than both.
+      value_token: isPresenceField ? null : valueToken === '' ? null : Number(valueToken),
+      literal_value: isPresenceField ? literalValue : null,
       cast: valueType,
       block_path: selected.block_path,
     });
@@ -157,6 +179,9 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
       push('error', 'Activation failed', doActivate.error ?? undefined);
     }
   }
+
+  /** A bool field is asserted by presence, so there is no token to pick. */
+  const isPresenceField = valueType === 'bool';
 
   const decided = entries.length - undecided.length;
 
@@ -321,6 +346,36 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
                   </div>
                 </div>
 
+                {isPresenceField ? (
+                  <div>
+                    <p className="label mb-1.5">What does this line assert?</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['true', 'false'].map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setLiteralValue(value)}
+                          aria-pressed={literalValue === value}
+                          className={`mono rounded border px-3 py-1 transition-colors
+                            ${
+                              literalValue === value
+                                ? 'border-accent bg-accent-bg text-ink'
+                                : 'border-border text-ink-2 hover:bg-surface'
+                            }`}
+                        >
+                          {value}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-micro leading-relaxed text-muted">
+                      The line captures nothing; its presence is the fact, and this is the value
+                      the field takes when it matches. <span className="mono">false</span> is not
+                      a lesser answer than <span className="mono">true</span> — a v1/v2c community
+                      line asserts that SNMP is <em>not</em> v3-only, and recording that is how the
+                      check fails honestly rather than abstaining.
+                    </p>
+                  </div>
+                ) : (
                 <div>
                   <p className="label mb-1.5">Which token carries the value?</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -346,6 +401,7 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
                     token is escaped literally.
                   </p>
                 </div>
+                )}
 
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button
