@@ -29,6 +29,7 @@ from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import HTMLResponse
 
 from api.audit.chain import AuditChain
+from api.comply.rulepacks import load_active_rulepack
 from api.config import settings
 from api.db import findings as finding_store
 from api.db.connection import connect
@@ -89,6 +90,19 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
     findings = tuple(finding_store.read_findings(conn, audit_id))
     vendor, os_family, blob_path = _platform(conn, run["device_id"])
 
+    # Control mappings are rulepack data, resolved at render time like snippets.
+    # Supplied ONLY when the run was evaluated under the rulepack that is active
+    # now: showing today's mappings beside a verdict produced under a different
+    # rulepack would cite a document that did not decide it. When they differ the
+    # report simply carries no control identifiers, which is visibly less rather
+    # than quietly wrong.
+    rulepack = load_active_rulepack()
+    rule_frameworks = (
+        {rule.rule_id: rule.frameworks for rule in rulepack.rules}
+        if run.get("rulepack_version") == rulepack.version
+        else None
+    )
+
     return build_report(
         report_id=uuid.uuid4().hex,
         audit_id=audit_id,
@@ -98,6 +112,7 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
         vendor=vendor,
         os_family=os_family,
         config_file_path=blob_path,
+        rule_frameworks=rule_frameworks,
     )
 
 

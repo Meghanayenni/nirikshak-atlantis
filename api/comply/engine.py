@@ -38,7 +38,7 @@ from typing import Any
 
 from api.comply.conditions import describe_all, evaluate_all
 from api.models.csm import CanonicalSecurityModel
-from api.models.enums import AbsenceAction, FieldState, UnknownReason, Verdict
+from api.models.enums import AbsenceAction, FieldState, Framework, UnknownReason, Verdict
 from api.models.field import Field
 from api.models.finding import Finding, FindingProvenance, ObservedValue
 from api.models.rule import ComplianceRule, Rulepack
@@ -68,6 +68,7 @@ def evaluate_device(
     *,
     audit_id: str,
     evaluated_at: datetime | None = None,
+    frameworks: frozenset[Framework] | None = None,
 ) -> tuple[Finding, ...]:
     """Every applicable rule, against one device, in rulepack order.
 
@@ -75,9 +76,21 @@ def evaluate_device(
     including their order. A report that reshuffles between runs cannot be
     diffed, and an audit trail that cannot be diffed is much less useful than it
     looks.
+
+    `frameworks` scopes the audit to user-selected benchmarks. A rule mapping to
+    none of them produces **no finding**, the same way a rule that does not
+    apply to the platform produces none: out of scope and undetermined are
+    different answers, and only the second belongs in a queue.
+
+    The engine does not decide whether a framework may be selected. That is
+    `comply.frameworks.resolve_selection`, which refuses one with no sourced
+    catalog — so an empty selection here always means "no filter" and never
+    "a benchmark we cannot evaluate".
     """
     when = evaluated_at or datetime.now(UTC)
-    applicable = rulepack.applicable_to(csm.device.vendor, csm.device.os_family)
+    applicable = rulepack.applicable_to(
+        csm.device.vendor, csm.device.os_family, frameworks=frameworks
+    )
 
     return tuple(
         _evaluate_rule(rule, csm, rulepack, audit_id=audit_id, evaluated_at=when)

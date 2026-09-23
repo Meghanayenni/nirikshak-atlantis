@@ -27,6 +27,11 @@ from fastapi import APIRouter, HTTPException, Query
 from api.analyse.service import analyse_device
 from api.audit.chain import AuditChain
 from api.comply.engine import evaluate_device, new_audit_id
+from api.comply.frameworks import (
+    UnsourcedFrameworkError,
+    indexes,
+    resolve_selection,
+)
 from api.comply.rulepacks import load_active_rulepack
 from api.comply.service import audit_payload, summarise
 from api.config import settings
@@ -127,15 +132,61 @@ def _finding_json(finding: Finding, resolution: RemediationResolution) -> dict[s
     }
 
 
+@router.get("/frameworks")
+def list_frameworks() -> dict[str, Any]:
+    """Which benchmarks this deployment can evaluate against.
+
+    **A framework with no sourced catalog is absent from this list**, never
+    present with a zero beside it. An empty result reads as "your fleet is
+    compliant", and "we have never read this benchmark" is a different
+    statement — rendering them the same is how a sourcing gap becomes a
+    compliance claim (ADR 0036).
+
+    Each entry names the exact document edition and the sha256 of the catalog
+    the identifiers were read from, so a reviewer can obtain the same file.
+    """
+    return {
+        "frameworks": [
+            {
+                "framework": framework.value,
+                "document": index.document,
+                "edition": index.edition,
+                "catalog_sha256": index.sha256,
+                "source_url": index.source_url,
+                "controls_indexed": index.control_count,
+            }
+            for framework, index in sorted(indexes().items(), key=lambda kv: kv[0].value)
+        ],
+        "note": (
+            "Mappings from NIRIKSHAK checks to these controls are asserted by this "
+            "project, not taken from a published crosswalk. A catalog publishes "
+            "controls; it does not publish mappings."
+        ),
+    }
+
+
 @router.post("", status_code=201)
 def run_audit_endpoint(
-    conn: Conn, audit_conn: AuditConn, user: CurrentUser, file_id: str
+    conn: Conn,
+    audit_conn: AuditConn,
+    user: CurrentUser,
+    file_id: str,
+    framework: Annotated[list[str] | None, Query()] = None,
 ) -> dict[str, Any]:
     """Audit one ingested configuration, and persist the result.
 
     The caller must own the upload. Ownership is checked before anything is read
     from disk, so an unauthorised request never touches another user's file.
+
+    `framework` scopes the audit to user-selected benchmarks (PS 26155). Omitted,
+    every applicable rule runs — NIRIKSHAK's own checks. A framework with no
+    sourced catalog is **refused with 400**, never answered with an empty
+    result.
     """
+    try:
+        selection = resolve_selection(framework or [])
+    except UnsourcedFrameworkError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     row = conn.execute(
         """
         SELECT cf.file_id, cf.blob_path, cf.detected_vendor, cf.detected_os_family,
@@ -199,8 +250,27 @@ def run_audit_endpoint(
     audit_id = new_audit_id()
     evaluated_at = datetime.now(UTC)
     results = evaluate_device(
-        csm, load_active_rulepack(), audit_id=audit_id, evaluated_at=evaluated_at
+        csm,
+        load_active_rulepack(),
+        audit_id=audit_id,
+        evaluated_at=evaluated_at,
+        frameworks=selection,
     )
+    if not results:
+        # Reachable only through a framework selection that matches no rule: a
+        # platform selector cannot empty the rulepack, because every rule
+        # applies to every platform by default. Raising rather than persisting
+        # an empty run — `save_run` would refuse it anyway, as a 500 naming
+        # nothing, and "zero findings" must never render as "nothing wrong".
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "no rule maps to the selected framework(s) "
+                f"{sorted(f.value for f in selection)}, so this audit would report "
+                "zero findings. That is a coverage gap, not a compliant device."
+            ),
+        )
+
     acl_result = analyse_device(csm, audit_id=audit_id, analysed_at=evaluated_at)
     ranking = prioritise(csm, results, load_active_rulepack())
 
@@ -212,6 +282,7 @@ def run_audit_endpoint(
         findings=results,
         rulepack_id=load_active_rulepack().rulepack_id,
         summary=summarise(results),
+        framework_selection=selection,
     )
 
     # DEF-14 (found at P11, fixed here) — the chain records that this audit ran.
@@ -232,6 +303,9 @@ def run_audit_endpoint(
         "device_id": file_id,
         "verdicts": summarise(results),
         "rules_evaluated": len(results),
+        # None means the run was not scoped to a benchmark. Reported so a reader
+        # can tell a narrowed scope from a device that produced fewer findings.
+        "framework_selection": sorted(f.value for f in selection) or None,
         # The size of the training queue this file contributes. Expected to fall
         # after an administrator confirms a mapping and the pack is activated.
         "residue_lines": residue_recorded,

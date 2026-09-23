@@ -29,6 +29,7 @@ from typing import Any
 from api.models.enums import (
     ConfidenceMethod,
     FieldState,
+    Framework,
     Severity,
     SourceType,
     UnknownReason,
@@ -47,6 +48,7 @@ def save_run(
     findings: tuple[Finding, ...],
     rulepack_id: str,
     summary: dict[str, int],
+    framework_selection: frozenset[Framework] | None = None,
 ) -> None:
     """Persist one run and its findings, atomically.
 
@@ -64,8 +66,9 @@ def save_run(
             INSERT INTO audit_run (
                 audit_id, device_id, owner_id, engine_version, rulepack_id,
                 rulepack_version, pack_versions, rules_evaluated,
-                count_pass, count_fail, count_unknown, count_na, evaluated_at
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                count_pass, count_fail, count_unknown, count_na, evaluated_at,
+                framework_selection
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 audit_id,
@@ -81,6 +84,11 @@ def save_run(
                 summary.get("unknown", 0),
                 summary.get("not_applicable", 0),
                 provenance.evaluated_at.isoformat() if provenance.evaluated_at else "",
+                # NULL means no filter, which is what every run before migration
+                # 0004 was. An empty array would assert a selection of nothing.
+                json.dumps(sorted(f.value for f in framework_selection))
+                if framework_selection
+                else None,
             ),
         )
 
@@ -144,6 +152,11 @@ def read_run(conn: sqlite3.Connection, audit_id: str) -> dict[str, Any] | None:
             "not_applicable": row["count_na"],
         },
         "evaluated_at": row["evaluated_at"],
+        # None means the run was not scoped to a benchmark — NIRIKSHAK's own
+        # checks. Distinct from an empty list, which nothing writes.
+        "framework_selection": (
+            json.loads(row["framework_selection"]) if row["framework_selection"] else None
+        ),
     }
 
 

@@ -6,7 +6,8 @@
   block. It is deliberately NOT followed in three places, because the reference
   draws data this build does not have (see ADR 0015):
 
-    * no framework column      - every rule ships frameworks: [] (D16)
+    * framework identifiers    - shown per finding since P17 (ADR 0035),
+                                 with the scope of the run in provenance
     * no exposure rank         - priority_rank is unset until P12
     * no populated remediation - the vetted library is empty (D27)
 
@@ -110,6 +111,25 @@
       <span class="rid">{{ f.rule_id }}</span>
       <span class="sev s-{{ f.base_severity.value }}"><i></i>{{ f.base_severity.value | upper }}</span>
     </div>
+
+    {#
+      Control identifiers only - never the control's text (docs/CONTENT_POLICY).
+      Rendered as plain metadata rather than as a verdict-coloured chip: a
+      mapping is a cross-reference, and giving it semantic colour would put a
+      second colour scale on a screen whose verdict signal depends on there
+      being one.
+    #}
+    {% if f.frameworks %}
+    <div class="pad" style="padding-top:0;padding-bottom:0">
+      <p class="label" style="margin-bottom:2px">Mapped controls</p>
+      <p style="color:var(--muted);font-size:11.5px;margin:0">
+        {% for ref in f.frameworks %}<span class="num">{{ ref.framework.value | upper }}
+        {{ ref.control_id }}</span>{% if ref.version %} (edition {{ ref.version }}){% endif %}
+        &mdash; {{ ref.mapping_provenance.value | replace('_', ' ') }}{% if not loop.last %};
+        {% endif %}{% endfor %}
+      </p>
+    </div>
+    {% endif %}
 
     <div class="pad">
 
@@ -249,6 +269,15 @@
 <div class="foot">
   <dl class="kv">
     <dt>Engine</dt><dd class="num">{{ report.provenance.engine_version }}</dd>
+    <dt>Benchmark scope</dt>
+    <dd>
+      {% if report.framework_selection %}
+      <span class="num">{{ report.framework_selection | join(', ') | upper }}</span>
+      &mdash; only rules mapping to these were evaluated
+      {% else %}
+      no benchmark filter &mdash; every applicable NIRIKSHAK check was evaluated
+      {% endif %}
+    </dd>
     <dt>Rulepack</dt>
     <dd class="num">
       {{ report.provenance.rulepack_id or 'unknown' }}

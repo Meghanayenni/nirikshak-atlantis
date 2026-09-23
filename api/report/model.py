@@ -30,12 +30,14 @@ implying the audit knew.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from api.models.enums import Severity, UnknownReason, Verdict
+from api.models.enums import Framework, Severity, UnknownReason, Verdict
 from api.models.finding import Finding
+from api.models.rule import FrameworkRef
 from api.remediate.library import SnippetLibrary
 from api.remediate.resolver import RemediationResolution, ResolutionOutcome, resolve
 
@@ -131,6 +133,10 @@ class Report:
     verdict_counts: dict[str, int]
     provenance: ReportProvenance
     disclosures: tuple[str, ...]
+    framework_selection: tuple[str, ...] = ()
+    """Benchmarks this run was scoped to. Empty means no filter was applied —
+    NIRIKSHAK's own checks — and is **not** the same as a benchmark that matched
+    nothing, which the API refuses rather than persisting."""
     ordering_basis: str = ORDERING_BASIS
 
     @property
@@ -172,6 +178,32 @@ def _disclosures(reported: tuple[ReportedFinding, ...], library: SnippetLibrary)
             "NIRIKSHAK's own check, mapped to no CIS, NIST SP 800-53, DISA STIG or "
             "ISO/IEC 27001 identifier. This report makes no claim of coverage against "
             "any of those frameworks."
+        )
+
+    mapped = {ref.framework for f in reported for ref in f.finding.frameworks}
+    if mapped:
+        named = ", ".join(sorted(f.value.upper() for f in mapped))
+        out.append(
+            f"Control identifiers in this report ({named}) were validated against the "
+            "published catalog named in each citation, at the edition given. The "
+            "mapping from a NIRIKSHAK check to a control is asserted by this project, "
+            "not taken from a published crosswalk: a catalog publishes controls, not "
+            "mappings. This report is evidence about a configuration, and is not a "
+            "certification of compliance with any framework."
+        )
+
+    unmapped = {
+        framework.value.upper()
+        for framework in Framework
+        if framework not in mapped
+    }
+    if unmapped and mapped:
+        out.append(
+            "No control mapping is present for "
+            + ", ".join(sorted(unmapped))
+            + ". No catalog for those frameworks has been sourced, so this report "
+            "says nothing about them either way — the absence of a finding is not a "
+            "passing result."
         )
 
     if library.is_empty:
@@ -218,6 +250,7 @@ def build_report(
     os_family: str | None,
     config_file_path: str | None,
     generated_at: datetime | None = None,
+    rule_frameworks: Mapping[str, tuple[FrameworkRef, ...]] | None = None,
 ) -> Report:
     """Assemble one report from a persisted run.
 
@@ -225,10 +258,29 @@ def build_report(
     mapping rather than as a database handle on purpose: this package performs no
     I/O, which is what lets the whole of it be tested without a database and keeps
     it off every path that could reach a live configuration.
+
+    `rule_frameworks` re-attaches each rule's control mappings, keyed by rule id.
+    They are **not** stored per finding — they are rulepack data, and the run
+    records which rulepack version produced it — so they are resolved at render
+    time exactly as remediation snippets are, and become part of the *report's*
+    provenance rather than the audit's.
+
+    The caller supplies them because `report -> comply` is a forbidden import
+    edge: a report renders persisted findings and must not be able to reach the
+    layer that evaluates them. **A caller that supplies nothing gets a report
+    with no control identifiers**, which is why the route only supplies them when
+    the run's rulepack version matches the active one — showing today's mappings
+    beside a verdict produced under a different rulepack would be a citation to
+    a document that did not decide it.
     """
+    mappings = dict(rule_frameworks or {})
     reported = tuple(
         ReportedFinding(
-            finding=finding,
+            finding=(
+                finding.model_copy(update={"frameworks": mappings[finding.rule_id]})
+                if finding.rule_id in mappings and not finding.frameworks
+                else finding
+            ),
             remediation=resolve(
                 library,
                 rule_id=finding.rule_id,
@@ -260,5 +312,6 @@ def build_report(
             snippet_count=len(library.snippets),
             generated_at=generated_at or datetime.now(UTC),
         ),
+        framework_selection=tuple(run.get("framework_selection") or ()),
         disclosures=_disclosures(ordered, library),
     )

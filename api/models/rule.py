@@ -297,7 +297,10 @@ class Rulepack(BaseModel):
         return next((r for r in self.rules if r.rule_id == rule_id), None)
 
     def applicable_to(
-        self, vendor: str | None, os_family: str | None
+        self,
+        vendor: str | None,
+        os_family: str | None,
+        frameworks: frozenset[Framework] | None = None,
     ) -> tuple[ComplianceRule, ...]:
         """Rules whose platform selector admits this device.
 
@@ -305,8 +308,21 @@ class Rulepack(BaseModel):
         UNKNOWN one: "this check was never relevant here" and "we could not
         determine this check" are different statements, and only the second
         belongs in an operator's queue.
+
+        `frameworks` narrows the same way, and for the same reason. A rule that
+        maps to no selected framework is **out of scope for this audit**, not
+        undetermined by it — an operator auditing against one benchmark should
+        not be handed abstentions about checks that benchmark never asked for.
+
+        An empty selection means *no filter*, which is NIRIKSHAK's own seven
+        checks. It is not the same as selecting a framework and matching
+        nothing: a caller cannot reach that state, because
+        `resolve_selection` refuses a framework with no sourced catalog.
         """
-        return tuple(r for r in self.rules if r.applies_to.matches(vendor, os_family))
+        chosen = tuple(r for r in self.rules if r.applies_to.matches(vendor, os_family))
+        if not frameworks:
+            return chosen
+        return tuple(r for r in chosen if r.frameworks_covered & frameworks)
 
     @property
     def frameworks_covered(self) -> frozenset[Framework]:

@@ -414,7 +414,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-Ninety-one numbered decisions across 35 ADRs. (D63 and D64 were never issued; the
+Ninety-four numbered decisions across 36 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -454,6 +454,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0033 | P17 | JunOS filter terms, and the half that detection blocks | D85, D86, D87 |
 | 0034 | P17 | Declaring the management plane rather than inferring it | D88, D89, D90 |
 | 0035 | P17 | Framework mappings against a content-addressed catalog | D91, D92, D93 |
+| 0036 | P17 | Selecting a benchmark, and refusing the ones we cannot | D94, D95, D96 |
 
 ---
 

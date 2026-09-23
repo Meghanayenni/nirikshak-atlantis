@@ -34,6 +34,7 @@ question, which is recorded as open rather than answered.
 from __future__ import annotations
 
 import functools
+from collections.abc import Iterable
 from pathlib import Path
 
 import yaml
@@ -46,6 +47,16 @@ FRAMEWORK_INDEX_ROOT = REPO_ROOT / "rules" / "frameworks"
 
 class FrameworkIndexError(RuntimeError):
     """An index file exists but cannot be read as one."""
+
+
+class UnsourcedFrameworkError(ValueError):
+    """A caller asked to evaluate against a framework with no sourced catalog.
+
+    Refused rather than answered with an empty result. "No findings" reads as a
+    clean bill of health; "we have never read this benchmark" is a different
+    statement, and a selector that returned the first for the second would turn
+    a sourcing gap into a compliance claim.
+    """
 
 
 class CatalogIndex:
@@ -146,3 +157,36 @@ def sourced_frameworks() -> frozenset[Framework]:
 
 def clear_index_cache() -> None:
     _cached.cache_clear()
+
+
+def resolve_selection(names: Iterable[str]) -> frozenset[Framework]:
+    """Turn requested framework names into a selection, or refuse.
+
+    Refuses an unknown name and a known-but-unsourced one with different
+    messages, because they send the caller to different places: a typo is theirs
+    to fix, and a missing catalog is `SOURCING_BACKLOG` gap 4.
+    """
+    available = indexes()
+    selected: set[Framework] = set()
+
+    for name in names:
+        key = name.strip().lower()
+        if not key:
+            continue
+        try:
+            framework = Framework(key)
+        except ValueError:
+            raise UnsourcedFrameworkError(
+                f"{name!r} is not a framework this system knows. Available: "
+                + ", ".join(sorted(f.value for f in available))
+            ) from None
+        if framework not in available:
+            raise UnsourcedFrameworkError(
+                f"no catalog has been sourced for {framework.value}, so no rule maps "
+                "to it and evaluating against it would report zero findings — which "
+                "reads as compliance. Available: "
+                + (", ".join(sorted(f.value for f in available)) or "none")
+            )
+        selected.add(framework)
+
+    return frozenset(selected)

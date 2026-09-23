@@ -151,6 +151,15 @@ cannot ship. **Every mapping is `project_asserted`**: a catalog publishes
 *controls*, not *mappings*, and that a NIRIKSHAK check satisfies a given control
 is this project's judgement. No published crosswalk names our checks.
 
+**An audit can be scoped to a selected benchmark.**
+`POST /compliance/audits?file_id=…&framework=nist` evaluates only the rules that
+map to it, and the run records its own scope so a later reader can tell a
+narrowed benchmark from a device that produced fewer findings. The report names
+that scope and shows each finding's mapped controls.
+`GET /compliance/audits/frameworks` is the selector, and it lists only
+frameworks with a sourced catalog — asking for one without a catalog is refused
+with 400, never answered with zero findings.
+
 **CIS, DISA STIG and ISO/IEC 27001 are unmapped**, each for its own reason: CIS
 Benchmarks are behind registration, DISA's STIG index is rendered client-side and
 exposed no resolvable file URL, and ISO/IEC 27001 is a purchased standard. A

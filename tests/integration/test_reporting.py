@@ -207,16 +207,44 @@ def test_the_report_renders_a_command_only_with_its_rollback(client: TestClient)
         assert snippet["reference"], "a command citing no document"
 
 
-def test_the_report_claims_no_framework_coverage(client: TestClient) -> None:
-    """D16 — no CIS, NIST, DISA STIG or ISO/IEC 27001 identifier ships."""
+def test_the_report_shows_mapped_controls_and_refuses_to_certify(client: TestClient) -> None:
+    """NIST identifiers render; the claim they support is bounded in the same document.
+
+    This replaces `test_the_report_claims_no_framework_coverage`, which asserted
+    that **no** identifier ships and was correct for as long as none did (D16).
+    The gate moved rather than opened: identifiers may appear, and the document
+    must say in the same breath that a catalog publishes controls rather than
+    mappings, and that this is evidence about a configuration rather than a
+    certification.
+    """
+    import re
+
     audit_id = audited(client)
     html = client.get(f"/compliance/audits/{audit_id}/report.html", auth=ALICE).text
 
-    import re
+    nist = re.findall(r"\b(?:AC|AU|CM|SC)-\d{2}(?:\(\d{2}\))?\b", html)
+    assert nist, "the report shows no mapped control identifiers"
 
-    identifiers = re.findall(r"\b(CIS[\s-]\d+\.\d+|AC-\d+|IA-\d+|AU-\d+|V-\d{5,})\b", html)
-    assert identifiers == [], f"the report carries framework identifiers: {identifiers}"
-    assert "no claim of coverage" in html.lower()
+    lowered = html.lower()
+    assert "not taken from a published crosswalk" in lowered
+    assert "not a certification of compliance" in lowered
+
+    unsourced = re.findall(r"\b(CIS[\s-]\d+\.\d+|V-\d{5,}|ISO\s*A\.\d+\.\d+)\b", html)
+    assert unsourced == [], (
+        f"the report carries identifiers for a framework with no catalog: {unsourced}"
+    )
+
+
+def test_the_report_names_the_benchmark_scope_of_the_run(client: TestClient) -> None:
+    """A narrowed scope and a device with fewer findings must not read the same."""
+    audit_id = audited(client)
+    html = client.get(f"/compliance/audits/{audit_id}/report.html", auth=ALICE).text
+
+    assert "Benchmark scope" in html
+    assert "no benchmark filter" in html, (
+        "this fixture audits without a framework filter, and the report should "
+        "say so rather than leaving the reader to infer it"
+    )
 
 
 def test_the_report_names_the_snippet_library_it_resolved_against(client: TestClient) -> None:
