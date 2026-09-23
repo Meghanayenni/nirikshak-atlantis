@@ -420,7 +420,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and two numbered decisions across 39 ADRs. (D63 and D64 were never issued; the
+One hundred and five numbered decisions across 40 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -464,6 +464,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0037 | P17 | A model read from a line a device writes | D97, D98, D99 |
 | 0038 | P17 | A fourth platform, and the first bound access list | D100, D101, D102 |
 | 0039 | P17 | A container where the PDF endpoint works | D103, D104 |
+| 0040 | P17 | The stated stack and the installed one | D105, D106, D107 |
 
 ---
 
@@ -527,6 +528,8 @@ about which identifiers exist.
 | Question | File |
 | --- | --- |
 | What are the contracts? | `docs/data-contracts.md` |
+| What does the HTTP surface actually expose? | `docs/openapi.json` (generated) |
+| What is installed, exactly? | `docs/sbom.cdx.json` (CycloneDX, from the lock file) |
 | Why was this decided? | `docs/adr/` |
 | What is blocked, and on what? | `docs/SOURCING_BACKLOG.md` |
 | What does the corpus need? | `docs/CORPUS_PREREQUISITES.md` |

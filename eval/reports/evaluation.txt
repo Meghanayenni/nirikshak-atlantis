@@ -4,7 +4,7 @@ NIRIKSHAK — EVALUATION REPORT (P9–P10)
 
 Accuracy is reported as a measurement, not a claim.
 
-Generated      : 2026-09-23T18:10:40.272174+00:00
+Generated      : 2026-09-23T18:41:20.632528+00:00
 Rulepack       : 1.0.0
 Vendor packs   : arista/eos 1.1.0, cisco/ios 1.3.0, juniper/junos 1.1.0
 Files scored   : 5 (evaluation split only)
@@ -235,11 +235,23 @@ calibration              NOT FITTED — decision D42.
                          not exist, and the corpus is far below the sample floor
                          the fitter refuses under.
 
-ACL analysis accuracy    not measured — the corpus contains no access list.
+ACL analysis accuracy    not measured — five access lists across three
+                         dialects are analysed, all of them written by this
+                         team. A detection RATE needs lists somebody else
+                         wrote and a ground truth saying what is wrong with
+                         them; neither exists.
 
-framework coverage       not measured — every rule ships frameworks: [].
+framework coverage       not measured — seven rules carry NIST SP 800-53
+                         identifiers validated against the published OSCAL
+                         catalog, and every mapping is project-asserted. A
+                         catalog publishes controls, not mappings. CIS, DISA
+                         STIG and ISO/IEC 27001 have no sourced catalog.
 
-remediation coverage     not measured — the vetted snippet library is empty.
+remediation coverage     not measured — twenty vetted snippets ship across
+                         three platforms, each naming its vetter and the
+                         document it was checked against. That is coverage
+                         of seven rules on three platforms, not a measured
+                         rate at which a real fleet would be remediable.
 
 11. WHAT THIS REPORT DOES NOT CLAIM
 ==============================================================================

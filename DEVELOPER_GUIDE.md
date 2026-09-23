@@ -249,12 +249,27 @@ principles.
 ## 11. Technology Stack
 
 Backend: Python 3.11, FastAPI, SQLite.
-Parsing: TextFSM, ntc-templates, lxml for XML/JSON exports.
-AI: sentence-transformers (`all-MiniLM-L6-v2`), FAISS, Ollama.
+Parsing: NIRIKSHAK's own hierarchical block parser; lxml for XML/JSON exports.
+AI: sentence-transformers (`all-MiniLM-L6-v2`), FAISS.
 Rules: YAML. Frontend: React, Tailwind. Reporting: Jinja2, WeasyPrint.
 
+Three entries were removed from this list at P17, after a reviewer would have
+found the mismatch by comparing it to `pyproject.toml`:
+
+- **TextFSM** and **ntc-templates** — ADR 0004 replaced them with the project's
+  own block parser at P0, because they target `show`-command output and the
+  corpus holds running-configs. Neither was ever imported. `MatchType.TEXTFSM`
+  remains in the contract as a *declared and deliberately unimplemented* match
+  type: the pack engine refuses it by name and says why, which is the shape a
+  deferred capability takes here.
+- **Ollama** — never a dependency and never imported. No local LLM is used or
+  needed: the similarity layer is sentence-transformers plus FAISS, it proposes
+  and never decides, and Rule 1 leaves nothing for a generative model to do.
+  Listing it described an intention as a component.
+
 Do not introduce a new major technology without explaining why it is necessary
-and how it fits the architecture.
+and how it fits the architecture. **Removing one that turned out to be unused
+is the same act in reverse and deserves the same record** — see ADR 0040.
 
 ---
 

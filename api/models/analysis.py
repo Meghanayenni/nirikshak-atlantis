@@ -144,9 +144,10 @@ class AclAnalysisResult(BaseModel):
     def analysed_nothing(self) -> bool:
         """True when the device carried no ACL to analyse.
 
-        The honest state today: the corpus contains no access lists at all, so
-        every real device reaches P7 with nothing for it to do. That is reported
-        rather than presented as a clean result — "no ACLs were found" and "the
-        ACLs were fine" are different statements.
+        Still the common case: a platform whose pack declares no ACL extraction
+        reaches P7 with nothing to do, as does a device that genuinely filters
+        nothing. That is reported rather than presented as a clean result — "no
+        ACLs were found" and "the ACLs were fine" are different statements, and
+        a dropped list is a third thing again (`AclExtractionFailure`).
         """
         return not self.acls

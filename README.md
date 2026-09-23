@@ -227,14 +227,18 @@ correlated error between parser and ground truth is not visible in the Cisco
 figures. The label files declare this, and the report prints it. Arista and
 Juniper carry no such conflict, because no parsing pattern exists for either.
 
-**No remediation commands ship.** The vetted snippet library is **empty**. Rule 4
-requires commands come from that library, and `docs/CONTENT_POLICY.md` requires
-each one cite the vendor document it was checked against — so a snippet cannot
-exist without a person who read a document and checked the commands. No vendor
-documentation has been sourced. Every failing finding in every report therefore
-reads *"No vetted remediation is available for this platform and rule."* The
-loader, resolver, dependency ordering and report integration are built and tested
-against constructed fixtures; **none has ever handled a real snippet.**
+**No remediation *coverage* is claimed.** Twenty vetted snippets ship across
+Cisco IOS, Juniper Junos and Arista EOS, each naming the person who checked it
+and the vendor document they checked it against — Rule 4 and
+`docs/CONTENT_POLICY.md` between them make a snippet impossible without both. A
+fourth platform, or a rule nobody has vetted a command for, still resolves to
+*"No vetted remediation is available for this platform and rule."* That sentence
+is the correct output rather than a gap: `(arista, eos, NRK-SSH-001)` is
+deliberately unfilled because EOS exposes no SSH protocol-version setting, and
+inventing one would be worse than abstaining. Every shipped snippet leaves
+`os_version_range` null, which the schema documents as *"the vetter did not
+bound it"* — an operator on an old release is shown a command nobody confirmed
+applies to their release.
 
 **Two stored findings cannot name the pack that read them.** A trained vendor
 pack, `cisco/ios 1.1.5`, was deleted when contaminated patterns were reset, and
@@ -260,13 +264,21 @@ it is reviewed work, not verified work. See
 `docs/adr/0006-weasyprint-gtk-probe.md` and
 `docs/adr/0039-a-container-where-the-pdf-endpoint-works.md`.
 
+**Nine known advisories sit in locked third-party dependencies** — seven in
+`starlette`, one in `lxml`, one in `pytest` — found by `make audit` the first
+time it ran. None is a defect in this repository and none is fixable without a
+version bump that needs its own testing: `starlette 0.47+` requires a FastAPI
+major bump. `make audit` exits non-zero on them deliberately, and is wired into
+`make verify` rather than `make test`, so a third-party CVE does not make every
+unrelated change look broken. Recorded rather than silenced.
+
 See `docs/CORPUS_PREREQUISITES.md` and `docs/SOURCING_BACKLOG.md`.
 
 Held-out generalisation, top-3 mapping accuracy and confidence calibration
 remain **unmeasured**, each for a reason recorded in `docs/adr/0017-similarity-layer.md`;
 the PAN-OS holdout has still not been opened. `docs/ui_reference.html` remains
 the untouched visual specification the P13 interface was translated from. See `docs/adr/` for the decisions taken so far,
-and `docs/SOURCING_BACKLOG.md` for the six gaps that cannot be closed by writing
+and `docs/SOURCING_BACKLOG.md` for the eight gaps that cannot be closed by writing
 code.
 
 ---

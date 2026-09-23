@@ -1,0 +1,1894 @@
+{
+  "components": {
+    "schemas": {
+      "ActivateBody": {
+        "additionalProperties": false,
+        "properties": {
+          "pack_id": {
+            "minLength": 1,
+            "title": "Pack Id",
+            "type": "string"
+          },
+          "pack_version": {
+            "minLength": 1,
+            "title": "Pack Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pack_id",
+          "pack_version"
+        ],
+        "title": "ActivateBody",
+        "type": "object"
+      },
+      "Body_upload_ingest_upload_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "format": "binary",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_ingest_upload_post",
+        "type": "object"
+      },
+      "CastType": {
+        "enum": [
+          "int",
+          "bool",
+          "str",
+          "list",
+          "cidr",
+          "duration",
+          "duration_minutes"
+        ],
+        "title": "CastType",
+        "type": "string"
+      },
+      "CompileBody": {
+        "additionalProperties": false,
+        "description": "What to compile, and how the administrator wants the value read.",
+        "properties": {
+          "block_path": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Block Path",
+            "type": "array"
+          },
+          "cast": {
+            "$ref": "#/components/schemas/CastType",
+            "default": "str"
+          },
+          "example_id": {
+            "minLength": 1,
+            "title": "Example Id",
+            "type": "string"
+          },
+          "generalise_numeric_scope": {
+            "default": false,
+            "title": "Generalise Numeric Scope",
+            "type": "boolean"
+          },
+          "literal_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Literal Value"
+          },
+          "pattern_override": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "An edited regex (DEVELOPER_GUIDE.md \u00a74). Re-validated, never trusted.",
+            "title": "Pattern Override"
+          },
+          "value_token": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Token"
+          }
+        },
+        "required": [
+          "example_id"
+        ],
+        "title": "CompileBody",
+        "type": "object"
+      },
+      "ConfirmBody": {
+        "additionalProperties": false,
+        "description": "One decision. The administrator's identity comes from authentication,\nnever from the body \u2014 a caller must not be able to attribute a confirmation\nto somebody else.",
+        "properties": {
+          "cluster_id": {
+            "minLength": 1,
+            "title": "Cluster Id",
+            "type": "string"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "line": {
+            "minLength": 1,
+            "title": "Line",
+            "type": "string"
+          },
+          "os_family": {
+            "minLength": 1,
+            "title": "Os Family",
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/TrainingOutcome"
+          },
+          "value_semantics": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Semantics"
+          },
+          "vendor": {
+            "minLength": 1,
+            "title": "Vendor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cluster_id",
+          "line",
+          "vendor",
+          "os_family",
+          "outcome"
+        ],
+        "title": "ConfirmBody",
+        "type": "object"
+      },
+      "CreateUserRequest": {
+        "additionalProperties": false,
+        "description": "Deliberately not a `User`: that contract carries no password, on purpose.",
+        "properties": {
+          "password": {
+            "minLength": 12,
+            "title": "Password",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role",
+            "default": "user"
+          },
+          "username": {
+            "pattern": "^[a-z0-9][a-z0-9._-]{2,63}$",
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "CreateUserRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Role": {
+        "description": "Who may see what.\n\nDeliberately two roles. The Concept Report promises that \"access to raw\nfiles is role-separated from access to findings\"; two roles is the smallest\nthing that makes that true, and a larger permission model is a platform this\nproject does not need.",
+        "enum": [
+          "user",
+          "admin"
+        ],
+        "title": "Role",
+        "type": "string"
+      },
+      "RollbackBody": {
+        "additionalProperties": false,
+        "properties": {
+          "pack_id": {
+            "minLength": 1,
+            "title": "Pack Id",
+            "type": "string"
+          },
+          "to_version": {
+            "minLength": 1,
+            "title": "To Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pack_id",
+          "to_version"
+        ],
+        "title": "RollbackBody",
+        "type": "object"
+      },
+      "TrainingOutcome": {
+        "description": "What the administrator actually did with the suggestions shown.",
+        "enum": [
+          "accepted_rank_1",
+          "accepted_rank_2",
+          "accepted_rank_3",
+          "corrected",
+          "rejected_not_security_relevant"
+        ],
+        "title": "TrainingOutcome",
+        "type": "string"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WithdrawBody": {
+        "additionalProperties": false,
+        "properties": {
+          "pack_id": {
+            "minLength": 1,
+            "title": "Pack Id",
+            "type": "string"
+          },
+          "pattern_id": {
+            "minLength": 1,
+            "title": "Pattern Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "pack_id",
+          "pattern_id"
+        ],
+        "title": "WithdrawBody",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBasic": {
+        "scheme": "basic",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "Self-learning, vendor-agnostic network security compliance auditor. Operates on offline configuration exports only.",
+    "title": "NIRIKSHAK",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/audit/head": {
+      "get": {
+        "description": "Current chain head.",
+        "operationId": "read_head_audit_head_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Head Audit Head Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Read Head",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/audit/records": {
+      "get": {
+        "description": "Filtered history, for display.\n\nAlways reported as `verifiable: false`. A filtered or paginated set has no\nlinks between its rows, so it carries no integrity claim \u2014 presenting it as\nverified would be exactly the quiet overstatement this design avoids. Use\n`/audit/verify` for that.",
+        "operationId": "list_records_audit_records_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subject_kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subject_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Records Audit Records Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "List Records",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/audit/verify": {
+      "get": {
+        "description": "Run the same verification the CLI runs.\n\nThe CLI is the authority; this endpoint exists for convenience and for the\ndashboard banner. Both call the identical function.",
+        "operationId": "verify_audit_verify_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Start",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Verify Audit Verify Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Verify",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/compliance/audits": {
+      "get": {
+        "description": "Recent runs. A user sees their own; an admin sees the fleet.",
+        "operationId": "list_audits_compliance_audits_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Audits Compliance Audits Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "List Audits",
+        "tags": [
+          "compliance"
+        ]
+      },
+      "post": {
+        "description": "Audit one ingested configuration, and persist the result.\n\nThe caller must own the upload. Ownership is checked before anything is read\nfrom disk, so an unauthorised request never touches another user's file.\n\n`framework` scopes the audit to user-selected benchmarks (PS 26155). Omitted,\nevery applicable rule runs \u2014 NIRIKSHAK's own checks. A framework with no\nsourced catalog is **refused with 400**, never answered with an empty\nresult.",
+        "operationId": "run_audit_endpoint_compliance_audits_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "title": "File Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "framework",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Framework"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Run Audit Endpoint Compliance Audits Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Run Audit Endpoint",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/compliance/audits/frameworks": {
+      "get": {
+        "description": "Which benchmarks this deployment can evaluate against.\n\n**A framework with no sourced catalog is absent from this list**, never\npresent with a zero beside it. An empty result reads as \"your fleet is\ncompliant\", and \"we have never read this benchmark\" is a different\nstatement \u2014 rendering them the same is how a sourcing gap becomes a\ncompliance claim (ADR 0036).\n\nEach entry names the exact document edition and the sha256 of the catalog\nthe identifiers were read from, so a reviewer can obtain the same file.",
+        "operationId": "list_frameworks_compliance_audits_frameworks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Frameworks Compliance Audits Frameworks Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Frameworks",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/compliance/audits/{audit_id}": {
+      "get": {
+        "operationId": "get_audit_compliance_audits__audit_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "audit_id",
+            "required": true,
+            "schema": {
+              "title": "Audit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Audit Compliance Audits  Audit Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Get Audit",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/compliance/audits/{audit_id}/findings": {
+      "get": {
+        "description": "Findings for one run, with their evidence.\n\nFilterable by verdict and severity because a report needs \"every FAIL\" and a\ndashboard needs \"every critical\", and both would otherwise page through\neverything.",
+        "operationId": "get_findings_compliance_audits__audit_id__findings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "audit_id",
+            "required": true,
+            "schema": {
+              "title": "Audit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Findings Compliance Audits  Audit Id  Findings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Get Findings",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/compliance/audits/{audit_id}/remediation": {
+      "get": {
+        "description": "What the operator would apply, in the order they would apply it.\n\nEvery failing finding appears, whether or not anything resolved. A plan that\nsilently omitted the rules with no snippet would understate the work by\nexactly the amount nobody has vetted yet, which is currently all of it.\n\n`statement` carries the operator-facing sentence and `outcome` the\nmachine-readable reason, so a future interface can distinguish \"no snippet\nexists\" from \"the platform was never identified\" without the two ever\ndisagreeing about whether a command is available.\n\nThe steps that resolved are sequenced by `order_snippets` - dependencies\nfirst, then lowest lockout risk first, so a change that could strand the\noperator is applied only after its prerequisites. Steps that resolved to\nnothing follow, in severity order, since there is no action to sequence.",
+        "operationId": "remediation_plan_compliance_audits__audit_id__remediation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "audit_id",
+            "required": true,
+            "schema": {
+              "title": "Audit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Remediation Plan Compliance Audits  Audit Id  Remediation Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Remediation Plan",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/compliance/audits/{audit_id}/report.html": {
+      "get": {
+        "description": "One audit run as a self-contained HTML document.\n\nNo external stylesheet, script or font: the file can be saved, mailed and\nopened on a machine with no network, which is the same property Rule 6 asks\nof everything else in the system.\n\nRendered first, recorded second - the ordering the ingestion and compliance\nservices use, for the same reason: the log should never attest to a document\nthat then failed to produce.",
+        "operationId": "html_report_compliance_audits__audit_id__report_html_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "audit_id",
+            "required": true,
+            "schema": {
+              "title": "Audit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Html Report",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/compliance/audits/{audit_id}/report.pdf": {
+      "get": {
+        "description": "The same report as PDF, or 503 explaining exactly what is missing.\n\nAuthorise, probe, then render. Authorisation is first so a non-owner gets the\nsame 404 whether or not this machine can produce a PDF; the probe is second\nso an owner who cannot receive one is told immediately, rather than after the\nserver has read a run, resolved remediation for every finding and rendered a\ndocument it is about to throw away.",
+        "operationId": "pdf_report_compliance_audits__audit_id__report_pdf_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "audit_id",
+            "required": true,
+            "schema": {
+              "title": "Audit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "the WeasyPrint/GTK runtime is not available here"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Pdf Report",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/fleet/baseline": {
+      "get": {
+        "description": "Peer-baseline outlier detection across every ingested device.",
+        "operationId": "read_baseline_fleet_baseline_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Baseline Fleet Baseline Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Read Baseline",
+        "tags": [
+          "fleet"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Liveness check, and a readout of the safety-relevant settings.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/ingest/devices": {
+      "get": {
+        "operationId": "list_devices_ingest_devices_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Devices Ingest Devices Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "List Devices",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/ingest/files": {
+      "get": {
+        "operationId": "list_files_ingest_files_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "vendor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vendor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Files Ingest Files Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "List Files",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/ingest/files/{file_id}/lines": {
+      "get": {
+        "description": "Lines with their exact numbers \u2014 the same numbers evidence cites.",
+        "operationId": "file_lines_ingest_files__file_id__lines_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "title": "File Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Start",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "count",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Count",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response File Lines Ingest Files  File Id  Lines Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "File Lines",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/ingest/stats": {
+      "get": {
+        "description": "Fleet-wide line-cache effectiveness \u2014 the deduplication claim, measured.\n\nAdmin-only: the numbers describe the whole estate, so serving them to a user\nwho can see one device would leak the size and shape of everyone else's.",
+        "operationId": "stats_ingest_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Stats Ingest Stats Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Stats",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/ingest/upload": {
+      "post": {
+        "description": "Ingest one or more configuration files, or a ZIP of them.\n\nReturns a per-file result. A malformed or binary file is reported alongside\nthe successes rather than failing the batch.",
+        "operationId": "upload_ingest_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_ingest_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Upload Ingest Upload Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Upload",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/training/activate": {
+      "post": {
+        "description": "Validate and activate a DRAFT. The next parse uses it \u2014 no restart.",
+        "operationId": "activate_training_activate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Activate Training Activate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Activate",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/training/compile": {
+      "post": {
+        "description": "Compile a recorded decision into a DRAFT pack. Activation is separate.",
+        "operationId": "compile_draft_training_compile_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompileBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Compile Draft Training Compile Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Compile Draft",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/training/confirm": {
+      "post": {
+        "description": "Record what the administrator decided, and audit that they decided it.",
+        "operationId": "confirm_training_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Confirm Training Confirm Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Confirm",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/training/examples": {
+      "get": {
+        "description": "Recorded decisions \u2014 the labelled population gap 7 needs (SOURCING_BACKLOG).\n\nReported as a count and a list, with no accuracy figure derived from it. Top-3\naccuracy stays NOT MEASURED until there is a population worth measuring, and\nit is not this router's job to decide that it has arrived.",
+        "operationId": "list_examples_training_examples_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Examples Training Examples Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "List Examples",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/training/packs": {
+      "get": {
+        "description": "Every vendor pack version on disk, newest first, active one marked.\n\nSuperseded versions are included deliberately: they are what rollback selects\nbetween, and an inventory that showed only the active version would make the\nversioning look decorative.",
+        "operationId": "list_packs_training_packs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Packs Training Packs Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "List Packs",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/training/queue": {
+      "get": {
+        "description": "Unknown shapes, most frequent first, with suggestions or a stated absence.",
+        "operationId": "read_queue_training_queue_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "file_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "File Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vendor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vendor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Queue Training Queue Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Read Queue",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/training/rollback": {
+      "post": {
+        "description": "Return a platform to an earlier pack version, exactly as it was.",
+        "operationId": "rollback_training_rollback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RollbackBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Rollback Training Rollback Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Rollback",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/training/withdraw": {
+      "post": {
+        "description": "Retire one admin-trained mapping from the active pack.\n\nNot a delete. A new pack version is drafted without the pattern, validated,\nand activated; the version that contained it stays on disk so an audit run\nunder it can still be explained, and the training example that produced it is\nleft alone \u2014 a decision an administrator made is an event that happened.\n\n`withdrawn_by` comes from the authenticated identity, never from the body,\nfor the same reason `confirmed_by` does.",
+        "operationId": "withdraw_training_withdraw_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithdrawBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Withdraw Training Withdraw Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Withdraw",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/users": {
+      "get": {
+        "operationId": "list_all_users_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List All Users Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "List All",
+        "tags": [
+          "users"
+        ]
+      },
+      "post": {
+        "operationId": "create_users_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Users Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Create",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/users/me": {
+      "get": {
+        "description": "Who the caller is. The one route any authenticated user may reach.",
+        "operationId": "whoami_users_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Whoami Users Me Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Whoami",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/users/{user_id}/disable": {
+      "post": {
+        "description": "Disable an account. An admin may not disable themselves.\n\nNot paternalism: an operator who locks out the only admin has no way back in\nwithout direct database access, and the failure arrives at the worst moment.",
+        "operationId": "disable_users__user_id__disable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Disable Users  User Id  Disable Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Disable",
+        "tags": [
+          "users"
+        ]
+      }
+    }
+  }
+}

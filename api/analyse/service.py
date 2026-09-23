@@ -35,10 +35,10 @@ def analyse_device(
     "no access lists were found" and "the access lists were fine" would render
     identically as an empty list, and only one of them is reassuring.
 
-    Today every real device takes that path — the corpus contains no access lists
-    in any split, so `CSM.acls` is always empty. The analyser is exercised against
-    constructed ACL objects instead, and no claim is made about vendor ACL parsing
-    coverage.
+    Most devices in this corpus still take that path: only three of four parsed
+    platforms declare ACL extraction, so `CSM.acls` is empty on the rest. Where a
+    list is read the analysis runs on it, and no detection *rate* is claimed —
+    every one of those lists was written by this team.
     """
     return AclAnalysisResult(
         device_id=csm.device.device_id,

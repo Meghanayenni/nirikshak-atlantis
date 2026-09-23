@@ -22,12 +22,14 @@ dependencies = [
     "PyYAML>=6.0,<7",
     "jsonschema>=4.23,<5",
     "python-multipart>=0.0.12",
-    "textfsm>=1.1.3,<2",
-    "ntc-templates>=7.0",
+    # lxml is the only parsing dependency: format detection reads XML and JSON
+    # exports with it. TextFSM and ntc-templates were removed at P17 — ADR 0004
+    # replaced them with this project's own block parser at P0 and nothing has
+    # imported either since. jsonpath-ng and cryptography went the same way:
+    # unused, and in cryptography's case contradicted by a test asserting that
+    # password hashing adds no dependency (hashlib.scrypt is stdlib).
     "lxml>=5.3,<6",
-    "jsonpath-ng>=1.7,<2",
     "Jinja2>=3.1,<4",
-    "cryptography>=43,<45",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +48,15 @@ ai = [
 # docs/adr/0006-weasyprint-gtk-probe.md.
 report = [
     "weasyprint>=63,<64",
+]
+
+# Supply-chain tooling. Its own extra rather than part of [dev]: it is run by
+# `make verify` and by CI, not on every developer's first install, and adding
+# two more packages to the path everybody takes makes the 8 GB target harder
+# for no benefit to someone writing a rule.
+supply = [
+    "pip-audit>=2.7",
+    "cyclonedx-bom>=4.6",
 ]
 
 dev = [

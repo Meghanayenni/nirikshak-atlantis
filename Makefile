@@ -12,7 +12,7 @@ PIP    := $(VENV_BIN)/pip
 PYTEST := $(VENV_BIN)/pytest
 RUFF   := $(VENV_BIN)/ruff
 
-.PHONY: help venv install install-report install-ai test lint fmt run migrate verify-audit evaluate clean
+.PHONY: help venv install install-report install-ai install-supply test lint fmt run migrate \n        verify-audit evaluate sbom audit openapi supply-chain verify clean
 
 help:
 	@echo "venv            Create the project-local Python 3.11 virtual environment"
@@ -20,6 +20,11 @@ help:
 	@echo "install-report  Optional PDF rendering (needs system GTK3; HTML needs neither)"
 	@echo "install-ai      Similarity layer deps (P10; weights are a separate step)"
 	@echo "test            Run the test suite"
+	@echo "sbom            Regenerate docs/sbom.cdx.json from requirements.lock"
+	@echo "audit           pip-audit the locked dependencies (fails on a known advisory)"
+	@echo "openapi         Regenerate docs/openapi.json from the live app"
+	@echo "supply-chain    sbom + openapi + audit"
+	@echo "verify          lint + test + supply-chain — what CI should run"
 	@echo "lint            Run ruff checks"
 	@echo "fmt             Format with ruff"
 	@echo "migrate         Apply pending database migrations"
@@ -40,8 +45,37 @@ install-report:
 install-ai:
 	$(PIP) install -e ".[ai]"
 
+install-supply:
+	$(PIP) install -e ".[supply]"
+
 test:
 	$(PYTEST)
+
+# --- Supply chain ----------------------------------------------------------
+#
+# The SBOM is built from requirements.lock, NOT from the virtual environment.
+# An environment SBOM describes one developer's machine -- ours currently holds
+# 119 packages including the tools that produced it -- while the lock file is
+# the closure this project actually declares. A bill of materials for a laptop
+# is not a bill of materials for a product.
+
+sbom:
+	$(VENV_BIN)/cyclonedx-py requirements requirements.lock 		--of JSON --output-reproducible -o docs/sbom.cdx.json
+
+# Exits non-zero when a locked dependency has a known advisory, and it does
+# today: see the supply-chain note in README.md. Kept OUT of `make test` on
+# purpose -- a third-party CVE is not a test failure, and wiring it there would
+# make every unrelated change look broken while teaching everyone to ignore a
+# red build. It is in `verify`, where it can be read as what it is.
+audit:
+	$(VENV_BIN)/pip-audit --requirement requirements.lock --strict
+
+openapi:
+	$(PY) -c "import json, pathlib; from api.main import app; 	pathlib.Path('docs/openapi.json').write_text(json.dumps(app.openapi(), indent=2, sort_keys=True) + chr(10), encoding='utf-8'); 	print('docs/openapi.json regenerated')"
+
+supply-chain: sbom openapi audit
+
+verify: lint test sbom openapi audit
 
 lint:
 	$(RUFF) check .
