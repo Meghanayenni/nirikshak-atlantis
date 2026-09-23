@@ -51,7 +51,7 @@ def report(run) -> str:
 def test_every_label_loads_and_verifies() -> None:
     """Citations resolve, checksums match, contracts hold."""
     labels = load_labels()
-    assert len(labels) == 4
+    assert len(labels) == 5
 
 
 def test_every_labelled_file_is_in_the_evaluation_split() -> None:
@@ -123,7 +123,7 @@ def test_a_full_run_never_touches_the_holdout(run) -> None:
     sealed = {e.path for e in load_manifest() if e.is_sealed}
 
     assert scored & sealed == set()
-    assert len(scored) == 4
+    assert len(scored) == 5
 
 
 def test_the_sealed_files_are_unreadable_through_the_harness() -> None:
@@ -149,8 +149,8 @@ def test_vendor_detection_is_correct_on_every_scored_file(run) -> None:
     from eval.metrics import detection_metrics
 
     metrics = detection_metrics(run.detections)
-    assert metrics.total == 4
-    assert metrics.correct == 4
+    assert metrics.total == 5
+    assert metrics.correct == 5
     assert metrics.wrong == 0
 
 
@@ -158,13 +158,13 @@ def test_cisco_field_extraction(run) -> None:
     """Asserted at real values so a parser regression shows up as a diff."""
     cisco = field_metrics(by_vendor(run.fields)["cisco"], "cisco")
 
-    assert cisco.total == 26
-    assert cisco.correct == 11
+    assert cisco.total == 39
+    assert cisco.correct == 18
     assert cisco.wrong_confident == 0
-    assert cisco.miss == 4
-    assert cisco.correct_abstention == 11
+    assert cisco.miss == 8
+    assert cisco.correct_abstention == 13
     assert cisco.precision == 1.0
-    assert cisco.recall == pytest.approx(11 / 15)
+    assert cisco.recall == pytest.approx(18 / 26)
 
 
 def test_the_wrong_confident_rate_is_zero_across_every_vendor(run) -> None:
@@ -191,8 +191,8 @@ def test_evidence_integrity_is_perfect_where_it_could_be_checked(run) -> None:
     """Every value Cisco asserted cited the line the labeller read."""
     cisco = field_metrics(by_vendor(run.fields)["cisco"], "cisco")
 
-    assert cisco.evidence_scored == 11
-    assert cisco.evidence_correct == 11
+    assert cisco.evidence_scored == 18
+    assert cisco.evidence_correct == 18
     assert cisco.evidence_wrong_line == 0
     assert cisco.evidence_missing == 0
     assert cisco.evidence_integrity == 1.0
@@ -217,9 +217,9 @@ def test_the_fail_class_is_now_exercised(run) -> None:
     cisco = verdict_metrics([v for v in run.verdicts if v.vendor == "cisco"], "cisco")
 
     assert cisco.exercised(Verdict.FAIL)
-    assert cisco.expected_total(Verdict.FAIL) == 6
+    assert cisco.expected_total(Verdict.FAIL) == 9
     assert cisco.precision(Verdict.FAIL) == 1.0
-    assert cisco.recall(Verdict.FAIL) == 0.5
+    assert cisco.recall(Verdict.FAIL) == pytest.approx(5 / 9)
 
 
 def test_missed_failures_are_counted_as_unknown_not_as_passes(run) -> None:
@@ -303,12 +303,12 @@ def test_the_report_makes_no_affirmative_accuracy_boast(report: str) -> None:
 def test_the_report_never_calls_its_labels_independent_ground_truth(report: str) -> None:
     """D35 — every label is unreviewed and the Cisco ones share an author."""
     assert "NOT INDEPENDENT GROUND TRUTH" in report
-    assert "Independently reviewed labels: 0 of 4" in report
+    assert "Independently reviewed labels: 0 of 5" in report
 
 
 def test_the_report_flags_the_authorship_conflict(report: str) -> None:
     assert "PATTERN AUTHOR" in report
-    assert report.count("PATTERN AUTHOR") == 2, "both Cisco files should carry the flag"
+    assert report.count("PATTERN AUTHOR") == 3, "every Cisco file should carry the flag"
 
 
 def test_the_report_separates_pack_bearing_from_detection_only(report: str) -> None:
@@ -346,7 +346,7 @@ def test_the_report_qualifies_the_zero_wrong_confident_rate(report: str) -> None
 
 def test_the_report_prints_denominators_with_its_rates(report: str) -> None:
     """A rate without its sample size invites the reader to assume a big one."""
-    assert "100.0% / 11" in report
+    assert "100.0% / 18" in report
     assert "Rates print as percentage / denominator" in report
 
 

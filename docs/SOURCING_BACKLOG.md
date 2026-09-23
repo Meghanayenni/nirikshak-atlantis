@@ -27,11 +27,29 @@ a sourcing task, not an engineering one.
 real device. Also blocks exposure-aware prioritisation at P12, which needs ACLs
 *and* interfaces.
 
-**State.** The corpus contains **zero** access lists in any split — verified by
-searching every file for `access-list`, `access-group`, `ip access`, `firewall`,
-`filter`, `security-policy`, `policy-map` and `class-map`. The nearest line is one
-Juniper `set security policies …` statement with no destination, protocol, port or
-action, on a vendor whose pack is detection-only.
+**State: CLOSED as a sourcing item at P15 (decision D65). Now blocked on
+engineering instead.**
+
+Nine configurations were registered at P15, and they bring the corpus its first
+access lists and first interfaces across three vendors:
+
+| File | Split | What it carries |
+| --- | --- | --- |
+| `cisco/dev/edge-rtr-01.cfg` | dev | a shadowed entry, with the file's own remark saying the deny is unreachable |
+| `cisco/dev/branch-rtr-07.cfg` | dev | a clean list — the analyser must find nothing |
+| `cisco/dev/dc1-leaf-01.cfg` | dev | CIDR-style NX-OS list, applied to an interface with a direction |
+| `juniper/dev/edge-rtr-02.conf` | dev | 31 filter terms |
+| `cisco/eval/edge-rtr-11.cfg` | eval | an overly permissive `permit ip any any` |
+
+**The analyser still produces nothing, and this entry must not be read as saying
+otherwise.** No shipped pack declares an ACL or interface pattern, so neither
+reaches the canonical model — measured directly after registration:
+`CSM acls: 0`, `CSM interfaces: 0`, with the ACL lines sitting in residue.
+
+What changed is the *kind* of blockage. P7's interval logic and P12's ranking
+waited on material that had to come from outside the repository; they now wait on
+ACL and interface parsing patterns authored from the development split, which is
+ordinary engineering work nobody is prevented from doing.
 
 The P7 analyser is built and exhaustively tested against constructed `ACL`
 objects. It has never seen a parsed one.
@@ -43,11 +61,13 @@ non-holdout devices. `exposure_score` and `priority_rank` are `None` everywhere
 and the audit response reports `no_interface_data` as the blocker. Two phases of
 machinery — P7's interval logic and P12's ranking — now wait on this one gap.
 
-**What would close it.** Development-split configurations containing real access
-lists, sanitised to `docs/CONTENT_POLICY.md`, ideally including a shadowed entry,
-a redundant entry, an overly permissive entry, a partial overlap that is none of
-those, a clean list, one list applied to an interface with a direction, and one
-object-group reference.
+**What would close the remaining half.** ACL and interface parsing patterns for
+at least one platform, authored from the development split. The shapes now
+present cover a shadowed entry, an overly permissive entry, a clean list and a
+list applied to an interface with a direction. Still absent from the corpus: a
+*redundant* entry, a partial overlap that is neither shadowed nor redundant, and
+an object-group reference — so those three branches of the analyser remain
+unexercised even once patterns exist.
 
 **What must not happen.** Writing ACL parsing patterns from general vendor
 knowledge. The P4 corpus-provenance test would reject them, and it should.

@@ -79,7 +79,16 @@ def _upload_fleet(client: TestClient) -> list[str]:
             auth=ROOT,
         )
         assert response.status_code == 200, response.text
-        ids.extend(a["file_id"] for a in response.json()["accepted"])
+        # Two corpus files have no active pack and so cannot be audited:
+        # dc1-leaf-01.cfg is NX-OS, and core-rtr-01.conf is brace-nested JunOS
+        # that the juniper detect signatures do not yet discriminate. Both are
+        # still uploaded — the fleet view must account for them as skipped —
+        # but auditing them would (correctly) answer 409.
+        ids.extend(
+            a["file_id"]
+            for a in response.json()["accepted"]
+            if a["detection"]["outcome"] == "detected"
+        )
     return ids
 
 
@@ -100,25 +109,36 @@ def test_the_fleet_view_is_admin_only(client: TestClient) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_every_cohort_is_below_the_floor_and_says_so(client: TestClient) -> None:
-    """The honest result: ten devices, three cohorts, no baseline.
+def test_baselines_are_established_now_that_a_cohort_clears_the_floor(
+    client: TestClient,
+) -> None:
+    """P15 — the first baselines this project has ever computed.
 
-    The largest cohort is four Cisco devices against a floor of five, so no
-    deviation is claimed. A response that showed an empty outlier list without
-    this explanation would read as a uniform fleet.
+    This test replaces `test_every_cohort_is_below_the_floor_and_says_so`, which
+    asserted the opposite and was correct for as long as the largest cohort held
+    four Cisco devices against a floor of five. Registering the P15 corpus took
+    that cohort to nine, so the floor is cleared and the machinery runs.
+
+    **Zero outliers is a result here, not an abstention**, and the two are
+    reported differently: a cohort below the floor carries an explanation and an
+    outcome that is not `compared`, whereas these baselines were compared and
+    found no deviation.
     """
     _upload_fleet(client)
     body = client.get("/fleet/baseline", auth=ROOT).json()
 
-    assert body["devices"] == 10
-    assert body["skipped_files"] == 0
+    assert body["devices"] == 17
+    # dc1-leaf-01.cfg (NX-OS) and core-rtr-01.conf (brace-nested JunOS) have no
+    # active pack, so they are counted as skipped rather than silently dropped.
+    assert body["skipped_files"] == 2
     assert body["minimum_cohort_size"] == MIN_COHORT_SIZE
-    assert body["comparable_baselines"] == 0
+    assert body["comparable_baselines"] == 8
     assert body["outliers"] == []
-    assert "no baseline could be established" in body["summary"]
+    assert "baseline(s) established" in body["summary"]
 
+    compared = [b for b in body["baselines"] if b["outcome"] == "compared"]
+    assert len(compared) == body["comparable_baselines"]
     for baseline in body["baselines"]:
-        assert baseline["outcome"] != "compared"
         assert baseline["explanation"]
 
 
@@ -128,7 +148,7 @@ def test_cohorts_are_platforms_and_are_never_mixed(client: TestClient) -> None:
     body = client.get("/fleet/baseline", auth=ROOT).json()
 
     cohorts = {c["cohort"]: c["size"] for c in body["cohorts"]}
-    assert cohorts == {"arista/eos": 3, "cisco/ios": 4, "juniper/junos": 3}
+    assert cohorts == {"arista/eos": 4, "cisco/ios": 9, "juniper/junos": 4}
 
 
 def test_a_deviation_is_reported_as_an_observation_not_a_verdict(

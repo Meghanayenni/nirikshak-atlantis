@@ -206,3 +206,137 @@ files:
     labelled: true
     sha256: 2a872f6e7afd3ecd1261956b83c335a46fa6dae059c7eebd6f8dc63808320cb9
     added: 2026-08-27
+
+  # ---------------------------------------------------------------------------
+  # Added at P15 (decision D65). Nine configurations that had been uploaded to a
+  # running deployment but never registered here, so the corpus-policy tests
+  # could not see them. Registering them was not bookkeeping: eight admin-trained
+  # patterns in the active packs carried example lines that appeared in NO
+  # development file, and one of those lines appeared only in the EVALUATION
+  # split. See docs/adr/0024-corpus-registration-and-training-provenance.md.
+  #
+  # These files bring the corpus its first ACCESS LISTS and first INTERFACES
+  # across three vendors, which is the material SOURCING_BACKLOG gap 1 has been
+  # waiting on since P7.
+  #
+  # dc1-spine-01.cfg is ARISTA EOS, not NX-OS: the device name pairs with
+  # dc1-leaf-01 but the file's own header declares vEOS/EOS-4.31.2F. The pairing
+  # is a naming coincidence and was very nearly recorded as the wrong platform.
+  # ---------------------------------------------------------------------------
+  - path: arista/dev/dc1-spine-01.cfg
+    split: dev
+    vendor: arista
+    os_family: eos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis; command syntax adapted from Arista's EOS User Manual (Connection Management, Session Management, eAPI chapters) and community references"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; hash-shaped values are literal placeholders; SNMP v2c community rewritten to the published default 'public'"
+    is_real_world_data: false
+    labelled: false
+    sha256: be5271005d377cff709715f64dad722651e611af9b07967803ae451f162539a4
+    added: 2026-09-23
+  - path: cisco/dev/branch-rtr-07.cfg
+    split: dev
+    vendor: cisco
+    os_family: ios
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public Cisco IOS hardening documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; hash-shaped and key-shaped values are literal placeholders"
+    is_real_world_data: false
+    labelled: false
+    sha256: a7c5b89d04a43935f82be3ac7ce0a505a07dd1fb1a6a2fc5a2ab225870b09882
+    added: 2026-09-23
+  - path: cisco/dev/dc1-leaf-01.cfg
+    split: dev
+    vendor: cisco
+    os_family: nxos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis; command syntax adapted from Cisco NX-OS configuration guides and the NX-API DME/CLI reference"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; hash-shaped values are literal placeholders"
+    is_real_world_data: false
+    labelled: false
+    sha256: 5ab51621ca7cf896ca4c38fedd79e3b27977dd4146c6743800514442e60923db
+    added: 2026-09-23
+  - path: cisco/dev/dist-sw-03.cfg
+    split: dev
+    vendor: cisco
+    os_family: ios
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public Cisco IOS hardening documentation"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; hash-shaped values are literal placeholders; SNMP v2c community rewritten to the published default 'public'"
+    is_real_world_data: false
+    labelled: false
+    sha256: a4fc7ccb8780fdca00a2188d3370f1359bba4ec733e32121ff6d5ae55d25271e
+    added: 2026-09-23
+  - path: cisco/dev/edge-rtr-01.cfg
+    split: dev
+    vendor: cisco
+    os_family: ios
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis; command syntax adapted from Cisco SSH/AAA/SNMPv3 and hardening configuration guides"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; hash-shaped and key-shaped values are literal placeholders"
+    is_real_world_data: false
+    labelled: false
+    sha256: 97de359d22b81542ecda9ec67db42d6fb11161b3a381af655f011d75f26b46cb
+    added: 2026-09-23
+  - path: cisco/dev/edge-rtr-09.cfg
+    split: dev
+    vendor: cisco
+    os_family: ios
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the style of public Cisco IOS documentation; built to exercise absence semantics"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; the plaintext password value is a literal placeholder"
+    is_real_world_data: false
+    labelled: false
+    sha256: 73eef79436116862f8aa77dbbf4e066d7298d25ea103c49b2f2dea16dbaf6914
+    added: 2026-09-23
+  - path: cisco/eval/edge-rtr-11.cfg
+    split: eval
+    vendor: cisco
+    os_family: ios
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis as a regression fixture; every command shape already appears in a development file, only values differ"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; hash-shaped values are literal placeholders"
+    is_real_world_data: false
+    labelled: true
+    sha256: 8995304de20c36080117e85551d7b94a1eeb1377839512dc6eb8b7bbec5ce334
+    added: 2026-09-23
+  - path: juniper/dev/core-rtr-01.conf
+    split: dev
+    vendor: juniper
+    os_family: junos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis; command syntax adapted from the JunOS CLI User Guide and Juniper's published firewall-filter examples (brace-nested form)"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; hash-shaped values are literal placeholders"
+    is_real_world_data: false
+    labelled: false
+    sha256: c990a4fc0fab2ce0e28d542843f2a542e8f50146ec4b8d93fde07c2c3a6ddf85
+    added: 2026-09-23
+  - path: juniper/dev/edge-rtr-02.conf
+    split: dev
+    vendor: juniper
+    os_family: junos
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis; command syntax adapted from the JunOS CLI User Guide and the SNMPv3 USM/VACM configuration reference (flat 'set' form)"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; hash-shaped values are literal placeholders"
+    is_real_world_data: false
+    labelled: false
+    sha256: 7fcfa2a640d634c8d4e27f107642180abc311dc8a763258593e8927cf26c45f2
+    added: 2026-09-23

@@ -225,13 +225,24 @@ is real; the output is an honest refusal.
 | **Absence-aware evaluation accuracy** | No platform default and no capability claim ships, so the `EVALUATE` branch has never fired on real data. |
 | **ACL detection rates** | The corpus contains no access list in any split. The analyser has never seen a parsed one. |
 | **Exposure scores or a priority ranking** | Exposure needs interfaces and access lists; the corpus has zero of both. Severity alone must not determine remediation order, so no severity-sorted list is offered in their place. |
-| **Peer-baseline outliers** | Every cohort is below the minimum size of five, so no baseline is established and no device is called an outlier. |
 | **Held-out generalisation** | Blocked: the metric is defined over the held-out vendor's commands, reading them needs an XML parser, and that parser waits on a sample independent of the holdout. |
 | **Top-3 mapping accuracy or a calibrated confidence** | No line-level ground truth exists, and no calibrator is fitted. Every similarity score is a ranking, never a probability. |
 | **Real-world accuracy** | Every corpus file is hand-written by one author. The harness measures a synthetic sample honestly; that is not field accuracy. |
 | **Independent ground truth** | The labels are unreviewed, and the Cisco labels share an author with the Cisco parsing patterns. |
 
-One item has since left this table. The vetted snippet library
+Two items have since left this table.
+
+**Peer-baseline outliers.** Until P15 every cohort held fewer than the five
+devices a baseline needs, so none was established. Registering the P15 corpus
+took the Cisco IOS cohort to nine and **eight baselines are now computed**, with
+zero deviations. That zero is a result rather than an abstention, and the fleet
+response distinguishes them: a cohort below the floor carries an explanation and
+an outcome that is not `compared`, while these were compared and agreed. Two
+files are reported as skipped rather than silently dropped — `dc1-leaf-01.cfg`
+is NX-OS and `core-rtr-01.conf` is brace-nested JunOS, and neither has an active
+pack.
+
+The vetted snippet library
 shipped empty until every entry could name the person who checked it
 and the vendor document they checked it against; twenty snippets covering
 three platforms now satisfy both, and `tests/architecture/test_remediate_boundaries.py` asserts those two
@@ -240,7 +251,7 @@ snippet for a platform still resolves to nothing and says so — the Arista SSH
 protocol-version rule is the live example, because EOS exposes no such setting
 and inventing one would be worse than abstaining.
 
-All nine trace to the eight entries in `docs/SOURCING_BACKLOG.md`:
+All eight trace to the eight entries in `docs/SOURCING_BACKLOG.md`:
 
 1. ACL-bearing configurations
 2. Vendor capability and default documentation
@@ -284,7 +295,7 @@ can be run once, and it has not been spent.
 
 ## 9. Defect register
 
-Fifteen numbered defects. **Two are open.**
+Sixteen numbered defects. **Three are open.**
 
 | # | Description | Status |
 | --- | --- | --- |
@@ -303,6 +314,7 @@ Fifteen numbered defects. **Two are open.**
 | DEF-13 | Pack checksums were declared and never verified against file bytes | Fixed (ADR 0020) |
 | DEF-14 | `POST /compliance/audits` never appended `AUDIT_RUN` to the chain | Fixed (ADR 0021) |
 | DEF-15 | Detected device identity never reached the canonical model in the live pipeline | Fixed (ADR 0021) |
+| **DEF-16** | **The confirmation loop does not know about corpus splits, so an administrator working the Needs-review queue can compile a pattern from a file reserved for measuring the parser** | **OPEN** |
 
 ### Why the two open defects remain open
 
@@ -316,6 +328,21 @@ configuration re-uploaded after an edit counts as a second device** in its cohor
 Nothing anywhere presents a content hash as a stable device identity: the report
 names its field `config_file_id`, and the interface labels devices by hostname.
 
+**DEF-16** — found at P15 by the corpus-policy suite, which reported that two
+admin-trained patterns in the active Cisco pack had been compiled from
+`edge-rtr-11.cfg` — a file whose entire purpose is to be a regression fixture
+nobody authors from. Nobody misused the interface: an administrator uploaded a
+configuration, worked the queue and confirmed what the lines meant, which is the
+loop doing its job.
+
+The loop has no notion of a corpus split, and for an arbitrary operator upload it
+cannot have one — most deployments have no corpus. In *this* repository the same
+files serve as evaluation data, so the loop can silently contaminate the
+measurement the parser is judged by. The trained patterns were reset (D67) and
+the contamination is gone, but nothing prevents it recurring. A guard belongs
+with the training workflow and needs its own ADR, so it is recorded rather than
+patched in a corpus commit.
+
 **DEF-8** — the correct check is "at most 600 seconds **and** greater than zero",
 and `CheckSpec` examines one field with one operator from a closed set. `lte`
 cannot express it. Fixing it needs either a new `ConditionOp` or a
@@ -327,7 +354,7 @@ current measurement depends on the defect either way.
 
 ## 10. Decision index
 
-Sixty numbered decisions across 22 ADRs.
+Sixty-four numbered decisions across 23 ADRs.
 
 | ADR | Phase | Subject | Decisions |
 | --- | --- | --- | --- |
@@ -354,6 +381,7 @@ Sixty numbered decisions across 22 ADRs.
 | 0021 | P12 | The Prioritise stage, and the ranking it declines to produce | D52, D53, D54, D55, D56, D57 |
 | 0022 | P13 | The interface, and what it refuses to draw | D58, D59, D60, D61, D62 |
 | 0023 | P14 | This document | — |
+| 0024 | P15 | Corpus registration, and a training loop that could contaminate its own evaluation | D65, D66, D67, D68 |
 
 ---
 

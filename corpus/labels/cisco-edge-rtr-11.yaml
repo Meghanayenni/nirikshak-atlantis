@@ -1,0 +1,161 @@
+# Ground truth for corpus/cisco/eval/edge-rtr-11.cfg
+#
+# Authored by reading the configuration. No NIRIKSHAK output was consulted —
+# not the parser, not the normaliser, not a report. See corpus/labels/README.md
+# for the determinability doctrine this follows.
+
+corpus_path: cisco/eval/edge-rtr-11.cfg
+split: eval
+vendor: cisco
+os_family: ios
+file_sha256: 8995304de20c36080117e85551d7b94a1eeb1377839512dc6eb8b7bbec5ce334
+
+provenance:
+  labelled_by: ai-assistant
+  labelled_at: 2026-09-23T00:00:00Z
+  authored_from: corpus/cisco/eval/edge-rtr-11.cfg (raw configuration text)
+  review_status: unreviewed
+  reviewed_by: null
+  reviewed_at: null
+  pattern_author_conflict: true
+  conflict_note: >-
+    The cisco/ios parsing patterns and these labels share an author, so
+    correlated error between parser and ground truth is not visible in the
+    result. Reported separately until a second person reviews the labels.
+  parser_state_at_labelling: cisco/ios pack_version 1.1.0
+
+fields:
+  - field: ssh_version
+    determinability: determinable
+    expected_value: 2
+    evidence_line: 56
+    evidence_text: ip ssh version 2
+    rationale: The version is stated explicitly.
+
+  - field: telnet_enabled
+    determinability: determinable
+    expected_value: true
+    evidence_line: 109
+    evidence_text: " transport input telnet ssh"
+    rationale: >-
+      Both vty ranges accept telnet alongside ssh. Telnet is an accepted
+      management transport on this device.
+
+  - field: http_server_enabled
+    determinability: determinable
+    expected_value: true
+    evidence_line: 62
+    evidence_text: ip http server
+    rationale: The plaintext HTTP management server is explicitly enabled.
+
+  - field: https_server_enabled
+    determinability: determinable
+    expected_value: true
+    evidence_line: 63
+    evidence_text: ip http secure-server
+    rationale: The TLS management server is explicitly enabled.
+
+  - field: idle_timeout_seconds
+    determinability: determinable
+    expected_value: 900
+    evidence_line: 108
+    evidence_text: " exec-timeout 15 0"
+    rationale: >-
+      Fifteen minutes and zero seconds under line vty 0 4, so 900 seconds. Both
+      vty ranges carry the same value. The console line sets exec-timeout 0 0,
+      but a console timeout is a different control and is not this field.
+
+  - field: logging_hosts
+    determinability: determinable
+    expected_value: ["192.0.2.60"]
+    evidence_line: 67
+    evidence_text: logging host 192.0.2.60
+    rationale: One remote logging destination is configured.
+
+  - field: ntp_servers
+    determinability: determinable
+    expected_value: ["192.0.2.20", "192.0.2.21"]
+    evidence_line: 70
+    evidence_text: ntp server 192.0.2.20
+    rationale: >-
+      Two time sources are configured, on consecutive lines 70 and 71. The
+      citation names the first.
+
+  - field: banner_present
+    determinability: determinable
+    expected_value: true
+    evidence_line: 77
+    evidence_text: banner motd ^C
+    rationale: A message-of-the-day banner is configured.
+
+  - field: aaa_enabled
+    determinability: determinable
+    expected_value: true
+    evidence_line: 48
+    evidence_text: aaa new-model
+    rationale: >-
+      AAA is explicitly enabled, and a login authentication method follows it.
+      Unlike an absent aaa directive, this is readable off the page.
+
+  - field: snmp_v3_only
+    determinability: determinable
+    expected_value: false
+    evidence_line: 73
+    evidence_text: snmp-server community public RO
+    rationale: >-
+      A v1/v2c community string is configured, so SNMP on this device is not
+      version 3 only. The presence of the community establishes the value; no
+      claim about platform defaults is needed.
+
+  - field: weak_ciphers
+    determinability: determinable
+    expected_value: true
+    evidence_line: 59
+    evidence_text: ip ssh server algorithm encryption aes128-cbc
+    rationale: >-
+      The SSH server is pinned to CBC-mode encryption and to HMAC-SHA1 on the
+      following line. Both are weak by current practice, and both are stated
+      explicitly rather than left to a platform default.
+
+  - field: logging_enabled
+    determinability: not_determinable
+    rationale: >-
+      Buffered logging, a trap level and a remote host are all configured, but
+      the file never states whether the logging subsystem itself is enabled.
+      Reading one from the other is an inference, not a reading.
+
+  - field: min_password_length
+    determinability: not_determinable
+    rationale: No password policy directive appears; the default is platform behaviour.
+
+verdicts:
+  - rule_id: NRK-SSH-001
+    expected_verdict: pass
+    rationale: ssh_version is 2, and the rule requires equality with 2.
+
+  - rule_id: NRK-TELNET-001
+    expected_verdict: fail
+    rationale: telnet_enabled is true, and the rule requires it to be false.
+
+  - rule_id: NRK-HTTP-001
+    expected_verdict: fail
+    rationale: http_server_enabled is true, and the rule requires it to be false.
+
+  - rule_id: NRK-TIMEOUT-001
+    expected_verdict: fail
+    rationale: >-
+      900 seconds exceeds the 600-second maximum the rule states. Note this is
+      the ordinary comparison, not the DEF-8 case: the value is a real timeout
+      rather than the zero that means "never expires".
+
+  - rule_id: NRK-LOGGING-001
+    expected_verdict: pass
+    rationale: logging_hosts is non-empty.
+
+  - rule_id: NRK-NTP-001
+    expected_verdict: pass
+    rationale: ntp_servers is non-empty.
+
+  - rule_id: NRK-BANNER-001
+    expected_verdict: pass
+    rationale: banner_present is true, and the rule requires it to be true.

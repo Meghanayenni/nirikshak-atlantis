@@ -41,7 +41,9 @@ def corpus_files() -> list[Path]:
     repository.
     """
     return sorted(
-        p for p in CORPUS.rglob("*") if p.is_file() and p.name not in ("MANIFEST.yaml", ".gitkeep")
+        p
+        for p in CORPUS.rglob("*")
+        if p.is_file() and p.name not in ("MANIFEST.yaml", "PROVENANCE.md", ".gitkeep")
     )
 
 
@@ -58,6 +60,9 @@ def configuration_files() -> list[Path]:
     Both remain inside every sanitisation scan above, because both quote
     configuration lines verbatim.
     """
+    # PROVENANCE.md is prose ABOUT the configurations, like the manifest itself:
+    # it is not a configuration, carries no device data, and a manifest entry for
+    # it would be as circular as one for a label.
     derived = {"labels", "seed_examples"}
     return [p for p in corpus_files() if not (derived & set(p.relative_to(CORPUS).parts))]
 
@@ -182,12 +187,28 @@ def test_only_documentation_addressing(path: Path) -> None:
         )
 
 
+RESERVED_DOMAINS = (
+    # RFC 2606 §2 — reserved TLDs.
+    ".test",
+    ".example",
+    ".invalid",
+    ".localhost",
+    # RFC 2606 §3 — reserved second-level names. All THREE are reserved; the
+    # allowlist previously named only example.com, so a corpus file using the
+    # equally-reserved example.net failed a check it actually satisfied.
+    "example.com",
+    "example.net",
+    "example.org",
+)
+
+
 @pytest.mark.parametrize("path", corpus_files(), ids=lambda p: p.name)
 def test_hostnames_use_reserved_domains(path: Path) -> None:
+    """RFC 2606 — a documentation domain can never resolve to a real host."""
     text = path.read_text(encoding="utf-8", errors="replace")
     domains = re.findall(r"domain[- ]name[> ]+([A-Za-z0-9.-]+)", text)
     for domain in domains:
-        assert domain.endswith((".example", "example.com", ".invalid", ".test")), (
+        assert domain.endswith(RESERVED_DOMAINS), (
             f"{path.name} uses non-reserved domain {domain}"
         )
 
