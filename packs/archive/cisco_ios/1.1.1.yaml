@@ -1,0 +1,245 @@
+# NIRIKSHAK vendor pack — GENERATED AT RUNTIME (P11).
+#
+# Compiled from administrator confirmations by api/train/, parent version
+# 1.1.0. Every admin-trained pattern below retains the
+# training example id and audit sequence it came from, so any mapping here
+# can be traced to the person who confirmed it and the moment they did.
+#
+# This file is deployment state, not repository content. It is not reviewed
+# before it is loaded, which is why its checksum is verified on every load
+# (see api/ingest/pack_checksum.py).
+
+capabilities: []
+checksum: sha256:5ae6d00cb8f7aa8c73706fdeded76fc5977d0be11ad9ba37c679e5b2e9fb192a
+comment_prefixes:
+- '!'
+created_at: '2026-09-12T04:31:52.572747Z'
+created_by: team-atlantis
+defaults: []
+detect:
+- pattern: ^version \d+\.\d+
+  type: regex
+  weight: 0.25
+- pattern: '^service timestamps '
+  type: regex
+  weight: 0.25
+- pattern: ^line vty \d+
+  type: regex
+  weight: 0.2
+- pattern: ^interface (GigabitEthernet|FastEthernet)\d
+  type: regex
+  weight: 0.2
+- pattern: '^ip ssh version '
+  type: regex
+  weight: 0.15
+identity:
+- capture:
+    cast: str
+    value: $1
+  confidence: 1.0
+  examples:
+  - hostname rtr-core-01
+  field: hostname
+  match:
+    pattern: ^hostname (\S+)
+    type: regex
+- capture:
+    cast: str
+    value: $1
+  confidence: 1.0
+  examples:
+  - version 17.9
+  field: os_version
+  match:
+    pattern: ^version (\S+)
+    type: regex
+- capture:
+    cast: str
+    value: $1
+  confidence: 1.0
+  examples:
+  - '! model ISR4331'
+  field: model
+  match:
+    pattern: ^! model (\S+)
+    type: regex
+literal_blocks:
+- name: banner
+  open: ^banner \S+ (\S+)$
+  terminator_group: 1
+os_family: ios
+pack_version: 1.1.1
+parent_version: 1.1.0
+patterns:
+- capture:
+    cast: int
+    value: $1
+  confidence: 1.0
+  examples:
+  - ip ssh version 2
+  field: ssh_version
+  id: p-ssh-version-001
+  match:
+    pattern: ^ip ssh version (\d+)$
+    type: regex
+  negative_examples:
+  - ip ssh version
+  - no ip ssh version 2
+  - ip ssh version 2 extra
+  scope: {}
+  source: builtin
+- capture:
+    cast: bool
+    value: 'true'
+  confidence: 1.0
+  examples:
+  - transport input telnet ssh
+  field: telnet_enabled
+  id: p-telnet-enabled-001
+  match:
+    pattern: ^transport input (?=.*\btelnet\b).*$
+    type: regex
+  negative_examples:
+  - transport input ssh
+  - transport input none
+  scope:
+    block:
+    - ^line vty \d+ \d+$
+  source: builtin
+- capture:
+    cast: bool
+    value: 'false'
+  confidence: 1.0
+  examples:
+  - transport input ssh
+  field: telnet_enabled
+  id: p-telnet-enabled-002
+  match:
+    pattern: ^transport input (?:ssh|none)$
+    type: regex
+  negative_examples:
+  - transport input telnet ssh
+  - transport input all
+  scope:
+    block:
+    - ^line vty \d+ \d+$
+  source: builtin
+- capture:
+    cast: bool
+    value: 'false'
+  confidence: 1.0
+  examples:
+  - no ip http server
+  field: http_server_enabled
+  id: p-http-server-001
+  match:
+    pattern: ^no ip http server$
+    type: regex
+  negative_examples:
+  - ip http server
+  - no ip http secure-server
+  scope: {}
+  source: builtin
+- capture:
+    cast: bool
+    value: 'true'
+  confidence: 1.0
+  examples:
+  - ip http secure-server
+  field: https_server_enabled
+  id: p-https-server-001
+  match:
+    pattern: ^ip http secure-server$
+    type: regex
+  negative_examples:
+  - no ip http secure-server
+  - ip http server
+  scope: {}
+  source: builtin
+- capture:
+    cast: duration
+    value: $1 $2
+  confidence: 1.0
+  examples:
+  - exec-timeout 10 0
+  - exec-timeout 30 0
+  field: idle_timeout_seconds
+  id: p-idle-timeout-001
+  match:
+    pattern: ^exec-timeout (\d+) (\d+)$
+    type: regex
+  negative_examples:
+  - exec-timeout
+  - exec-timeout ten zero
+  scope:
+    block:
+    - ^line vty \d+ \d+$
+  source: builtin
+- capture:
+    cast: list
+    value: $1
+  confidence: 1.0
+  examples:
+  - logging host 192.0.2.10
+  field: logging_hosts
+  id: p-logging-host-001
+  match:
+    pattern: ^logging host (\S+)$
+    type: regex
+  negative_examples:
+  - logging trap informational
+  - logging host
+  scope: {}
+  source: builtin
+- capture:
+    cast: list
+    value: $1
+  confidence: 1.0
+  examples:
+  - ntp server 192.0.2.20
+  - ntp server 192.0.2.21
+  field: ntp_servers
+  id: p-ntp-server-001
+  match:
+    pattern: ^ntp server (\S+)$
+    type: regex
+  negative_examples:
+  - ntp server
+  - ntp authenticate
+  scope: {}
+  source: builtin
+- capture:
+    cast: bool
+    value: 'true'
+  confidence: 1.0
+  examples:
+  - banner motd ^C
+  field: banner_present
+  id: p-banner-present-001
+  match:
+    pattern: ^banner motd (\S+)$
+    type: regex
+  negative_examples:
+  - banner motd
+  - no banner motd
+  scope: {}
+  source: builtin
+- capture:
+    cast: list
+    value: $1
+  confidence: 1.0
+  examples:
+  - ip ssh server algorithm mac hmac-sha2-256
+  field: weak_ciphers
+  id: p-weak-ciphers-admin-001
+  match:
+    pattern: ^ip\s+ssh\s+server\s+algorithm\s+mac\s+(\S+)$
+    type: regex
+  negative_examples: []
+  provenance:
+    audit_seq: 230
+    training_example_id: trn-b30d2f00624d4e24
+  scope: {}
+  source: admin_trained
+status: active
+vendor: cisco

@@ -332,7 +332,7 @@ Eighteen numbered defects. **Four are open.**
 | DEF-15 | Detected device identity never reached the canonical model in the live pipeline | Fixed (ADR 0021) |
 | **DEF-16** | **The confirmation loop does not know about corpus splits, so an administrator working the Needs-review queue can compile a pattern from a file reserved for measuring the parser** | **OPEN** |
 | DEF-17 | Two patterns asserting different values for one field collapsed to UNKNOWN, so a device whose weakest vty line enables telnet reported no FAIL | Fixed (ADR 0026) |
-| **DEF-18** | **Deleting a trained pack orphans every stored finding that cites it — two audit runs on this deployment can no longer name the pack that read them** | **OPEN** |
+| **DEF-18** | **Deleting a trained pack orphans every stored finding that cites it — two audit runs on this deployment can no longer name the pack that read them** | **OPEN** — evidence secured (ADR 0031) |
 
 ### Why the two open defects remain open
 
@@ -358,6 +358,16 @@ fail closed, correctly (D46). Making it resolvable needs an archive the
 activation scan never reads — a change to how pack storage is organised, with its
 own decision. Until then a finding exists that cannot name the pack that read it,
 which is the property the version field exists to provide. See ADR 0030.
+
+**The evidence is no longer at risk, and the defect is unchanged.** ADR 0031
+committed the ten recovered pack files to `packs/archive/`, outside every pack
+root, each still verifying against its own declared checksum — so the bytes that
+read those two runs are in the repository rather than in a scratch directory.
+Nothing resolves a version *through* that directory: a human can open the file, a
+loader cannot. The repair — a version resolvable for provenance and ineligible
+for activation, plus a `pack_versions` column that is keyed by `pack_id` rather
+than by vendor, so `cisco/ios` and `cisco/nxos` cannot collide in it — is still
+open.
 
 **DEF-16** — found at P15 by the corpus-policy suite, which reported that two
 admin-trained patterns in the active Cisco pack had been compiled from
@@ -385,7 +395,8 @@ current measurement depends on the defect either way.
 
 ## 10. Decision index
 
-Seventy-six numbered decisions across 29 ADRs.
+Eighty numbered decisions across 31 ADRs. (D63 and D64 were never issued; the
+count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
 | --- | --- | --- | --- |
@@ -419,6 +430,7 @@ Seventy-six numbered decisions across 29 ADRs.
 | 0028 | P16 | The analyser caught an authoring error in its own test data | D77 |
 | 0029 | P16 | A dropped access list announces itself | D78, D79 |
 | 0030 | P16 | Pack provenance after a re-stamp, and what the trained-pack reset destroyed | D80 |
+| 0031 | P17 | A durable archive for superseded packs | D81, D82 |
 
 ---
 

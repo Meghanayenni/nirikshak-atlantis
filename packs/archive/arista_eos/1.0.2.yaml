@@ -1,0 +1,79 @@
+# NIRIKSHAK vendor pack — GENERATED AT RUNTIME (P11).
+#
+# Compiled from administrator confirmations by api/train/, parent version
+# 1.0.1. Every admin-trained pattern below retains the
+# training example id and audit sequence it came from, so any mapping here
+# can be traced to the person who confirmed it and the moment they did.
+#
+# This file is deployment state, not repository content. It is not reviewed
+# before it is loaded, which is why its checksum is verified on every load
+# (see api/ingest/pack_checksum.py).
+
+capabilities: []
+checksum: sha256:94fd543ebe6943da67bacd60b6b6ea1e3599fc5324b9e0bae91ee8f04988c9c4
+comment_prefixes:
+- '!'
+created_at: '2026-09-11T05:05:46.299560Z'
+created_by: team-atlantis
+defaults: []
+detect:
+- pattern: '^! device: \S+ \('
+  type: regex
+  weight: 0.35
+- pattern: '^transceiver qsfp default-mode '
+  type: regex
+  weight: 0.3
+- pattern: ^management api http-commands
+  type: regex
+  weight: 0.25
+- pattern: ^interface Ethernet\d
+  type: regex
+  weight: 0.2
+- pattern: ^line vty \d+
+  type: regex
+  weight: 0.05
+identity:
+- capture:
+    cast: str
+    value: $1
+  confidence: 1.0
+  examples:
+  - hostname sw-leaf-01
+  field: hostname
+  match:
+    pattern: ^hostname (\S+)
+    type: regex
+- capture:
+    cast: str
+    value: $1
+  confidence: 1.0
+  examples:
+  - '! device: sw-leaf-01 (DCS-7050SX3-48YC8, EOS-4.29.2F)'
+  field: os_version
+  match:
+    pattern: '^! device: \S+ \([^,]+, EOS-(\S+)\)'
+    type: regex
+literal_blocks: []
+os_family: eos
+pack_version: 1.0.2
+parent_version: 1.0.1
+patterns:
+- capture:
+    cast: bool
+    value: $1
+  confidence: 1.0
+  examples:
+  - snmp-server community <redacted> ro
+  field: snmp_v3_only
+  id: p-snmp-v3-only-admin-001
+  match:
+    pattern: ^snmp\-server\s+(\S+)\s+<redacted>\s+ro$
+    type: regex
+  negative_examples: []
+  provenance:
+    audit_seq: 125
+    training_example_id: trn-97392df28dcb4f85
+  scope: {}
+  source: admin_trained
+status: draft
+vendor: arista

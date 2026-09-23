@@ -169,6 +169,15 @@ reads *"No vetted remediation is available for this platform and rule."* The
 loader, resolver, dependency ordering and report integration are built and tested
 against constructed fixtures; **none has ever handled a real snippet.**
 
+**Two stored findings cannot name the pack that read them.** A trained vendor
+pack, `cisco/ios 1.1.5`, was deleted when contaminated patterns were reset, and
+two audit runs on this deployment cite it. The files were recovered and committed
+to `packs/archive/`, where each still verifies against its own checksum — so the
+evidence exists and a person can read it. **The loader still cannot resolve the
+version**, because every archived file declares itself active and reinstating one
+would give a platform two active versions. Recorded as DEF-18; see
+`docs/adr/0030-...` and `docs/adr/0031-a-durable-archive-for-superseded-packs.md`.
+
 **PDF rendering does not work on the development machine.** HTML reporting is
 complete and has no native dependency. The PDF endpoint needs the WeasyPrint/GTK
 stack, which is absent here, and answers 503 naming the missing libraries rather
@@ -400,7 +409,7 @@ see `docs/adr/0001-no-live-device-access.md`.
 | Path        | Contents                                                    |
 | ----------- | ----------------------------------------------------------- |
 | `api/`      | Python backend (FastAPI)                                    |
-| `packs/`    | Vendor packs — **data**. `builtin/` reviewed, `trained/` learned |
+| `packs/`    | Vendor packs — **data**. `builtin/` reviewed, `trained/` learned, `archive/` superseded and unloadable |
 | `rules/`    | Compliance rules and framework mappings — **data**          |
 | `snippets/` | Vetted remediation command library — **data**               |
 | `corpus/`   | Sample configurations, ground-truth labels, held-out vendor |

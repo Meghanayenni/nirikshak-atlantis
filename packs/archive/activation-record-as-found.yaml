@@ -1,0 +1,13 @@
+# NIRIKSHAK — runtime pack activation record (P11, decision D51).
+#
+# A pack file's `status:` is what it SHIPPED as. This file records what this
+# deployment has since activated. Where the two disagree, this file wins — which
+# is how a trained pack supersedes a builtin one without any reviewed file being
+# edited at runtime.
+#
+# Deployment state, not repository content. Delete it to fall back to the
+# shipped statuses.
+
+active:
+  cisco/ios: 1.1.5
+  juniper/junos: 1.0.3

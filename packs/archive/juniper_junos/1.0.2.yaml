@@ -1,0 +1,92 @@
+# NIRIKSHAK vendor pack — GENERATED AT RUNTIME (P11).
+#
+# Compiled from administrator confirmations by api/train/, parent version
+# 1.0.1. Every admin-trained pattern below retains the
+# training example id and audit sequence it came from, so any mapping here
+# can be traced to the person who confirmed it and the moment they did.
+#
+# This file is deployment state, not repository content. It is not reviewed
+# before it is loaded, which is why its checksum is verified on every load
+# (see api/ingest/pack_checksum.py).
+
+capabilities: []
+checksum: sha256:567d101c545671ecae4c1481d008967954248d08d3ab0de2a1e4e9def98c7320
+comment_prefixes: []
+created_at: '2026-09-12T06:10:28.167747Z'
+created_by: team-atlantis
+defaults: []
+detect:
+- pattern: '^set system host-name '
+  type: regex
+  weight: 0.35
+- pattern: '^set version '
+  type: regex
+  weight: 0.25
+- pattern: ^set interfaces \S+ unit \d+
+  type: regex
+  weight: 0.25
+- pattern: '^set security '
+  type: regex
+  weight: 0.2
+identity:
+- capture:
+    cast: str
+    value: $1
+  confidence: 1.0
+  examples:
+  - set system host-name srx-edge-01
+  field: hostname
+  match:
+    pattern: ^set system host-name (\S+)
+    type: regex
+- capture:
+    cast: str
+    value: $1
+  confidence: 1.0
+  examples:
+  - set version 21.4R3
+  field: os_version
+  match:
+    pattern: ^set version (\S+)
+    type: regex
+literal_blocks: []
+os_family: junos
+pack_version: 1.0.2
+parent_version: 1.0.1
+patterns:
+- capture:
+    cast: list
+    value: $1
+  confidence: 1.0
+  examples:
+  - set system syslog host 198.51.100.40 any notice
+  field: logging_hosts
+  id: p-logging-hosts-admin-001
+  match:
+    pattern: ^set\s+system\s+syslog\s+host\s+(\S+)\s+any\s+notice$
+    type: regex
+  negative_examples: []
+  provenance:
+    audit_seq: 284
+    training_example_id: trn-42035f1d924942a1
+  scope: {}
+  source: admin_trained
+- capture:
+    cast: list
+    value: $1
+  confidence: 1.0
+  examples:
+  - set system syslog host 198.51.100.40 authorization info
+  field: logging_hosts
+  id: p-logging-hosts-admin-002
+  match:
+    pattern: ^set\s+system\s+syslog\s+host\s+(\S+)\s+authorization\s+info$
+    type: regex
+  negative_examples: []
+  provenance:
+    audit_seq: 287
+    training_example_id: trn-19b8992f20744ae2
+  scope: {}
+  source: admin_trained
+status: active
+vendor: juniper
