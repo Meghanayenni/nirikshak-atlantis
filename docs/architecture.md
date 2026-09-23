@@ -311,7 +311,7 @@ can be run once, and it has not been spent.
 
 ## 9. Defect register
 
-Seventeen numbered defects. **Three are open.**
+Eighteen numbered defects. **Four are open.**
 
 | # | Description | Status |
 | --- | --- | --- |
@@ -332,6 +332,7 @@ Seventeen numbered defects. **Three are open.**
 | DEF-15 | Detected device identity never reached the canonical model in the live pipeline | Fixed (ADR 0021) |
 | **DEF-16** | **The confirmation loop does not know about corpus splits, so an administrator working the Needs-review queue can compile a pattern from a file reserved for measuring the parser** | **OPEN** |
 | DEF-17 | Two patterns asserting different values for one field collapsed to UNKNOWN, so a device whose weakest vty line enables telnet reported no FAIL | Fixed (ADR 0026) |
+| **DEF-18** | **Deleting a trained pack orphans every stored finding that cites it — two audit runs on this deployment can no longer name the pack that read them** | **OPEN** |
 
 ### Why the two open defects remain open
 
@@ -344,6 +345,19 @@ not longitudinal. The real consequence is recorded rather than hidden — **a
 configuration re-uploaded after an edit counts as a second device** in its cohort.
 Nothing anywhere presents a content hash as a stable device identity: the report
 names its field `config_file_id`, and the interface labels devices by hostname.
+
+**DEF-18** — `audit_run.pack_versions` points into `packs/trained/`, so removing
+a trained pack silently orphans every finding produced by it. D67 removed the
+contaminated admin-trained patterns at P15 on the reasoning that the directory is
+gitignored deployment state; that is true of the repository and false of the
+database beside it.
+
+Restoring is not a one-line fix. The archived file carries `status: active`, so
+returning it would give the platform two active versions and the loader would
+fail closed, correctly (D46). Making it resolvable needs an archive the
+activation scan never reads — a change to how pack storage is organised, with its
+own decision. Until then a finding exists that cannot name the pack that read it,
+which is the property the version field exists to provide. See ADR 0030.
 
 **DEF-16** — found at P15 by the corpus-policy suite, which reported that two
 admin-trained patterns in the active Cisco pack had been compiled from
@@ -371,7 +385,7 @@ current measurement depends on the defect either way.
 
 ## 10. Decision index
 
-Seventy-five numbered decisions across 28 ADRs.
+Seventy-six numbered decisions across 29 ADRs.
 
 | ADR | Phase | Subject | Decisions |
 | --- | --- | --- | --- |
@@ -404,6 +418,7 @@ Seventy-five numbered decisions across 28 ADRs.
 | 0027 | P16 | Reading access lists and interfaces, and what that did and did not start | D74, D75, D76 |
 | 0028 | P16 | The analyser caught an authoring error in its own test data | D77 |
 | 0029 | P16 | A dropped access list announces itself | D78, D79 |
+| 0030 | P16 | Pack provenance after a re-stamp, and what the trained-pack reset destroyed | D80 |
 
 ---
 
