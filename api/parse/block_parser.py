@@ -18,8 +18,13 @@ Three kinds of line are deliberately **not** nodes:
 `! ip ssh version 1` were a node, a pattern would match it and NIRIKSHAK would
 report a fact that is not in effect — with a citation, which makes it worse.
 Identity extraction is unaffected because it runs over raw lines, which is how
-`! model ISR4331` still yields a model: metadata legitimately lives in comments,
-active security configuration never does.
+`! device: sw-leaf-01 (DCS-7050SX3-48YC8, EOS-4.29.2F)` still yields a model and
+an OS version: metadata legitimately lives in comments, active security
+configuration never does.
+
+The asymmetry holds only for lines the *platform* writes. A pack pointing it at
+a comment a human typed gets the worst of both — see ADR 0037, which removed
+one such pattern.
 
 **Blank lines.** No command, and they would otherwise flood the training queue.
 

@@ -170,6 +170,15 @@ against those three is made or supported by this repository**, and none of the
 four supports a claim of *certified* compliance. See
 `docs/adr/0035-framework-mappings-against-a-content-addressed-catalog.md`.
 
+**No device serial number is reported, on any platform.** Not one configuration
+export in the corpus carries one: a serial is inventory data from
+`show version` / `show inventory`, not from a running-config. The contract, the
+database column and the report field exist and abstain. The hardware **model**
+*is* read on Arista, from the `! device:` header EOS writes itself — and was
+removed from Cisco IOS, where the pattern's only evidence was an annotation
+somebody typed into one corpus file and no real device emits. See
+`docs/adr/0037-a-model-read-from-a-line-a-device-writes.md`.
+
 **The corpus is synthetic and small.** Two Cisco development devices are enough to
 validate the *evaluator*; they are not enough to validate a *rule*.
 

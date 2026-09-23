@@ -31,7 +31,7 @@ DEV = Path("corpus/cisco/dev")
 @pytest.fixture(scope="module")
 def cisco():
     pack = next(p for p in load_active_packs(use_cache=False) if p.vendor == "cisco")
-    assert pack.pack_version == "1.2.0"
+    assert pack.pack_version == "1.3.0"
     return pack
 
 
@@ -69,7 +69,7 @@ def test_the_csm_records_the_pack_version_that_actually_applied(rtr) -> None:
     """Not whichever pack is active when a report is generated later."""
     parsed, csm = rtr
 
-    assert csm.source.pack_versions == {"cisco": "1.2.0"}
+    assert csm.source.pack_versions == {"cisco": "1.3.0"}
     assert csm.source.pack_versions["cisco"] == parsed.pack_version
 
 

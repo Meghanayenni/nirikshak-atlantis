@@ -65,7 +65,7 @@ def test_1_2_0_sorts_below_1_10_0() -> None:
 
 def test_packs_are_ordered_newest_first_within_a_platform() -> None:
     found = [p for p in discover_packs(PACKS_ROOT) if p.pack_id == "arista/eos"]
-    assert [p.pack_version for p in found] == ["1.0.1", "1.0.0"]
+    assert [p.pack_version for p in found] == ["1.1.0", "1.0.1", "1.0.0"]
 
 
 def test_a_double_digit_patch_orders_correctly(tmp_path: Path) -> None:
@@ -166,7 +166,7 @@ def _confirmed(line: str = "logging host 192.0.2.10") -> TrainingExample:
 
 
 def _arista_base() -> VendorPack:
-    return load_pack(PACKS_ROOT / "arista_eos" / "1.0.1.yaml")
+    return load_pack(PACKS_ROOT / "arista_eos" / "1.1.0.yaml")
 
 
 def test_a_draft_is_a_patch_bump_of_its_parent() -> None:
@@ -174,8 +174,8 @@ def test_a_draft_is_a_patch_bump_of_its_parent() -> None:
     pattern = compile_pattern(_confirmed(), CompileRequest(value_token=2, cast=CastType.LIST))
     draft = draft_with_pattern(base, pattern)
 
-    assert draft.pack_version == "1.0.2"
-    assert draft.parent_version == "1.0.1"
+    assert draft.pack_version == "1.1.1"
+    assert draft.parent_version == "1.1.0"
     assert draft.status is PackStatus.DRAFT
 
 
@@ -230,8 +230,8 @@ def test_activation_writes_a_verifiable_pack_and_records_the_choice(tmp_path: Pa
 
     result = activate(draft, trained_root=tmp_path)
 
-    assert result.version == "1.0.2"
-    assert result.previous_version == "1.0.1"
+    assert result.version == "1.1.1"
+    assert result.previous_version == "1.1.0"
     assert result.checksum.startswith("sha256:")
 
     written = load_pack(Path(result.path))
@@ -239,7 +239,7 @@ def test_activation_writes_a_verifiable_pack_and_records_the_choice(tmp_path: Pa
     assert written.checksum == result.checksum
 
     record = ActivationRecord.load(tmp_path)
-    assert record.version_for("arista/eos") == "1.0.2"
+    assert record.version_for("arista/eos") == "1.1.1"
 
 
 def test_activation_never_edits_a_reviewed_builtin_pack(tmp_path: Path) -> None:
@@ -284,11 +284,11 @@ def test_rollback_restores_the_previous_version_exactly(tmp_path: Path) -> None:
     pattern = compile_pattern(_confirmed(), CompileRequest(value_token=2, cast=CastType.LIST))
     activate(validate(draft_with_pattern(_arista_base(), pattern)), trained_root=tmp_path)
 
-    result = rollback("arista/eos", "1.0.1", trained_root=tmp_path)
+    result = rollback("arista/eos", "1.1.0", trained_root=tmp_path)
 
-    assert result.version == "1.0.1"
-    assert result.previous_version == "1.0.2"
-    assert ActivationRecord.load(tmp_path).version_for("arista/eos") == "1.0.1"
+    assert result.version == "1.1.0"
+    assert result.previous_version == "1.1.1"
+    assert ActivationRecord.load(tmp_path).version_for("arista/eos") == "1.1.0"
 
 
 def test_rollback_to_a_version_that_does_not_exist_is_refused(tmp_path: Path) -> None:

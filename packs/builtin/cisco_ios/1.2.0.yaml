@@ -28,9 +28,9 @@ vendor: cisco
 os_family: ios
 pack_version: 1.2.0
 parent_version: 1.1.0
-status: active
+status: deprecated
 created_by: team-atlantis
-checksum: sha256:c0229106141eba36f47f30866f155a05ee19b2cece05de3f73f2ff74830a1833
+checksum: sha256:718ba5741f7a16f665c3e21c3d296863e616cfaf69efc9a06a30db1db1186e1e
 
 comment_prefixes: ['!']
 

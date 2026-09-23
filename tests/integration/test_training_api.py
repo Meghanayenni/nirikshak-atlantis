@@ -221,7 +221,7 @@ def test_the_loop_runs_over_http_and_the_residue_falls(client: TestClient) -> No
         auth=ROOT,
     )
     assert activated.status_code == 200, activated.text
-    assert activated.json()["previous_version"] == "1.0.1"
+    assert activated.json()["previous_version"] == "1.1.0"
     assert activated.json()["checksum"].startswith("sha256:")
 
     # No restart: the next audit in this same process uses the new pack.
@@ -323,11 +323,11 @@ def test_rollback_returns_the_platform_to_the_previous_pack(client: TestClient) 
 
     rolled = client.post(
         "/training/rollback",
-        json={"pack_id": "arista/eos", "to_version": "1.0.1"},
+        json={"pack_id": "arista/eos", "to_version": "1.1.0"},
         auth=ROOT,
     )
     assert rolled.status_code == 200, rolled.text
-    assert rolled.json()["rolled_back_from"] == "1.0.2"
+    assert rolled.json()["rolled_back_from"] == "1.1.1"
 
     # The previous behaviour returns exactly, because nothing was modified.
     reaudited = client.post(f"/compliance/audits?file_id={file_id}", auth=ALICE)

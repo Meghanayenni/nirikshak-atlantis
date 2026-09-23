@@ -246,8 +246,17 @@ exactly one of the two, requires `open` to be anchored, and rejects a
 `comment_prefixes` is the same idea for single lines. A commented-out directive
 must never produce a PRESENT field, so these lines never become nodes. Identity
 extraction is deliberately unaffected — it runs over raw lines, which is why
-`! model ISR4331` still yields a model. Metadata legitimately lives in comments;
-active security configuration never does.
+`! device: sw-leaf-01 (DCS-7050SX3-48YC8, EOS-4.29.2F)` still yields a model and
+an OS version. Metadata legitimately lives in comments; active security
+configuration never does.
+
+That asymmetry is only as good as the lines a pack points it at. `cisco/ios`
+read its model from `^! model (\S+)` until 1.3.0, and no Cisco device emits
+such a line — it matched an annotation somebody wrote into one corpus file. The
+Arista header is the opposite case: EOS writes it at the top of every
+`show running-config`. Nothing in the repository can tell the two apart
+automatically, because "does this platform emit this line" is vendor
+documentation (`SOURCING_BACKLOG` gap 2). See ADR 0037.
 
 ## 7. ComplianceRule
 

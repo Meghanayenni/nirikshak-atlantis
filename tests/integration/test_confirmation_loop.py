@@ -106,7 +106,7 @@ def _parse(pack, text: str):
 
 
 def _arista_pack():
-    return load_pack(PACKS_ROOT / "arista_eos" / "1.0.1.yaml")
+    return load_pack(PACKS_ROOT / "arista_eos" / "1.1.0.yaml")
 
 
 # ---------------------------------------------------------------------------
@@ -169,7 +169,7 @@ def test_the_full_confirmation_loop_shrinks_the_queue_and_reads_the_field(
         trained_root=trained_root,
     )
 
-    assert draft.pack.pack_version == "1.0.2"
+    assert draft.pack.pack_version == "1.1.1"
     assert draft.regex == r"^logging\s+host\s+(\S+)$"
     assert not draft.edited
 
@@ -182,8 +182,8 @@ def test_the_full_confirmation_loop_shrinks_the_queue_and_reads_the_field(
     result = service.activate_draft(
         draft.pack, activated_by="alice", chain=chain, trained_root=trained_root
     )
-    assert result.version == "1.0.2"
-    assert result.previous_version == "1.0.1"
+    assert result.version == "1.1.1"
+    assert result.previous_version == "1.1.0"
 
     # --- the trained pack is loaded and re-parses the same file ------------
     trained = load_pack(Path(result.path))
@@ -203,7 +203,7 @@ def test_the_full_confirmation_loop_shrinks_the_queue_and_reads_the_field(
     # 3. provenance says a human taught it (DEF-10 / D48)
     assert field.provenance is not None
     assert field.provenance.source is PatternSource.ADMIN_TRAINED
-    assert field.provenance.pack_version == "1.0.2"
+    assert field.provenance.pack_version == "1.1.1"
     assert field.confidence_method is ConfidenceMethod.ADMIN_CONFIRMED
     assert field.confidence == 1.0
 

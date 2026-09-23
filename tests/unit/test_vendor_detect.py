@@ -201,17 +201,45 @@ def test_identity_extracted_with_evidence(packs) -> None:
 
 
 def test_missing_identity_field_abstains_rather_than_inventing(packs) -> None:
-    """A config with a hostname but no model yields one PRESENT, one UNKNOWN."""
-    lines = split_lines(configs.CISCO_IOS)
-    pack = find_pack("cisco", "ios", packs)
+    """A config with a hostname but no model yields one PRESENT, one UNKNOWN.
 
-    identity = extract_identity(pack, lines, file_id="f" * 64, file_path="test.cfg")
+    Uses Arista, because it is now the platform that *declares* a model pattern.
+    Stripping the `! device:` header leaves a configuration the pack looked at
+    and could not answer — which is the case this test is about.
+    """
+    without_header = "\n".join(
+        line for line in configs.ARISTA_EOS.splitlines() if not line.startswith("! device:")
+    )
+    pack = find_pack("arista", "eos", packs)
+
+    identity = extract_identity(
+        pack, split_lines(without_header), file_id="f" * 64, file_path="test.cfg"
+    )
 
     assert identity.hostname.is_determinable
-    assert identity.model is not None
+    assert identity.model is not None, "the pack declares a model pattern, so it looked"
     assert not identity.model.is_determinable
     assert identity.model.value is None
     assert "model" not in identity.known_fields()
+
+
+def test_a_platform_with_no_model_pattern_never_looked(packs) -> None:
+    r"""`None` and an UNKNOWN field are different answers, and Cisco gives the first.
+
+    `cisco/ios` declared `^! model (\S+)` until 1.3.0 and it matched nothing any
+    device emits (ADR 0037). Removing it means the pack no longer *attempts* a
+    model, which is a weaker statement than attempting and failing — and the
+    identity contract keeps the two apart rather than flattening both to "no
+    model".
+    """
+    pack = find_pack("cisco", "ios", packs)
+    identity = extract_identity(
+        pack, split_lines(configs.CISCO_IOS), file_id="f" * 64, file_path="test.cfg"
+    )
+
+    assert identity.model is None
+    assert "model" not in identity.known_fields()
+    assert identity.hostname.is_determinable, "the fields it does declare still resolve"
 
 
 def test_no_pack_means_no_identity() -> None:

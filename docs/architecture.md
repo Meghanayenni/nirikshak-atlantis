@@ -225,6 +225,7 @@ is real; the output is an honest refusal.
 | **An *official* mapping to NIST SP 800-53** | Seven rules now carry NIST control identifiers validated against the Rev 5 OSCAL catalog (ADR 0035), but every one is `project_asserted`. A catalog publishes *controls*; it does not publish *mappings*. That NIRIKSHAK's `NRK-SSH-001` satisfies `AC-17(02)` is this project's judgement, and no published crosswalk names our checks. |
 | **Absence-aware evaluation accuracy** | No platform default and no capability claim ships, so the `EVALUATE` branch has never fired on real data. |
 | **Exposure scores or a priority ranking** | Interfaces and access lists are read, and `interface_roles` now exists for a pack to declare which names are management-plane (ADR 0034) — but **no pack declares one**, because no vendor documentation has been sourced. Exposure stays indeterminate. Severity alone must not determine remediation order, so no severity-sorted list is offered in its place. |
+| **A device serial number, on any platform** | No configuration export in the corpus carries one — a serial lives in `show version` and `show inventory`, not in a running-config. The contract, the column and the report field all exist and abstain. PS 26155 names it as a deliverable; this is it not being delivered, said plainly (ADR 0037). |
 | **Held-out generalisation** | Blocked: the metric is defined over the held-out vendor's commands, reading them needs an XML parser, and that parser waits on a sample independent of the holdout. |
 | **Top-3 mapping accuracy or a calibrated confidence** | No line-level ground truth exists, and no calibrator is fitted. Every similarity score is a ranking, never a probability. |
 | **Real-world accuracy** | Every corpus file is hand-written by one author. The harness measures a synthetic sample honestly; that is not field accuracy. |
@@ -414,7 +415,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-Ninety-four numbered decisions across 36 ADRs. (D63 and D64 were never issued; the
+Ninety-seven numbered decisions across 37 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -455,6 +456,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0034 | P17 | Declaring the management plane rather than inferring it | D88, D89, D90 |
 | 0035 | P17 | Framework mappings against a content-addressed catalog | D91, D92, D93 |
 | 0036 | P17 | Selecting a benchmark, and refusing the ones we cannot | D94, D95, D96 |
+| 0037 | P17 | A model read from a line a device writes | D97, D98, D99 |
 
 ---
 
