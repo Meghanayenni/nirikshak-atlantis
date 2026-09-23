@@ -492,3 +492,27 @@ def test_the_chain_still_verifies_after_a_report(client: TestClient) -> None:
 
     verification = client.get("/audit/verify", auth=ALICE).json()
     assert verification["ok"] is True
+
+
+@pytest.mark.skipif(not availability().available, reason="GTK is absent in this environment")
+def test_the_pdf_endpoint_returns_a_pdf_when_the_runtime_is_present(
+    client: TestClient,
+) -> None:
+    """The positive half, which had no test at all until P17.
+
+    Every PDF test in this repository covered the *refusal* and skipped when GTK
+    was present — so on a machine with the runtime installed, the endpoint that
+    Problem Statement 26155 names as a deliverable was exercised by nothing. The
+    capability worked and no test said so, which is the same blind spot as a
+    capability that quietly stopped working.
+
+    `Dockerfile` exists so this branch runs for a reviewer regardless of what is
+    installed on their host.
+    """
+    audit_id = audited(client)
+    response = client.get(f"/compliance/audits/{audit_id}/report.pdf", auth=ALICE)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert response.content.startswith(b"%PDF-"), "a .pdf response must contain a PDF"
+    assert len(response.content) > 1000, "a report of one page is still not 200 bytes"

@@ -60,9 +60,42 @@ def test_the_summary_says_which_half_is_missing() -> None:
 
 
 def test_the_probe_checks_the_libraries_the_adr_names() -> None:
-    assert "libpango-1.0-0" in REQUIRED_LIBRARIES
-    assert "libgobject-2.0-0" in REQUIRED_LIBRARIES
+    """The same eight components ADR 0006 named, spelled for this platform.
+
+    `find_library` takes a platform-specific spelling: on Linux it prepends
+    `lib` and appends `.so` itself, so the Windows DLL names ADR 0006 recorded
+    return `None` on a machine where the whole stack is installed. The *set* is
+    what must match the decision record; the spelling cannot.
+    """
+    import sys
+
     assert len(REQUIRED_LIBRARIES) == 8
+    if sys.platform == "win32":
+        assert "libpango-1.0-0" in REQUIRED_LIBRARIES
+        assert "libgobject-2.0-0" in REQUIRED_LIBRARIES
+    else:
+        assert "pango-1.0" in REQUIRED_LIBRARIES
+        assert "gobject-2.0" in REQUIRED_LIBRARIES
+
+
+def test_the_two_spellings_describe_the_same_stack() -> None:
+    """One component per library on both platforms, in the same order.
+
+    The POSIX name is the Windows name with the `lib` prefix and the trailing
+    ABI digit removed — `libpango-1.0-0` against `pango-1.0` — so the pairing is
+    checkable rather than a matter of trusting two hand-written lists to stay in
+    step. A component added to one and forgotten in the other fails here.
+    """
+    from api.report.pdf import _POSIX_LIBRARIES, _WINDOWS_LIBRARIES
+
+    assert len(_WINDOWS_LIBRARIES) == len(_POSIX_LIBRARIES) == 8
+
+    for windows, posix in zip(_WINDOWS_LIBRARIES, _POSIX_LIBRARIES, strict=True):
+        assert windows.startswith("lib"), windows
+        assert not posix.startswith("lib"), posix
+        assert windows.removeprefix("lib").rsplit("-", 1)[0] == posix, (
+            f"{windows} and {posix} are not the same component"
+        )
 
 
 def test_weasyprint_is_detected_without_importing_it() -> None:

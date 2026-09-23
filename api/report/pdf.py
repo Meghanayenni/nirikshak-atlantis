@@ -25,11 +25,12 @@ from __future__ import annotations
 
 import ctypes.util
 import importlib.util
+import sys
 from dataclasses import dataclass
 
 from api.report.errors import PdfBackendUnavailableError
 
-REQUIRED_LIBRARIES: tuple[str, ...] = (
+_WINDOWS_LIBRARIES: tuple[str, ...] = (
     "libgobject-2.0-0",
     "libpango-1.0-0",
     "libpangoft2-1.0-0",
@@ -39,12 +40,48 @@ REQUIRED_LIBRARIES: tuple[str, ...] = (
     "libgdk_pixbuf-2.0-0",
     "libglib-2.0-0",
 )
-"""The native libraries ADR 0006 probed, in the order that ADR lists them.
+"""The names ADR 0006 probed, which are the GTK-for-Windows DLL names."""
 
-Kept identical to the ADR so a failure message and the decision record name the
-same set. `libgdk_pixbuf-2.0-0` is needed only for raster images and
-`libglib-2.0-0` is transitive, but a partial stack is not a working one, and
-reporting a subset would send someone to install half of what they need.
+_POSIX_LIBRARIES: tuple[str, ...] = (
+    "gobject-2.0",
+    "pango-1.0",
+    "pangoft2-1.0",
+    "harfbuzz",
+    "fontconfig",
+    "cairo",
+    "gdk_pixbuf-2.0",
+    "glib-2.0",
+)
+"""The same eight components as `ctypes.util.find_library` names them on POSIX.
+
+`find_library("libpango-1.0-0")` returns `None` on Linux **with Pango
+installed**: it prepends `lib` and appends `.so` itself. Probing the Windows
+names on Linux therefore reports a complete stack as entirely missing, which is
+precisely what happened the first time the container in `Dockerfile` was built
+— eight libraries present, eight reported absent, and a 503 explaining that
+none of them were there.
+
+A probe that cannot see a runtime it is standing on is worse than no probe: it
+sends somebody to install what is already installed.
+"""
+
+
+def required_libraries() -> tuple[str, ...]:
+    """The eight components, named the way this platform's loader names them.
+
+    The *set* is identical to ADR 0006's and deliberately so — a failure message
+    and the decision record must name the same components. Only the spelling is
+    platform-specific, because `find_library` takes a platform-specific spelling.
+    """
+    return _WINDOWS_LIBRARIES if sys.platform == "win32" else _POSIX_LIBRARIES
+
+
+REQUIRED_LIBRARIES: tuple[str, ...] = required_libraries()
+"""This platform's names, resolved at import.
+
+`libgdk_pixbuf-2.0` is needed only for raster images and `glib-2.0` is
+transitive, but a partial stack is not a working one, and reporting a subset
+would send someone to install half of what they need.
 """
 
 
@@ -78,7 +115,9 @@ def missing_libraries() -> tuple[str, ...]:
     on, so this asks the same question the renderer would ask, rather than
     checking a list of directories that happen to be conventional today.
     """
-    return tuple(name for name in REQUIRED_LIBRARIES if ctypes.util.find_library(name) is None)
+    return tuple(
+        name for name in required_libraries() if ctypes.util.find_library(name) is None
+    )
 
 
 def weasyprint_installed() -> bool:

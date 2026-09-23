@@ -1,0 +1,40 @@
+# NIRIKSHAK — the supported way to run every deliverable, PDF included.
+#
+#   docker compose up --build
+#   open http://localhost:8000/docs
+#
+# The build fails if PDF rendering does not work, so a successful `up` is itself
+# the evidence that the endpoint returns bytes rather than a 503.
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Both databases and the blob store live on the volume, not in the image.
+      # Configuration files are sensitive data (DEVELOPER_GUIDE.md §9) and must not be
+      # baked into an artefact anyone might share.
+      NIRIKSHAK_DB_PATH: /data/nirikshak.db
+      NIRIKSHAK_AUDIT_DB_PATH: /data/nirikshak-audit.db
+      NIRIKSHAK_BLOB_ROOT: /data/uploads
+      # Rule 6. The running system fetches nothing; this makes the model loader
+      # fail closed rather than reach for a download if one is ever added.
+      NIRIKSHAK_AIRGAP: "true"
+    volumes:
+      - nirikshak-data:/data
+      # Packs this deployment learns are runtime state, kept out of the image
+      # for the same reason `packs/trained/*` is gitignored (decision D45).
+      - nirikshak-packs:/app/packs/trained
+    healthcheck:
+      # /health reports the PDF state, so an unhealthy container and a container
+      # that cannot render are the same signal rather than two.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=5).status == 200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  nirikshak-data:
+  nirikshak-packs:

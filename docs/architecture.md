@@ -420,7 +420,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred numbered decisions across 38 ADRs. (D63 and D64 were never issued; the
+One hundred and two numbered decisions across 39 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -430,7 +430,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0003 | P0 | Specification filename standardised | — |
 | 0004 | P0 | NIRIKSHAK-owned hierarchical block parser | — |
 | 0005 | P0 | Conservative approach to framework content | — |
-| 0006 | P0 | WeasyPrint requires a GTK runtime this machine lacks | — |
+| 0006 | P0 | WeasyPrint requires a GTK runtime, probed rather than assumed | — |
 | 0007 | P2 | Audit hash chain on SQLite | D1, D2 |
 | 0008 | P2 | The audit log is tamper-evident, not tamper-proof | — |
 | 0009 | P3 | Configuration ingestion and vendor detection | D3, D4, D5 |
@@ -463,6 +463,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0036 | P17 | Selecting a benchmark, and refusing the ones we cannot | D94, D95, D96 |
 | 0037 | P17 | A model read from a line a device writes | D97, D98, D99 |
 | 0038 | P17 | A fourth platform, and the first bound access list | D100, D101, D102 |
+| 0039 | P17 | A container where the PDF endpoint works | D103, D104 |
 
 ---
 

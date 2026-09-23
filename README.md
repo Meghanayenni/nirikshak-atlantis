@@ -245,11 +245,20 @@ version**, because every archived file declares itself active and reinstating on
 would give a platform two active versions. Recorded as DEF-18; see
 `docs/adr/0030-...` and `docs/adr/0031-a-durable-archive-for-superseded-packs.md`.
 
-**PDF rendering does not work on the development machine.** HTML reporting is
-complete and has no native dependency. The PDF endpoint needs the WeasyPrint/GTK
-stack, which is absent here, and answers 503 naming the missing libraries rather
-than substituting another engine or returning the HTML document under a `.pdf`
-name. See `docs/adr/0006-weasyprint-gtk-probe.md`.
+**PDF rendering works where the GTK runtime is installed, and refuses where it
+is not.** HTML reporting is complete and has no native dependency. The PDF
+endpoint needs the WeasyPrint/GTK stack; where that is present the endpoint
+returns a PDF, and where it is absent it answers 503 naming the missing
+libraries rather than substituting another engine or returning the HTML document
+under a `.pdf` name.
+
+`Dockerfile` and `docker-compose.yml` are the supported way to get it working
+regardless of the host, and the build fails rather than producing an image whose
+PDF endpoint 503s. **The image has not been built or run from this repository**
+— the Docker daemon was not available on the machine where it was authored — so
+it is reviewed work, not verified work. See
+`docs/adr/0006-weasyprint-gtk-probe.md` and
+`docs/adr/0039-a-container-where-the-pdf-endpoint-works.md`.
 
 See `docs/CORPUS_PREREQUISITES.md` and `docs/SOURCING_BACKLOG.md`.
 
