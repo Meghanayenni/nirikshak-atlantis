@@ -179,8 +179,8 @@ def assess(
             determinacy=ExposureDeterminacy.NO_INTERFACE_DATA,
             reason=(
                 "the canonical model carries no interfaces, so where this control "
-                "applies and who can reach it are both unknown. No vendor pack "
-                "declares an interface pattern yet (SOURCING_BACKLOG gap 5)."
+                "applies and who can reach it are both unknown. This platform's "
+                "vendor pack declares no interface extraction."
             ),
         )
 
@@ -191,7 +191,8 @@ def assess(
                 f"{len(csm.indeterminate_interfaces())} interface(s) have "
                 "undocumented management status, so the management plane cannot be "
                 "located. An undocumented interface is not a non-management one "
-                "(DEF-2)."
+                "(DEF-2). A pack locates the plane by declaring `interface_roles` "
+                "from vendor documentation; none does yet (SOURCING_BACKLOG gap 2)."
             ),
         )
 
@@ -200,8 +201,8 @@ def assess(
             determinacy=ExposureDeterminacy.NO_ACL_DATA,
             reason=(
                 "interfaces are known but no access list is, so who can reach this "
-                "control cannot be established. The corpus contains no access list "
-                "in any split (SOURCING_BACKLOG gap 1)."
+                "control cannot be established. Either this device filters nothing "
+                "or its list was dropped — the audit response says which."
             ),
         )
 

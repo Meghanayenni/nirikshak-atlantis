@@ -33,10 +33,11 @@ What this module does *not* do:
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Any
 
-from api.models.csm import CanonicalSecurityModel, CsmSource, DeviceIdentity
+from api.models.csm import CanonicalSecurityModel, CsmSource, DeviceIdentity, Interface
 from api.models.enums import UnknownReason
 from api.models.field import Field
 from api.models.ingestion import DetectedDeviceIdentity
@@ -122,9 +123,56 @@ def build_csm_from_sources(
         # which is why the P7 analyser and the P12 ranking produced nothing.
         acls=tuple(acl for result in parse_results for acl in result.acls),
         acl_failures=tuple(f for result in parse_results for f in result.acl_failures),
-        interfaces=tuple(i for result in parse_results for i in result.interfaces),
+        interfaces=_classify_interfaces(
+            tuple(i for result in parse_results for i in result.interfaces), pack
+        ),
         residue=residue,
     )
+
+
+def _classify_interfaces(
+    interfaces: tuple[Interface, ...], pack: VendorPack
+) -> tuple[Interface, ...]:
+    r"""Apply the pack's sourced interface-role declarations, if it has any.
+
+    **A name that matches no role stays `None`.** Not `False` — declaring that
+    `^Management\d+$` is the management plane says nothing whatever about
+    `GigabitEthernet0/0`, and folding silence into "not management" is the
+    substitution DEF-2 exists to prevent. To say an interface is *not*
+    management, a pack declares that too, with its own citation.
+
+    Only `SOURCED` roles are consulted. A `project_asserted` role can be written
+    down and reviewed, and may not classify anything: the exposure ranking
+    decides what an operator fixes first, and an unverified claim must not.
+
+    **No pack ships a role today**, so this returns its argument unchanged on
+    every corpus device and P12 continues to abstain with
+    `indeterminate_interfaces`. That is SOURCING_BACKLOG gap 2 appearing in a new
+    place, not a defect here: nothing in the repository documents which interface
+    names a vendor designates as management-plane, and reading it out of an
+    operator's description text would be the heuristic this construct replaces.
+    """
+    roles = pack.admissible_interface_roles
+    if not roles:
+        return interfaces
+
+    compiled = [(re.compile(role.name_pattern), role) for role in roles]
+
+    out: list[Interface] = []
+    for interface in interfaces:
+        match = next((role for rx, role in compiled if rx.match(interface.name)), None)
+        if match is None:
+            out.append(interface)
+            continue
+        out.append(
+            interface.model_copy(
+                update={
+                    "is_management": match.is_management,
+                    "management_ref": match.provenance.cite(),
+                }
+            )
+        )
+    return tuple(out)
 
 
 def _merge_fields(parse_results: list[ParseResult]) -> dict[str, Field[Any]]:

@@ -124,6 +124,15 @@ locators only, never transcribed vendor prose.
 branch fire on real data for the first time. This is the highest value-per-hour
 item on the list.
 
+**A second capability now waits here too.** P12's exposure ranking abstains with
+`indeterminate_interfaces`, and ADR 0034 built the construct that would close it:
+a pack declares `interface_roles` — anchored interface-name patterns with the
+same sourced provenance a platform default carries. **No pack declares one**,
+because no vendor documentation says which interface names a platform designates
+as management-plane. The shape of this gap did not change; what changed is that
+there is now a named, reviewable thing to fill, and the abstention reason points
+at it.
+
 **Now measured.** The P9 harness reports absence as branch coverage:
 `absent_default` is **0** across every scored file, so the `EVALUATE` branch has
 never executed against a real configuration. That is no longer an assertion in a

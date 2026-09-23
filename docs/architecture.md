@@ -223,7 +223,7 @@ is real; the output is an honest refusal.
 | --- | --- |
 | **Coverage against CIS, NIST SP 800-53, DISA STIG or ISO/IEC 27001** | Every rule ships an empty framework list. Writing an identifier without having read the benchmark would be inventing it. |
 | **Absence-aware evaluation accuracy** | No platform default and no capability claim ships, so the `EVALUATE` branch has never fired on real data. |
-| **Exposure scores or a priority ranking** | Interfaces and access lists are now read, but nothing establishes which interface is the management plane, so exposure stays indeterminate. Severity alone must not determine remediation order, so no severity-sorted list is offered in its place. |
+| **Exposure scores or a priority ranking** | Interfaces and access lists are read, and `interface_roles` now exists for a pack to declare which names are management-plane (ADR 0034) — but **no pack declares one**, because no vendor documentation has been sourced. Exposure stays indeterminate. Severity alone must not determine remediation order, so no severity-sorted list is offered in its place. |
 | **Held-out generalisation** | Blocked: the metric is defined over the held-out vendor's commands, reading them needs an XML parser, and that parser waits on a sample independent of the holdout. |
 | **Top-3 mapping accuracy or a calibrated confidence** | No line-level ground truth exists, and no calibrator is fitted. Every similarity score is a ranking, never a probability. |
 | **Real-world accuracy** | Every corpus file is hand-written by one author. The harness measures a synthetic sample honestly; that is not field accuracy. |
@@ -413,7 +413,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-Eighty-five numbered decisions across 33 ADRs. (D63 and D64 were never issued; the
+Eighty-eight numbered decisions across 34 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -451,6 +451,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0031 | P17 | A durable archive for superseded packs | D81, D82 |
 | 0032 | P17 | A check may bound a value at both ends | D83, D84 |
 | 0033 | P17 | JunOS filter terms, and the half that detection blocks | D85, D86, D87 |
+| 0034 | P17 | Declaring the management plane rather than inferring it | D88, D89, D90 |
 
 ---
 

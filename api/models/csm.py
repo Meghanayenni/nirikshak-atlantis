@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 from pydantic import Field as Constraint
 
 from api.models.acl import ACL
@@ -131,10 +131,40 @@ class Interface(BaseModel):
 
     ip_addresses: tuple[str, ...] = ()
     is_management: bool | None = None
+    management_ref: str | None = Constraint(
+        default=None,
+        description=(
+            "Citation for `is_management`, when it was set from a pack's sourced "
+            "interface-role declaration rather than observed. An inferred "
+            "classification must be distinguishable from an observed one "
+            "everywhere it is displayed (DEVELOPER_GUIDE.md §10)."
+        ),
+    )
     vlan: int | None = Constraint(default=None, ge=0, le=4094)
 
     applied_acls: tuple[InterfaceAcl, ...] = ()
     evidence: tuple[Evidence, ...] = ()
+
+    @model_validator(mode="after")
+    def _classification_is_citable(self) -> Interface:
+        """A classification either came from somewhere, or was not made.
+
+        Rule 2 does not exempt an assertion because it rests on vendor
+        documentation instead of a configuration line: `management_ref` is that
+        assertion's citation, and a classification without one would be a claim
+        about the device with nothing behind it.
+
+        This is what stops the P12 exposure ranking from being reachable by
+        anything that sets a boolean. To locate a management plane you must name
+        the document that says where it is.
+        """
+        if self.is_management is not None and not self.management_ref:
+            raise ValueError(
+                f"interface {self.name!r} is classified is_management="
+                f"{self.is_management} with no citation. A classification comes "
+                "from a sourced pack declaration, or it is not made (DEF-2)."
+            )
+        return self
 
 
 class UnknownLine(BaseModel):

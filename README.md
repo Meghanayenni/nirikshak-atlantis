@@ -134,6 +134,15 @@ and no vendor documentation has been sourced, so every absent field resolves to
 UNKNOWN rather than to a manufactured default. The engine is built and tested
 against synthetic packs; populating it is a data change requiring a real citation.
 
+**No interface is classified as management-plane, so exposure still abstains.** A
+pack can now declare `interface_roles` — anchored name patterns carrying the same
+sourced provenance a platform default needs — and **none does**, for the same
+reason: nothing in this repository documents which interface names a vendor
+designates as management. Reading "MGMT" out of an operator's description would
+be a guess wearing a citation, and a name matching no role stays *undocumented*
+rather than becoming *not management* (DEF-2). The path is proven end to end on
+a constructed pack, so an abstention here is a refusal rather than a breakage.
+
 **No framework control mappings ship.** Every rule has `frameworks: []`. Writing
 a CIS, NIST, DISA STIG or ISO/IEC 27001 identifier without having read the
 benchmark would be inventing it, so NIRIKSHAK currently evaluates its own checks

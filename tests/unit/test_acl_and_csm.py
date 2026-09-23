@@ -233,8 +233,16 @@ def test_management_interfaces_are_selectable() -> None:
     csm = CanonicalSecurityModel(
         device=DeviceIdentity(device_id="d1"),
         interfaces=(
-            Interface(name="Gi0/0", is_management=True),
-            Interface(name="Gi0/1", is_management=False),
+            Interface(
+                name="Gi0/0",
+                is_management=True,
+                management_ref="cisco/ios — test fixture, not a real citation",
+            ),
+            Interface(
+                name="Gi0/1",
+                is_management=False,
+                management_ref="cisco/ios — test fixture, not a real citation",
+            ),
         ),
     )
     assert [i.name for i in csm.management_interfaces()] == ["Gi0/0"]

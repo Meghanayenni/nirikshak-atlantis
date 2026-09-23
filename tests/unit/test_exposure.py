@@ -106,7 +106,14 @@ def test_no_interfaces_means_exposure_is_undetermined() -> None:
 
 def test_interfaces_without_acls_are_still_undetermined() -> None:
     """Knowing where a control lives is not knowing who can reach it."""
-    interfaces = (Interface(name="Mgmt0", is_management=True, ip_addresses=("192.0.2.1",)),)
+    interfaces = (
+        Interface(
+            name="Mgmt0",
+            is_management=True,
+            management_ref="cisco/ios — test fixture, not a real citation",
+            ip_addresses=("192.0.2.1",),
+        ),
+    )
     result = assess(csm(interfaces=interfaces), field_name="ssh_version", severity=Severity.HIGH)
 
     assert result.determinacy is ExposureDeterminacy.NO_ACL_DATA
@@ -179,7 +186,14 @@ def test_a_reachable_management_interface_behind_an_acl_scores() -> None:
     """Constructed, and labelled as such. No corpus device looks like this."""
     from api.models.acl import ACL
 
-    interfaces = (Interface(name="Mgmt0", is_management=True, ip_addresses=("192.0.2.1",)),)
+    interfaces = (
+        Interface(
+            name="Mgmt0",
+            is_management=True,
+            management_ref="cisco/ios — test fixture, not a real citation",
+            ip_addresses=("192.0.2.1",),
+        ),
+    )
     acls = (ACL(acl_id="mgmt-in", name="mgmt-in", acl_type=AclType.EXTENDED, entries=()),)
     result = assess(
         csm(interfaces=interfaces, acls=acls),
@@ -193,10 +207,28 @@ def test_a_reachable_management_interface_behind_an_acl_scores() -> None:
 
 
 def test_a_disabled_management_interface_lowers_reachability() -> None:
-    reachable = (Interface(name="Mgmt0", is_management=True, ip_addresses=("192.0.2.1",)),)
+    reachable = (
+        Interface(
+            name="Mgmt0",
+            is_management=True,
+            management_ref="cisco/ios — test fixture, not a real citation",
+            ip_addresses=("192.0.2.1",),
+        ),
+    )
     dark = (
-        Interface(name="Mgmt0", is_management=True, ip_addresses=("192.0.2.1",)),
-        Interface(name="Mgmt1", is_management=True, ip_addresses=(), enabled=False),
+        Interface(
+            name="Mgmt0",
+            is_management=True,
+            management_ref="cisco/ios — test fixture, not a real citation",
+            ip_addresses=("192.0.2.1",),
+        ),
+        Interface(
+            name="Mgmt1",
+            is_management=True,
+            management_ref="cisco/ios — test fixture, not a real citation",
+            ip_addresses=(),
+            enabled=False,
+        ),
     )
     assert management_exposure(reachable) == 1.0
     assert management_exposure(dark) == 0.5
@@ -248,7 +280,14 @@ def test_a_ranking_is_produced_when_exposure_is_determined() -> None:
     """Constructed model. Proves the machinery is real, measures nothing."""
     from api.models.acl import ACL
 
-    interfaces = (Interface(name="Mgmt0", is_management=True, ip_addresses=("192.0.2.1",)),)
+    interfaces = (
+        Interface(
+            name="Mgmt0",
+            is_management=True,
+            management_ref="cisco/ios — test fixture, not a real citation",
+            ip_addresses=("192.0.2.1",),
+        ),
+    )
     acls = (ACL(acl_id="a", name="a", acl_type=AclType.EXTENDED, entries=()),)
     model = csm(interfaces=interfaces, acls=acls)
 

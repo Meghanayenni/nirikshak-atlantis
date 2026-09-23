@@ -466,6 +466,83 @@ class PlatformCapability(BaseModel):
         return self.provenance is not None and self.provenance.is_admissible
 
 
+class InterfaceRole(BaseModel):
+    """Which interface names are management-plane on a platform (decision D88).
+
+    P12's exposure ranking abstains on every device with
+    `indeterminate_interfaces`: interfaces are read, and nothing establishes
+    which of them is the management plane. This is the construct that could say
+    so, and it is deliberately **not** a heuristic.
+
+    `Loopback0` carries the description `MGMT-LOOPBACK` and `fxp0` carries
+    `OUT-OF-BAND-MGMT`. Reading "MGMT" out of an operator's free text would be a
+    guess wearing a citation, and DEF-2 already settled that an undocumented
+    interface is not a non-management one. So a role is a **claim about the
+    platform** — the same kind of thing as `PlatformDefault` and
+    `PlatformCapability`, carrying the same typed provenance, admissible only
+    when `SOURCED`.
+
+    **A name that matches nothing here is `None`, never `False`.** Declaring
+    that `^Management\\d+$` is management says nothing whatever about
+    `GigabitEthernet0/0`. Saying an interface is *not* management is its own
+    declaration with `is_management: false` and its own citation, because
+    `is_management is False` is a determinable state the exposure ranking acts
+    on — exactly as capable of producing a wrong answer as a `True`.
+
+    This is the second half of what DEF-2 protects. The first half was the
+    accessor refusing to fold `None` into "not management"; this is the pack
+    contract refusing to let silence do it instead.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name_pattern: str = Constraint(
+        min_length=1,
+        description="Anchored regex matching interface names this role covers",
+    )
+    is_management: bool
+    provenance: PlatformProvenance
+    examples: tuple[str, ...] = Constraint(
+        default=(),
+        description="Interface names a person read, for review",
+    )
+
+    @model_validator(mode="after")
+    def _check(self) -> InterfaceRole:
+        if not self.name_pattern.startswith("^"):
+            raise ValueError(
+                f"interface role pattern {self.name_pattern!r} is not anchored with ^. "
+                "An unanchored pattern would classify 'not-Management0' as a "
+                "management interface, which is how a role declaration becomes the "
+                "heuristic it exists to replace."
+            )
+        try:
+            compiled = re.compile(self.name_pattern)
+        except re.error as exc:
+            raise ValueError(
+                f"interface role pattern {self.name_pattern!r} is invalid: {exc}"
+            ) from exc
+
+        for example in self.examples:
+            if not compiled.match(example):
+                raise ValueError(
+                    f"interface role example {example!r} does not match its own "
+                    f"pattern {self.name_pattern!r}"
+                )
+        return self
+
+    @property
+    def is_admissible(self) -> bool:
+        """Whether this role may classify an interface at all.
+
+        Only `SOURCED`. A `project_asserted` role can be written down and
+        reviewed — that is what the status is for — but it may not reach the
+        exposure ranking, because the ranking decides what an operator fixes
+        first and an unverified claim must not.
+        """
+        return self.provenance.is_admissible
+
+
 class AclExtraction(BaseModel):
     """How one platform writes access lists, declared as data (Rule 5).
 
@@ -580,6 +657,12 @@ class VendorPack(BaseModel):
     )
     defaults: tuple[PlatformDefault, ...] = ()
     capabilities: tuple[PlatformCapability, ...] = ()
+    interface_roles: tuple[InterfaceRole, ...] = ()
+
+    @property
+    def admissible_interface_roles(self) -> tuple[InterfaceRole, ...]:
+        """Roles that may classify an interface — sourced ones only."""
+        return tuple(role for role in self.interface_roles if role.is_admissible)
 
     @model_validator(mode="after")
     def _check(self) -> VendorPack:
@@ -587,6 +670,15 @@ class VendorPack(BaseModel):
         if len(ids) != len(set(ids)):
             dupes = sorted({i for i in ids if ids.count(i) > 1})
             raise ValueError(f"duplicate pattern ids in pack: {dupes}")
+
+        patterns = [r.name_pattern for r in self.interface_roles]
+        if len(patterns) != len(set(patterns)):
+            dupes = sorted({p for p in patterns if patterns.count(p) > 1})
+            raise ValueError(
+                f"duplicate interface role patterns in pack: {dupes}. Two roles "
+                "matching the same names would make the classification depend on "
+                "declaration order."
+            )
 
         if self.status is PackStatus.ACTIVE and not self.checksum:
             raise ValueError(

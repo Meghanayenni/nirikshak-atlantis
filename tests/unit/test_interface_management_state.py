@@ -23,12 +23,22 @@ import pytest
 from api.models.csm import CanonicalSecurityModel, DeviceIdentity, Interface
 
 
+def _interface(name: str, state: bool | None) -> Interface:
+    """A classification now has to name where it came from.
+
+    `Interface` refuses `is_management` without `management_ref` — a
+    classification is an assertion about a device, and Rule 2 does not exempt
+    one because it rests on vendor documentation instead of a configuration
+    line. These fixtures say plainly that they are fixtures.
+    """
+    ref = "cisco/ios — test fixture, not a real citation" if state is not None else None
+    return Interface(name=name, is_management=state, management_ref=ref)
+
+
 def csm_with(*states: bool | None) -> CanonicalSecurityModel:
     return CanonicalSecurityModel(
         device=DeviceIdentity(device_id="d1"),
-        interfaces=tuple(
-            Interface(name=f"Gi0/{n}", is_management=state) for n, state in enumerate(states)
-        ),
+        interfaces=tuple(_interface(f"Gi0/{n}", state) for n, state in enumerate(states)),
     )
 
 
@@ -97,7 +107,7 @@ def test_undetermined_interfaces_are_countable() -> None:
 @pytest.mark.parametrize("state", [True, False, None])
 def test_the_model_still_accepts_all_three_states(state: bool | None) -> None:
     """The fix is in the accessor. The model was never wrong and is not weakened."""
-    assert Interface(name="Gi0/0", is_management=state).is_management is state
+    assert _interface("Gi0/0", state).is_management is state
 
 
 def test_no_interfaces_is_not_an_error() -> None:
