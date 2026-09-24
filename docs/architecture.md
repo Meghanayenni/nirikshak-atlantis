@@ -448,7 +448,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and twenty-five numbered decisions across 49 ADRs. (D63 and D64 were never issued; the
+One hundred and twenty-seven numbered decisions across 50 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -502,6 +502,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0047 | P18 | A claims sweep, and a guard against the next one | D121, D122 |
 | 0048 | P18 | Derived, or reconciled; never merely declared | D123, D124, D125 |
 | 0049 | P18 | A suite that refuses to run with a shadowed test | D126, D127 |
+| 0050 | P18 | The analyser was right again | D128, D129 |
 
 ---
 

@@ -314,6 +314,16 @@ endpoint needs the WeasyPrint/GTK stack, and where that is absent it answers 503
 naming the missing libraries rather than substituting another engine or
 returning the HTML document under a `.pdf` name.
 
+**The analyser has now corrected its own test data twice.** At P16 it declined
+to flag an entry a corpus remark called unreachable, and was right — an ACL
+evaluates top-down, so a rule below cannot shadow one above. At P18 it reported
+two permits as redundant beneath a term named `allow-established` that matched
+all TCP; the configuration was what it appeared to be and the *name* was the
+error. Both times the fixture was written by somebody who believed it was
+correct, and both times the tool disagreed on evidence. The term was renamed
+rather than given a state match, because writing the JunOS keyword for one would
+be vendor syntax this repository cannot source.
+
 **The suite refuses to run if a test is shadowed.** Two functions with one name
 in one module is not an error in Python — the second replaces the first, and the
 first stops existing before pytest sees it. It happened here, and the suite

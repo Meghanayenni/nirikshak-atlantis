@@ -354,14 +354,24 @@ def test_the_catch_all_is_also_reported_overly_permissive(brace_csm) -> None:
 
 
 def test_the_brace_terms_leave_the_training_queue(junos) -> None:
-    """A line the reader understood must not be put in front of an administrator."""
-    parsed = parse_configuration(
-        BRACE.read_text(encoding="utf-8"), junos, file_id=BRACE.name, file_path=str(BRACE)
-    )
+    """A line the reader understood must not be put in front of an administrator.
+
+    The range is **derived from the file**, not written here. It was a literal
+    (`range(127, 160)`, with a comment naming the lines) until adding a header
+    comment to the fixture moved the filter down and broke it — a declaration
+    beside the thing it describes, in a test written during the session that
+    made a rule of not doing that (ADR 0048).
+    """
+    source = BRACE.read_text(encoding="utf-8")
+    parsed = parse_configuration(source, junos, file_id=BRACE.name, file_path=str(BRACE))
     remaining = {node.line_number for node in parsed.residue}
 
-    # The filter block spans lines 125-162 in the corpus file.
-    assert not remaining & set(range(127, 160)), (
+    lines = source.splitlines()
+    first = next(i for i, line in enumerate(lines, 1) if line.strip().startswith("term "))
+    last = max(i for i, line in enumerate(lines, 1) if line.strip().startswith("then "))
+    assert first < last, "the fixture no longer contains a filter with terms"
+
+    assert not remaining & set(range(first, last + 1)), (
         "filter terms the reader consumed are still queued for review"
     )
 

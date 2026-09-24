@@ -161,6 +161,14 @@ CREDENTIAL_PATTERNS = [
     re.compile(r"\$6\$[./A-Za-z0-9]{8,}"),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     re.compile(r"snmp-server community\s+(?!public\b|private\b)\S+"),
+    # The same secret, written the way JunOS writes it. D66 declared a
+    # non-default community string a credential and rewrote the two files that
+    # carried one — and missed a third, because the pattern above is IOS-shaped
+    # and JunOS nests `community NAME { … }` inside an `snmp` block.
+    #
+    # A sanitisation gate with a vendor-shaped blind spot is the worst place for
+    # one: it reports clean on exactly the files it cannot read (ADR 0050).
+    re.compile(r"^\s*community\s+(?!public\b|private\b)\S+\s*\{", re.MULTILINE),
 ]
 
 RESERVED_PREFIXES = ("192.0.2.", "198.51.100.", "203.0.113.", "10.", "172.16.", "192.168.")

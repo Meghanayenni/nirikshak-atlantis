@@ -325,7 +325,7 @@ files:
     sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; hash-shaped values are literal placeholders"
     is_real_world_data: false
     labelled: false
-    sha256: c990a4fc0fab2ce0e28d542843f2a542e8f50146ec4b8d93fde07c2c3a6ddf85
+    sha256: 51fa0ca0436457b8e03f0257dd4d107d52879b8ef10fe318ac596c9f968aa6ed
     added: 2026-09-23
   - path: juniper/dev/edge-rtr-02.conf
     split: dev
