@@ -265,6 +265,90 @@ def clear_index_cache() -> None:
     _cached.cache_clear()
 
 
+@dataclass(frozen=True, slots=True)
+class NotAssessed:
+    """A rule the selection left out, and why — never a finding, never silent."""
+
+    rule_id: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class SelectionScope:
+    """What a benchmark selection means for one device (ADR 0054).
+
+    `selected` is what the operator asked for. `effective` is the part of it
+    whose editions describe this device; `excluded` names the rest, each with
+    the reason. `not_assessed` lists every platform-applicable rule the
+    effective selection leaves out, with the reason the rule itself records —
+    which is how "this framework does not cover this control" reaches an
+    operator, rather than as a finding that is simply missing.
+    """
+
+    selected: frozenset[Framework]
+    effective: frozenset[Framework]
+    excluded: dict[Framework, str]
+    not_assessed: tuple[NotAssessed, ...]
+
+    @property
+    def refused(self) -> bool:
+        """A selection was made and none of it describes this device."""
+        return bool(self.selected) and not self.effective
+
+    def refusal(self) -> str:
+        reasons = " ".join(f"{f.value.upper()}: {why}" for f, why in sorted(self.excluded.items()))
+        return (
+            "none of the selected frameworks describes this device, so auditing "
+            "against them would report zero findings — which reads as compliance. " + reasons
+        )
+
+
+def scope_selection(
+    selection: frozenset[Framework],
+    rules: Iterable[ComplianceRule],
+    vendor: str | None,
+    os_family: str | None,
+    os_version: str | None,
+) -> SelectionScope:
+    """Resolve a benchmark selection against one device.
+
+    An empty selection is *no filter* and leaves nothing out. Otherwise a rule
+    is assessed when it maps to a framework in the effective selection; a rule
+    that applies to the platform and maps to none of them is **not assessed**,
+    and the reason is the rule's own `not_mapped` entry — e.g. `NRK-HTTP-001`
+    under CIS: CIS constrains the HTTP server and never requires it disabled.
+    A rule with no recorded reason says so; `test_framework_mappings` requires
+    every rule to have one, so that sentence should never be seen.
+    """
+    if not selection:
+        return SelectionScope(frozenset(), frozenset(), {}, ())
+
+    available = indexes()
+    excluded: dict[Framework, str] = {}
+    for framework in selection:
+        index = available.get(framework)
+        if index is None:  # resolve_selection refuses this first; kept honest here
+            excluded[framework] = f"no {framework.value.upper()} catalog has been sourced"
+        elif index.coverage(vendor, os_family, os_version) is not Coverage.COVERED:
+            excluded[framework] = index.explain_coverage(vendor, os_family, os_version)
+    effective = frozenset(selection - set(excluded))
+
+    left_out: list[NotAssessed] = []
+    if effective:
+        for rule in rules:
+            if not rule.applies_to.matches(vendor, os_family):
+                continue
+            if rule.frameworks_covered & effective:
+                continue
+            reasons = [
+                f"{f.value.upper()}: " + (rule.gap_reason(f) or "no mapping and no reason recorded")
+                for f in sorted(effective)
+            ]
+            left_out.append(NotAssessed(rule.rule_id, " ".join(reasons)))
+
+    return SelectionScope(frozenset(selection), effective, excluded, tuple(left_out))
+
+
 def mappings_for_device(
     rules: Iterable[ComplianceRule],
     vendor: str | None,

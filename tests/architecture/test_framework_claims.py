@@ -137,7 +137,11 @@ def test_a_sourced_framework_identifier_exists_in_its_index(document: Path) -> N
         if index is None:
             continue
         for match in re.finditer(pattern, text):
-            token = re.sub(r"^CIS[\s-]?", "", match.group(0))
+            token = match.group(0)
+            if framework is Framework.CIS:
+                # Only here: stripping "CIS" from every token turns the STIG ID
+                # CISC-ND-000470 into C-ND-000470, which this test once did.
+                token = re.sub(r"^CIS[\s-]?", "", token)
             if token.startswith("V-"):
                 continue  # Vuln IDs are not indexed; the STIG ID is the citation.
             if not (index.knows(token) or index.is_withdrawn(token)):

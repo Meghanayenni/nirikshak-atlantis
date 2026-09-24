@@ -166,6 +166,13 @@ class Report:
     """Benchmarks this run was scoped to. Empty means no filter was applied —
     NIRIKSHAK's own checks — and is **not** the same as a benchmark that matched
     nothing, which the API refuses rather than persisting."""
+    not_assessed: tuple[tuple[str, str], ...] = ()
+    """`(rule_id, reason)` for each rule the selection left out (ADR 0054).
+
+    Not findings: "this benchmark does not ask for this" is a fact about the
+    benchmark. Listed so an operator sees what the narrower scope cost, and why."""
+    frameworks_excluded: dict[str, str] = field(default_factory=dict)
+    """Selected frameworks whose edition does not describe this device, with why."""
     ordering_basis: str = ORDERING_BASIS
 
     @property
@@ -301,6 +308,8 @@ def build_report(
     rule_frameworks: Mapping[str, tuple[FrameworkRef, ...]] | None = None,
     identity: Mapping[str, Any] | None = None,
     framework_absence: Mapping[str, str] | None = None,
+    not_assessed: tuple[tuple[str, str], ...] = (),
+    frameworks_excluded: Mapping[str, str] | None = None,
 ) -> Report:
     """Assemble one report from a persisted run.
 
@@ -364,5 +373,7 @@ def build_report(
             generated_at=generated_at or datetime.now(UTC),
         ),
         framework_selection=tuple(run.get("framework_selection") or ()),
+        not_assessed=tuple(not_assessed),
+        frameworks_excluded=dict(frameworks_excluded or {}),
         disclosures=_disclosures(ordered, library, framework_absence),
     )

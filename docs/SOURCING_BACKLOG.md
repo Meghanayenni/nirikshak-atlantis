@@ -224,7 +224,7 @@ with opposite terms:
 **What those two do not close.** Both editions describe one platform — Cisco IOS
 XE — and are scoped to releases matching 17.x, so on every other device in the
 corpus (classic IOS 15.x, NX-OS, JunOS, EOS) neither edition's identifiers are
-shown, and a report says why. Four rules are looser than the STIG control the prepared reading
+shown, a report says why, and selecting either is refused with 409 (ADR 0054). Four rules are looser than the STIG control the prepared reading
 proposed for them and carry no STIG identifier, each with its reason recorded.
 Five of 42 STIG requirements and six of 84 CIS recommendations carry a mapping:
 that is evidence about seven checks, not coverage of either benchmark.

@@ -32,6 +32,7 @@ from api.comply.frameworks import (
     indexes,
     mappings_for_device,
     resolve_selection,
+    scope_selection,
 )
 from api.comply.rulepacks import load_active_rulepack
 from api.comply.service import audit_payload, summarise
@@ -247,6 +248,21 @@ def run_audit_endpoint(
     )
     csm = build_csm(parsed, pack, device_id=file_id, detected_identity=identity)
 
+    # ADR 0054 — a selection is resolved against THIS device before anything is
+    # recorded. A STIG or CIS edition describes one platform and release; asked
+    # of a device it does not describe, it would evaluate nothing and report
+    # zero findings, which reads as compliance. Refused here, with the reason,
+    # before the training queue or the store is touched.
+    scope = scope_selection(
+        selection,
+        load_active_rulepack().rules,
+        csm.device.vendor,
+        csm.device.os_family,
+        csm.device.os_version,
+    )
+    if scope.refused:
+        raise HTTPException(status_code=409, detail=scope.refusal())
+
     # P11 (D49) — residue becomes the durable training queue. Recorded on every
     # audit, and the file's previous entries are replaced, so re-auditing after
     # activating a pack shrinks the queue instead of duplicating it. A line the
@@ -267,7 +283,7 @@ def run_audit_endpoint(
         load_active_rulepack(),
         audit_id=audit_id,
         evaluated_at=evaluated_at,
-        frameworks=selection,
+        frameworks=scope.effective,
     )
     if not results:
         # Reachable only through a framework selection that matches no rule: a
@@ -319,6 +335,15 @@ def run_audit_endpoint(
         # None means the run was not scoped to a benchmark. Reported so a reader
         # can tell a narrowed scope from a device that produced fewer findings.
         "framework_selection": sorted(f.value for f in selection) or None,
+        # Selected, but written for a platform or release this device is not.
+        # Named with the reason, never silently dropped from the scope.
+        "frameworks_not_describing_device": {
+            f.value: why for f, why in sorted(scope.excluded.items())
+        },
+        # Rules the selection left out, each with the reason the rule records.
+        # Not findings and not abstentions: "this framework does not ask for
+        # this" is a statement about the framework, not about the device.
+        "not_assessed": [{"rule_id": n.rule_id, "reason": n.reason} for n in scope.not_assessed],
         # The size of the training queue this file contributes. Expected to fall
         # after an administrator confirms a mapping and the pack is activated.
         "residue_lines": residue_recorded,

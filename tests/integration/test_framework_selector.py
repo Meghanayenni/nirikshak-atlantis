@@ -219,3 +219,162 @@ def test_a_junos_device_carries_nist_only_and_the_report_says_why(client: TestCl
     assert "CISC-ND-" not in html
     assert "which the edition does not describe" in html
     assert "no STIG catalog has been sourced" not in html
+
+
+# ---------------------------------------------------------------------------
+# Framework choice changes the verdict (ADR 0054)
+# ---------------------------------------------------------------------------
+
+
+def _ios_xe_17_with_http_server() -> tuple[str, bytes]:
+    """`edge-rtr-01.cfg` with its version line rewritten to an IOS XE 17 release.
+
+    **Constructed, and said so.** No corpus file is both inside the STIG's and
+    CIS's scope (cisco/ios, 17.x) and enables `ip http server`: the two 17.x
+    files both carry `no ip http server`, and the three that enable it are IOS
+    15.x. The contrast cannot be shown on the corpus as it stands, and adding a
+    corpus file to make it showable is out of scope. The configuration body is
+    the development file byte for byte; only the release differs.
+    """
+    text = Path("corpus/cisco/dev/edge-rtr-01.cfg").read_text(encoding="utf-8")
+    assert "\nversion 15.2\n" in text, "fixture drifted"
+    return "edge-rtr-01-as-17.cfg", text.replace("\nversion 15.2\n", "\nversion 17.9\n").encode()
+
+
+def _upload_bytes(api: TestClient, name: str, data: bytes) -> str:
+    upload = api.post("/ingest/upload", files={"files": (name, data, "text/plain")}, auth=ALICE)
+    assert upload.status_code == 200, upload.text
+    return upload.json()["accepted"][0]["file_id"]
+
+
+def _http(api: TestClient, audit_id: str) -> list[dict]:
+    body = api.get(f"/compliance/audits/{audit_id}/findings", auth=ALICE).json()
+    return [f for f in body["findings"] if f["rule_id"] == "NRK-HTTP-001"]
+
+
+def test_the_same_device_fails_under_stig_and_is_not_assessed_under_cis(
+    client: TestClient,
+) -> None:
+    """The clearest demonstration the project has that framework choice changes the verdict.
+
+    The STIG says `ip http server` must not be configured: FAIL, citing
+    CISC-ND-000470 and the line. CIS constrains the server and never requires
+    it off: the rule is not assessed, and the reason is the one the rule
+    records — not a missing row, not an UNKNOWN.
+    """
+    file_id = _upload_bytes(client, *_ios_xe_17_with_http_server())
+
+    stig = client.post(f"/compliance/audits?file_id={file_id}&framework=stig", auth=ALICE)
+    assert stig.status_code == 201, stig.text
+    [finding] = _http(client, stig.json()["audit_id"])
+    assert finding["status"] == "fail"
+    assert {"framework": "stig", "control_id": "CISC-ND-000470"} in finding["frameworks"]
+    assert finding["evidence"][0]["raw_line"].strip() == "ip http server"
+    assert "NRK-HTTP-001" not in {n["rule_id"] for n in stig.json()["not_assessed"]}
+
+    cis = client.post(f"/compliance/audits?file_id={file_id}&framework=cis", auth=ALICE)
+    assert cis.status_code == 201, cis.text
+    assert _http(client, cis.json()["audit_id"]) == [], "no finding, not an UNKNOWN one"
+    [left_out] = [n for n in cis.json()["not_assessed"] if n["rule_id"] == "NRK-HTTP-001"]
+    assert "1.1.5" in left_out["reason"] and "CISC-ND-000470" in left_out["reason"]
+
+    html = client.get(f"/compliance/audits/{cis.json()['audit_id']}/report.html", auth=ALICE).text
+    assert "Not assessed under this scope" in html
+    assert "NRK-HTTP-001" in html
+
+
+def test_the_stig_leaves_out_the_four_rules_it_is_stricter_than(client: TestClient) -> None:
+    file_id = _upload_bytes(client, *_ios_xe_17_with_http_server())
+    body = client.post(f"/compliance/audits?file_id={file_id}&framework=stig", auth=ALICE).json()
+
+    assert {n["rule_id"] for n in body["not_assessed"]} == {
+        "NRK-TIMEOUT-001",
+        "NRK-LOGGING-001",
+        "NRK-NTP-001",
+        "NRK-BANNER-001",
+    }
+    assert body["rules_evaluated"] == 3
+
+
+@pytest.mark.parametrize(
+    ("path", "framework", "said"),
+    [
+        (JUNOS, "stig", "juniper/junos"),
+        (JUNOS, "cis", "juniper/junos"),
+        (CISCO, "cis", "release 15.2"),
+        (CISCO, "stig", "release 15.2"),
+    ],
+)
+def test_a_benchmark_that_does_not_describe_the_device_is_refused(
+    client: TestClient, path: Path, framework: str, said: str
+) -> None:
+    """409 with the reason — never a run with zero findings, which reads as compliance."""
+    file_id = _upload(client, path)
+    response = client.post(
+        f"/compliance/audits?file_id={file_id}&framework={framework}", auth=ALICE
+    )
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert "none of the selected frameworks describes this device" in detail
+    assert said in detail
+
+
+def test_a_mixed_selection_applies_what_it_can_and_names_what_it_cannot(
+    client: TestClient,
+) -> None:
+    file_id = _upload(client, JUNOS)
+    body = client.post(
+        f"/compliance/audits?file_id={file_id}&framework=nist&framework=stig", auth=ALICE
+    ).json()
+
+    assert body["framework_selection"] == ["nist", "stig"]
+    assert list(body["frameworks_not_describing_device"]) == ["stig"]
+    assert body["rules_evaluated"] == 7
+
+    html = client.get(f"/compliance/audits/{body['audit_id']}/report.html", auth=ALICE).text
+    assert "STIG</span> selected and not applied" in html
+
+
+def test_iso_is_still_absent_from_the_selector_and_refused(client: TestClient) -> None:
+    offered = {
+        f["framework"] for f in client.get("/compliance/audits/frameworks").json()["frameworks"]
+    }
+    assert offered == {"nist", "stig", "cis"}
+    file_id = _upload(client, IOS_XE_17)
+    response = client.post(f"/compliance/audits?file_id={file_id}&framework=iso", auth=ALICE)
+    assert response.status_code == 400
+
+
+def test_the_three_selections_on_one_configuration(client: TestClient) -> None:
+    """The table in ADR 0054, asserted rather than written down."""
+    file_id = _upload_bytes(client, *_ios_xe_17_with_http_server())
+
+    def run(query: str) -> dict:
+        response = client.post(f"/compliance/audits?file_id={file_id}{query}", auth=ALICE)
+        assert response.status_code == 201, response.text
+        return response.json()
+
+    none, stig, cis = run(""), run("&framework=stig"), run("&framework=cis")
+    assert (none["rules_evaluated"], stig["rules_evaluated"], cis["rules_evaluated"]) == (7, 3, 6)
+    assert none["not_assessed"] == []
+    assert [n["rule_id"] for n in cis["not_assessed"]] == ["NRK-HTTP-001"]
+
+    [unfiltered] = _http(client, none["audit_id"])
+    assert unfiltered["status"] == "fail"
+    assert {(m["framework"], m["control_id"]) for m in unfiltered["frameworks"]} == {
+        ("nist", "CM-07"),
+        ("nist", "AC-17(02)"),
+        ("stig", "CISC-ND-000470"),
+    }
+
+
+@pytest.mark.parametrize("framework", ["stig", "cis"])
+def test_the_corpus_ios_xe_17_router_is_described_by_both(
+    client: TestClient, framework: str
+) -> None:
+    file_id = _upload(client, IOS_XE_17)
+    response = client.post(
+        f"/compliance/audits?file_id={file_id}&framework={framework}", auth=ALICE
+    )
+    assert response.status_code == 201
+    assert response.json()["frameworks_not_describing_device"] == {}

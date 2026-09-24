@@ -191,6 +191,17 @@ that scope and shows each finding's mapped controls.
 frameworks with a sourced catalog — asking for one without a catalog is refused
 with 400, never answered with zero findings.
 
+**Framework choice changes the verdict, and the selector says so** (ADR 0054).
+On an IOS XE 17 configuration enabling `ip http server`, `framework=stig` gives
+`NRK-HTTP-001` **FAIL** citing `CISC-ND-000470` and the line; `framework=cis`
+leaves it **not assessed**, and the response and report give the rule's recorded
+reason — CIS constrains the server and never requires it off. That input is
+constructed in a test: no corpus file is both in the benchmarks' scope and
+enables the server. A selected framework whose edition does not describe the
+device is named as *not applied*, with why; if none of the selection describes
+it, the audit is refused with 409 rather than run and reported clean. Selection
+is an API capability: **the interface offers no framework selector.**
+
 **DISA STIG and CIS are mapped narrowly, and on one platform.** Both editions
 describe Cisco IOS XE, so their identifiers appear only on `cisco/ios` devices
 whose release reads 17.x — not on classic IOS 15.x, NX-OS, JunOS or EOS, where a

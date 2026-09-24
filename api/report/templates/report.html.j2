@@ -313,7 +313,18 @@
       {% else %}
       no benchmark filter &mdash; every applicable NIRIKSHAK check was evaluated
       {% endif %}
+      {% for name, why in report.frameworks_excluded.items() %}
+      <br><span class="num">{{ name | upper }}</span> selected and not applied &mdash; {{ why }}
+      {% endfor %}
     </dd>
+    {% if report.not_assessed %}
+    <dt>Not assessed under this scope</dt>
+    <dd>
+      {% for rule_id, reason in report.not_assessed %}
+      <span class="num">{{ rule_id }}</span> &mdash; {{ reason }}{% if not loop.last %}<br>{% endif %}
+      {% endfor %}
+    </dd>
+    {% endif %}
     <dt>Rulepack</dt>
     <dd class="num">
       {{ report.provenance.rulepack_id or 'unknown' }}

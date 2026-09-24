@@ -224,7 +224,7 @@ is real; the output is an honest refusal.
 
 | Not claimed | Why |
 | --- | --- |
-| **Coverage against any framework, or anything for ISO/IEC 27001** | NIST SP 800-53 (ADR 0035), the DISA Cisco IOS XE Router NDM STIG and the CIS Cisco IOS XE 17.x Benchmark (ADR 0052) are sourced; ISO/IEC 27001 is a purchased standard and is **absent** from the selector, never present and empty. Five of 42 STIG requirements and six of 84 CIS recommendations carry a mapping — evidence about seven checks, not coverage. Both platform benchmarks describe Cisco IOS XE only and are scoped to releases matching 17.x, so on every other device their identifiers are not shown and the report says why. Four rules are looser than the STIG control proposed for them and are recorded as declining it. The STIG XCCDF is held in the repository; the CIS Benchmark is referenced by digest and never held. |
+| **Coverage against any framework, or anything for ISO/IEC 27001** | NIST SP 800-53 (ADR 0035), the DISA Cisco IOS XE Router NDM STIG and the CIS Cisco IOS XE 17.x Benchmark (ADR 0052) are sourced; ISO/IEC 27001 is a purchased standard and is **absent** from the selector, never present and empty. Five of 42 STIG requirements and six of 84 CIS recommendations carry a mapping — evidence about seven checks, not coverage. Both platform benchmarks describe Cisco IOS XE only and are scoped to releases matching 17.x, so on every other device their identifiers are not shown, the report says why, and selecting them is refused with 409 rather than answered with zero findings (ADR 0054). The interface offers no framework selector; selection is API-only. Four rules are looser than the STIG control proposed for them and are recorded as declining it. The STIG XCCDF is held in the repository; the CIS Benchmark is referenced by digest and never held. |
 | **An *official* mapping to any framework** | Seven rules carry NIST control identifiers validated against the Rev 5 OSCAL catalog (ADR 0035), five carry STIG IDs and six carry CIS recommendation numbers (ADR 0052), and every one is `project_asserted`. A catalog publishes *controls*; it does not publish *mappings*. `OFFICIAL` is reachable only from a published **crosswalk** — CIS's Benchmark-to-800-53 mappings, NIST's 800-53-to-27001 material — and this project has obtained none (ADR 0045). The value is kept because it is the one route to CIS coverage without buying the CIS Benchmark, not because anything uses it. |
 | **Absence-aware evaluation accuracy** | No platform default and no capability claim ships, so the `EVALUATE` branch has never fired on real data. |
 | **Exposure scores or a priority ranking** | Interfaces and access lists are read, and `interface_roles` now exists for a pack to declare which names are management-plane (ADR 0034) — but **no pack declares one**, because no vendor documentation has been sourced. Exposure stays indeterminate. Severity alone must not determine remediation order, so no severity-sorted list is offered in its place. |
@@ -456,7 +456,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and thirty-four numbered decisions across 53 ADRs. (D63 and D64 were never issued; the
+One hundred and thirty-six numbered decisions across 54 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -514,6 +514,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0051 | P18 | The DEF-16 guard finally runs | D130, D131 |
 | 0052 | P18 | Two benchmarks, one held and one referenced | D132, D133, D134, D135 |
 | 0053 | P18 | A refusal that outlived its reason | D136 |
+| 0054 | P18 | A selector with something to select | D137, D138 |
 
 ---
 

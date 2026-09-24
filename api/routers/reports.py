@@ -29,14 +29,14 @@ from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import HTMLResponse
 
 from api.audit.chain import AuditChain
-from api.comply.frameworks import explain_absence, mappings_for_device
+from api.comply.frameworks import explain_absence, mappings_for_device, scope_selection
 from api.comply.rulepacks import load_active_rulepack
 from api.config import settings
 from api.db import findings as finding_store
 from api.db.connection import connect
 from api.models.audit import Subject
 from api.models.auth import User
-from api.models.enums import AuditAction
+from api.models.enums import AuditAction, Framework
 from api.remediate.library import load_active_library
 from api.remediate.resolver import ResolutionOutcome, order_snippets
 from api.report.errors import PdfBackendUnavailableError
@@ -123,9 +123,25 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
     rulepack = load_active_rulepack()
     identity = _identity_row(conn, run["device_id"])
     os_version = identity.get("os_version")
+    same_rulepack = run.get("rulepack_version") == rulepack.version
     rule_frameworks = (
         mappings_for_device(rulepack.rules, vendor, os_family, os_version)
-        if run.get("rulepack_version") == rulepack.version
+        if same_rulepack
+        else None
+    )
+
+    # What the run's benchmark selection left out, recomputed by the function
+    # the audit route used and on the same condition as the mappings: only
+    # under the rulepack that evaluated the run (ADR 0054).
+    scope = (
+        scope_selection(
+            frozenset(Framework(f) for f in run.get("framework_selection") or ()),
+            rulepack.rules,
+            vendor,
+            os_family,
+            os_version,
+        )
+        if same_rulepack
         else None
     )
 
@@ -140,6 +156,10 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
         config_file_path=blob_path,
         rule_frameworks=rule_frameworks,
         framework_absence=explain_absence(vendor, os_family, os_version),
+        not_assessed=(tuple((n.rule_id, n.reason) for n in scope.not_assessed) if scope else ()),
+        frameworks_excluded=(
+            {f.value: why for f, why in sorted(scope.excluded.items())} if scope else {}
+        ),
         identity=identity,
     )
 
