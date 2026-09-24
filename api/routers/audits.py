@@ -436,7 +436,10 @@ def get_findings(
     # same function and on the same condition: only under the rulepack that
     # evaluated the run, and only the identifiers true of this device.
     rulepack = load_active_rulepack()
-    if run is not None and run.get("rulepack_version") == rulepack.version:
+    same_rulepack = rulepack.checksum is not None and (
+        run is not None and run.get("rulepack_checksum") == rulepack.checksum
+    )
+    if run is not None and same_rulepack:
         mappings = mappings_for_device(
             rulepack.rules, vendor, os_family, _os_version(conn, run["device_id"])
         )

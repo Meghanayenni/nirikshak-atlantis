@@ -18,7 +18,6 @@ somewhere downstream that nobody can check.
 
 from __future__ import annotations
 
-import hashlib
 import re
 from pathlib import Path
 
@@ -26,7 +25,7 @@ import pytest
 import yaml
 
 from api.comply.engine import ENGINE_VERSION
-from api.comply.rulepacks import CANONICAL_RULEPACK_VERSION, RULES_ROOT, load_rulepack
+from api.comply.rulepacks import MANIFEST_PATH, RULES_ROOT, load_rulepack, rulepack_checksum
 from api.ingest.packs import PACK_ROOTS
 from api.models.pack import PackStatus
 
@@ -94,75 +93,80 @@ def test_exactly_one_pack_per_platform_is_active_on_disk() -> None:
 
 
 # ---------------------------------------------------------------------------
-# The rulepack's version, declared with nothing binding it to the rules
+# The rulepack's version, bound to its contents at load (ADR 0056)
 # ---------------------------------------------------------------------------
+#
+# D125 (ADR 0048) bound version to digest in a test fixture here, and said a
+# rule edit could legitimately keep its version "with the digest updated and a
+# reason in the commit". That escape is exactly what the report's mapping guard
+# could not survive: it compared versions, and `1.0.0` had already named three
+# rule sets. The binding now lives in `rules/rulepack.yaml`, is verified by the
+# loader on every load, and the run records the checksum rather than trusting
+# the label. What remains for a test is the manifest's own discipline.
 
 
-def rulepack_digest() -> str:
-    """A digest over the rule files the canonical rulepack is built from.
+def _manifest() -> dict:
+    return yaml.safe_load(MANIFEST_PATH.read_text(encoding="utf-8"))
 
-    Derived, deliberately, and in the same spirit as the vendor-pack checksum:
-    the bytes decide the value rather than an author remembering to change one.
+
+def test_the_rulepack_loads_only_as_the_version_its_manifest_names() -> None:
+    manifest = _manifest()
+    pack = load_rulepack()
+    assert pack.version == str(manifest["version"])
+    assert pack.checksum == manifest["checksum"] == rulepack_checksum()
+
+
+def test_no_version_is_reused_and_no_content_is_relabelled() -> None:
+    """A version names one content; one content has one version.
+
+    The first closes D125's escape — a version kept while its rules changed. The
+    second refuses the mirror image: the same rules minted twice under different
+    labels, which would make two runs look different when they were not.
     """
-    digest = hashlib.sha256()
-    for path in sorted(RULES_ROOT.rglob("*.yaml")):
-        digest.update(path.name.encode("utf-8"))
-        digest.update(path.read_bytes().replace(b"\r\n", b"\n"))
-    return digest.hexdigest()
+    manifest = _manifest()
+    entries = [{"version": manifest["version"], "checksum": manifest["checksum"]}]
+    entries += list(manifest.get("history") or ())
 
-
-RULEPACK_CONTENT: dict[str, str] = {
-    "1.0.0": "6aa678d256ec5ba9808f3b72631f87aa893af0afc775cbfb8de22cb39a69d218",
-    # ADR 0052 — DISA STIG and CIS mappings, and the recorded framework gaps.
-    "1.1.0": "930f28a3c270e7d4f1c055cef49097e1dcdc0971ef1249a066a61fc238933a81",
-}
-"""`rulepack_version` -> the digest of the rules that version contains.
-
-`Rulepack` has no `checksum` field, and ADR 0013 gave the reason: pack checksums
-were *declared and never verified* at the time, and copying an unverified
-integrity mechanism into a second contract would have doubled the problem rather
-than solved it.
-
-**That reasoning expired at P11**, when DEF-13 was fixed and pack checksums
-began verifying against file bytes on every load. Since then the rulepack has
-been the only versioned artefact in the system with nothing binding its version
-to its contents: a rule could be edited, every stored finding would go on citing
-`rulepack_version: 1.0.0`, and nothing anywhere would notice.
-
-This is the binding, kept as a test fixture rather than a field because the
-version is a *decision* — editing a rule without bumping it is sometimes right
-and sometimes not, and a human should have to say which.
-"""
-
-
-def test_the_rulepack_version_matches_the_rules_it_contains() -> None:
-    """Change a rule and this fails until somebody decides about the version.
-
-    Failing here is not an error. It is the question *"is this the same rulepack
-    as before?"* arriving at the moment somebody can answer it — and the answer
-    is either a new version with a new digest, or the same version with the
-    digest updated and a reason in the commit.
-    """
-    version = load_rulepack().version
-    assert version == CANONICAL_RULEPACK_VERSION
-
-    recorded = RULEPACK_CONTENT.get(version)
-    assert recorded is not None, (
-        f"rulepack {version} has no recorded content digest. Add one to "
-        "RULEPACK_CONTENT so a later edit to the rules cannot pass unnoticed."
-    )
-    assert recorded == rulepack_digest(), (
-        f"the rules under {RULES_ROOT.name}/ have changed but rulepack {version} has "
-        "not. Either mint a new version, or update the digest here and say in the "
-        "commit why the version did not move."
-    )
-
-
-def test_every_recorded_rulepack_version_is_plausible() -> None:
-    """A digest of the wrong length is a placeholder somebody meant to fill."""
-    for version, digest in RULEPACK_CONTENT.items():
+    versions = [str(e["version"]) for e in entries]
+    assert len(versions) == len(set(versions)), f"a version repeats: {versions}"
+    checksums = [e["checksum"] for e in entries if e["checksum"]]
+    assert len(checksums) == len(set(checksums)), "one content carries two versions"
+    for version in versions:
         assert re.fullmatch(r"\d+\.\d+\.\d+", version), version
-        assert re.fullmatch(r"[0-9a-f]{64}", digest), f"{version} has no sha256"
+
+
+def test_the_loader_refuses_rules_that_are_not_the_declared_version(tmp_path: Path) -> None:
+    """Change one byte of one rule; the rulepack must not load.
+
+    Proved on a copy, so the shipped rules are never touched. This is what makes
+    the version mean something at runtime rather than only in CI.
+    """
+    import shutil
+
+    from api.comply.errors import RulepackIntegrityError
+
+    base = tmp_path / "rules"
+    shutil.copytree(RULES_ROOT.parent, base)
+    load_rulepack(base / "canonical", manifest=base / "rulepack.yaml")  # the copy is intact
+
+    target = base / "canonical" / "NRK-NTP-001.yaml"
+    target.write_text(target.read_text(encoding="utf-8") + "# edited\n", encoding="utf-8")
+    with pytest.raises(RulepackIntegrityError, match="do not match rulepack"):
+        load_rulepack(base / "canonical", manifest=base / "rulepack.yaml")
+
+
+def test_a_framework_index_is_part_of_what_a_version_means(tmp_path: Path) -> None:
+    """The indexes decide which identifiers a finding carries, and where."""
+    import shutil
+
+    from api.comply.errors import RulepackIntegrityError
+
+    base = tmp_path / "rules"
+    shutil.copytree(RULES_ROOT.parent, base)
+    index = next((base / "frameworks").glob("disa-*.index.yaml"))
+    index.write_text(index.read_text(encoding="utf-8").replace("^17", "^1[67]"), encoding="utf-8")
+    with pytest.raises(RulepackIntegrityError):
+        load_rulepack(base / "canonical", manifest=base / "rulepack.yaml")
 
 
 # ---------------------------------------------------------------------------

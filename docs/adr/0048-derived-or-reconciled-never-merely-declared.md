@@ -121,6 +121,12 @@ to say which rules produced a verdict.
 fails the build until somebody decides: a new version with a new digest, or the
 same version with the digest updated and a reason in the commit.
 
+> **Superseded at P18 (ADR 0056).** The binding moved from this test fixture
+> into `rules/rulepack.yaml`, is verified at load, and is recorded on every run.
+> The escape this section allowed — "the same version with the digest updated"
+> — is closed: it is exactly the case the report's mapping guard could not
+> detect.
+
 It is a test fixture rather than a contract field deliberately. **The version is
 a decision, not a fact** — editing a rule without bumping it is sometimes right
 — and the reconciliation puts that question in front of a person at the moment

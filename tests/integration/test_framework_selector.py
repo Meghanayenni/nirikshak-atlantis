@@ -378,3 +378,45 @@ def test_the_corpus_ios_xe_17_router_is_described_by_both(
     )
     assert response.status_code == 201
     assert response.json()["frameworks_not_describing_device"] == {}
+
+
+# ---------------------------------------------------------------------------
+# Mappings are re-attached by content, not by label (ADR 0056)
+# ---------------------------------------------------------------------------
+
+
+def test_a_run_records_the_checksum_of_the_rules_that_decided_it(client: TestClient) -> None:
+    file_id = _upload(client, IOS_XE_17)
+    audit_id = client.post(f"/compliance/audits?file_id={file_id}", auth=ALICE).json()["audit_id"]
+    run = client.get(f"/compliance/audits/{audit_id}", auth=ALICE).json()
+
+    assert run["rulepack_checksum"] == load_rulepack().checksum
+    assert run["rulepack_version"] == load_rulepack().version
+
+
+def test_same_version_different_content_shows_no_identifiers(
+    client: TestClient, tmp_path: Path
+) -> None:
+    """The case D125 permitted and D96 could not detect.
+
+    The run's version equals the active one; its recorded content does not (here,
+    NULL — what every run before migration 0005 holds). Under the old version
+    comparison this report showed today's control identifiers beside a verdict
+    that different rules decided. It must show none, on both surfaces.
+    """
+    file_id = _upload(client, IOS_XE_17)
+    audit_id = client.post(f"/compliance/audits?file_id={file_id}", auth=ALICE).json()["audit_id"]
+
+    conn = connect(tmp_path / "nirikshak.db")
+    conn.execute("UPDATE audit_run SET rulepack_checksum = NULL WHERE audit_id = ?", (audit_id,))
+    conn.commit()
+    conn.close()
+
+    run = client.get(f"/compliance/audits/{audit_id}", auth=ALICE).json()
+    assert run["rulepack_version"] == load_rulepack().version, "the label still matches"
+
+    findings = client.get(f"/compliance/audits/{audit_id}/findings", auth=ALICE).json()
+    assert all(f["frameworks"] == [] for f in findings["findings"])
+    html = client.get(f"/compliance/audits/{audit_id}/report.html", auth=ALICE).text
+    assert "CISC-ND-" not in html and "AC-17(02)" not in html
+    assert "content not recorded" in html

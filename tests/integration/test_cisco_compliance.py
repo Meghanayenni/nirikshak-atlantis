@@ -284,6 +284,7 @@ def test_the_audit_payload_is_counts_and_identifiers(cisco, rulepack) -> None:
         "engine_version",
         "rulepack_id",
         "rulepack_version",
+        "rulepack_checksum",
         "pack_versions",
         "rules_evaluated",
         "verdicts",

@@ -123,7 +123,11 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
     rulepack = load_active_rulepack()
     identity = _identity_row(conn, run["device_id"])
     os_version = identity.get("os_version")
-    same_rulepack = run.get("rulepack_version") == rulepack.version
+    # By content, not label (ADR 0056). A run from before migration 0005 has no
+    # checksum and never matches: nobody recorded which rules decided it.
+    same_rulepack = rulepack.checksum is not None and (
+        run.get("rulepack_checksum") == rulepack.checksum
+    )
     rule_frameworks = (
         mappings_for_device(rulepack.rules, vendor, os_family, os_version)
         if same_rulepack

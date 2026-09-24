@@ -313,17 +313,20 @@ class Rulepack(BaseModel):
     same reason `CsmSource.pack_versions` records which vendor pack read the line:
     a verdict is only reproducible if the data that produced it is identified.
 
-    Modelled on `VendorPack` but **deliberately without its `checksum` field**.
-    The P4 review established that pack checksums are declared and never verified
-    against file bytes, and deferred fixing that to P11. Copying an unverified
-    integrity mechanism into a second contract would double the problem rather
-    than solve it, so this contract does not pretend to offer one.
+    **`checksum` binds the version to the rules** (ADR 0056). Until P18 this
+    contract had none, for a reason ADR 0013 gave at P6: pack checksums were then
+    declared and never verified, and copying an unverified mechanism would have
+    doubled the problem. That reason expired at P11 when DEF-13 was fixed, and
+    nobody revisited it; for twelve phases `1.0.0` named three different sets of
+    rules. `api.comply.rulepacks` now verifies the declared checksum against the
+    files at load and refuses a mismatch, as the pack loader does (D47).
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     rulepack_id: str = Constraint(min_length=1, description="e.g. 'canonical'")
     version: str = Constraint(pattern=r"^\d+\.\d+\.\d+$")
+    checksum: str | None = Constraint(default=None, pattern=r"^sha256:[0-9a-f]{64}$")
     status: PackStatus = PackStatus.DRAFT
     created_by: str | None = None
     rules: tuple[ComplianceRule, ...] = ()

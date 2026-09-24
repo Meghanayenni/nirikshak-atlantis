@@ -131,21 +131,19 @@ def test_duplicate_rule_ids_are_rejected() -> None:
         Rulepack(rulepack_id="x", version="1.0.0", rules=(rule, rule))
 
 
-def test_the_rulepack_has_no_checksum_field() -> None:
-    """D17 — deliberately not copied from VendorPack.
+def test_the_shipped_rulepack_carries_a_checksum_it_was_verified_against() -> None:
+    """Replaces `test_the_rulepack_has_no_checksum_field`, deleted by ADR 0056.
 
-    Pack checksums were declared and never verified against file bytes — found at
-    P4, numbered DEF-13 and fixed at P11 (ADR 0020). Replicating an unverified
-    integrity mechanism into a second contract would have doubled the problem
-    rather than solved it, which is why this contract never grew one.
-
-    The reasoning has now paid off rather than expired. A working, reproducible
-    convention exists in `api/ingest/pack_checksum.py`, so giving `Rulepack` a
-    checksum that genuinely verifies is a reasonable future change — a different
-    decision, about `rules/`, which P11 did not make. Until somebody makes it,
-    the absence of the field remains the honest state and this assertion stands.
+    That test waited for "a different decision, about `rules/`, which P11 did
+    not make", and asserted the field's absence until somebody made it. ADR 0056
+    makes it: a checksum over the rules and indexes, declared in
+    `rules/rulepack.yaml`, recomputed and verified at every load. The old
+    docstring called ADR 0013's reason "paid off rather than expired" while ADR
+    0048 called the same reason expired; both are now moot.
     """
-    assert "checksum" not in Rulepack.model_fields
+    assert "checksum" in Rulepack.model_fields
+    pack = load_rulepack()
+    assert pack.checksum is not None and pack.checksum.startswith("sha256:")
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +193,7 @@ def test_an_unevaluatable_rule_fails_self_check(tmp_path) -> None:
     )
 
     with pytest.raises(RulepackValidationError, match="abstain on every device"):
-        load_rulepack(tmp_path)
+        load_rulepack(tmp_path, manifest=None)
 
 
 def test_an_invalid_rulepack_cannot_enter_evaluation(tmp_path) -> None:
@@ -207,10 +205,10 @@ def test_an_invalid_rulepack_cannot_enter_evaluation(tmp_path) -> None:
     )
 
     with pytest.raises(RulepackValidationError):
-        load_rulepack(tmp_path)
+        load_rulepack(tmp_path, manifest=None)
 
     # And the failure names the rule, so it can be fixed without bisecting.
-    pack = load_rulepack(tmp_path, validate=False)
+    pack = load_rulepack(tmp_path, validate=False, manifest=None)
     assert "NRK-X-001" in validate_rulepack(pack)
 
 
@@ -220,3 +218,14 @@ def test_the_shipped_rulepack_self_checks_clean() -> None:
 
 def test_a_missing_directory_yields_no_rules(tmp_path) -> None:
     assert discover_rules(tmp_path / "nothing-here") == []
+
+
+def test_a_scratch_rulepack_cannot_pass_for_a_shipped_one(tmp_path) -> None:
+    """`manifest=None` is how a test opts out of verification — visibly.
+
+    The result is version 0.0.0 with no checksum, so no report can mistake it
+    for the rules that decided a real run (ADR 0056).
+    """
+    (tmp_path / "ok.yaml").write_text(GOOD_RULE, encoding="utf-8")
+    pack = load_rulepack(tmp_path, manifest=None)
+    assert (pack.version, pack.checksum) == ("0.0.0", None)

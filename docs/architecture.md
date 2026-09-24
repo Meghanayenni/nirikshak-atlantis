@@ -174,8 +174,9 @@ spine. Each arrow is a typed contract.
     pages for a Cisco access switch — and answers 503 naming the missing
     libraries where it is not. It never falls back to HTML under a `.pdf` name.
 
-Every finding carries a `FindingProvenance`: engine version, rulepack version and
-the vendor pack versions that read the lines. A verdict is reproducible only if
+Every finding carries a `FindingProvenance`: engine version, rulepack version,
+the rulepack's content checksum (ADR 0056) and the vendor pack versions that
+read the lines. A verdict is reproducible only if
 the data that produced it is identified.
 
 ---
@@ -456,7 +457,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and thirty-eight numbered decisions across 55 ADRs. (D63 and D64 were never issued; the
+One hundred and forty numbered decisions across 56 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -516,6 +517,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0053 | P18 | A refusal that outlived its reason | D136 |
 | 0054 | P18 | A selector with something to select | D137, D138 |
 | 0055 | P18 | A sanitisation gate that fails closed | D139, D140 |
+| 0056 | P18 | A version that means its contents | D141, D142 |
 
 ---
 

@@ -464,23 +464,22 @@ similarity scores when fitting the calibrator (R7).
 
 ## 14. Rulepack — P6, decision D17
 
-`rulepack_id · version · status · created_by · rules`
+`rulepack_id · version · checksum · status · created_by · rules`
 
 `FindingProvenance.rulepack_version` existed from P1 with nothing to fill it. A
 report read six months later has to be able to say which rules ran, for the same
 reason `CsmSource.pack_versions` records which vendor pack read the line: a
 verdict is reproducible only if the data that produced it is identified.
 
-Modelled on `VendorPack` but **deliberately without its `checksum` field**. Pack
-checksums were declared and never verified against file bytes — found at P4,
-numbered **DEF-13** and fixed at P11 (ADR 0020) — and replicating an unverified
-integrity mechanism into a second contract would have doubled the problem rather
-than solved it.
-
-That reasoning has now paid off rather than expired: a working, reproducible
-convention exists in `api/ingest/pack_checksum.py`, so giving `Rulepack` a
-checksum that actually verifies is a reasonable future change. It is a different
-decision, about `rules/`, and P11 did not make it.
+**`checksum` is verified at load** (ADR 0056). Until P18 the contract had none,
+for a reason ADR 0013 gave at P6: pack checksums were then declared and never
+verified (DEF-13), and copying an unverified mechanism would have doubled the
+problem. That reason expired when DEF-13 was fixed at P11. This section then
+said it had "paid off rather than expired" while ADR 0048 said it had expired;
+meanwhile `1.0.0` named three different rule sets. `rules/rulepack.yaml` now
+declares version and checksum over `canonical/*.yaml` and
+`frameworks/*.index.yaml`; `load_rulepack` recomputes and refuses a mismatch,
+and `FindingProvenance.rulepack_checksum` records it on every run.
 
 `applicable_to()` selects rules whose `AppliesTo` admits a device. A rule that
 does not apply produces **no finding at all**, rather than an UNKNOWN one: *this

@@ -67,8 +67,8 @@ def save_run(
                 audit_id, device_id, owner_id, engine_version, rulepack_id,
                 rulepack_version, pack_versions, rules_evaluated,
                 count_pass, count_fail, count_unknown, count_na, evaluated_at,
-                framework_selection
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                framework_selection, rulepack_checksum
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 audit_id,
@@ -89,6 +89,8 @@ def save_run(
                 json.dumps(sorted(f.value for f in framework_selection))
                 if framework_selection
                 else None,
+                # The content of the rules, not the label (ADR 0056).
+                provenance.rulepack_checksum,
             ),
         )
 
@@ -143,6 +145,8 @@ def read_run(conn: sqlite3.Connection, audit_id: str) -> dict[str, Any] | None:
         "engine_version": row["engine_version"],
         "rulepack_id": row["rulepack_id"],
         "rulepack_version": row["rulepack_version"],
+        # NULL for every run before migration 0005: nobody recorded the content.
+        "rulepack_checksum": row["rulepack_checksum"],
         "pack_versions": json.loads(row["pack_versions"]),
         "rules_evaluated": row["rules_evaluated"],
         "verdicts": {
@@ -223,6 +227,7 @@ def _to_finding(conn: sqlite3.Connection, row: sqlite3.Row, run: dict[str, Any] 
         provenance=FindingProvenance(
             engine_version=run["engine_version"] if run else "unknown",
             rulepack_version=run["rulepack_version"] if run else None,
+            rulepack_checksum=run["rulepack_checksum"] if run else None,
             pack_versions=run["pack_versions"] if run else {},
         ),
     )

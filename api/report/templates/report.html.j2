@@ -329,6 +329,11 @@
     <dd class="num">
       {{ report.provenance.rulepack_id or 'unknown' }}
       {{ report.provenance.rulepack_version or '' }}
+      {% if report.provenance.rulepack_checksum %}
+      &middot; {{ report.provenance.rulepack_checksum[:19] }}&hellip;
+      {% else %}
+      &middot; content not recorded (evaluated before rulepack checksums)
+      {% endif %}
     </dd>
     {% if report.provenance.pack_versions %}
     <dt>Vendor packs</dt>

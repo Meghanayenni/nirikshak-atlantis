@@ -136,6 +136,8 @@ class ReportProvenance:
     snippet_library_version: str
     snippet_count: int
     generated_at: datetime
+    rulepack_checksum: str | None = None
+    """The rules' content digest the run recorded; None before ADR 0056."""
 
 
 @dataclass(frozen=True)
@@ -328,7 +330,8 @@ def build_report(
     edge: a report renders persisted findings and must not be able to reach the
     layer that evaluates them. **A caller that supplies nothing gets a report
     with no control identifiers**, which is why the route only supplies them when
-    the run's rulepack version matches the active one — showing today's mappings
+    the run's rulepack checksum matches the active one (ADR 0056; until P18 it
+    compared versions, which could not tell three rulepacks apart) — showing today's mappings
     beside a verdict produced under a different rulepack would be a citation to
     a document that did not decide it.
     """
@@ -367,6 +370,7 @@ def build_report(
             engine_version=run.get("engine_version", "unknown"),
             rulepack_id=run.get("rulepack_id"),
             rulepack_version=run.get("rulepack_version") or None,
+            rulepack_checksum=run.get("rulepack_checksum") or None,
             pack_versions=dict(run.get("pack_versions", {})),
             snippet_library_version=library.version,
             snippet_count=len(library.snippets),

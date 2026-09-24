@@ -225,3 +225,17 @@ every audit row back and searches it for every line of the source configuration.
 identifies this configuration rather than the physical device over time. Every
 finding now carries it, and nothing may present it as a stable device identity
 until the P12 identity work.
+
+## Resolution, P18 — the rulepack checksum (ADR 0056)
+
+This ADR gave `Rulepack` no `checksum` field because pack checksums were then
+declared and never verified, and copying an unverified mechanism would have
+doubled the problem. **That reason expired at P11**, when DEF-13 was fixed and
+pack checksums began verifying on every load. It was not revisited until ADR
+0048 bound version to digest in a test fixture, and not enforced at runtime
+until ADR 0056.
+
+The cost of the gap is now measurable: `1.0.0` named three different rule sets
+between P6 and P17, and the report's rule for when to show control mappings
+compared that label. ADR 0056 adds `rules/rulepack.yaml`, verifies the checksum
+at load, records it on every run, and compares it instead.

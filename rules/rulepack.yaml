@@ -1,0 +1,25 @@
+# The canonical rulepack's identity (ADR 0056).
+#
+# `checksum` covers every rule under canonical/ and every framework index under
+# frameworks/ — the convention is stated once, in api/comply/rulepacks.py. The
+# loader recomputes it and REFUSES to load on a mismatch, so a rule cannot be
+# edited while findings go on citing a version that did not contain the edit.
+#
+# Changing any rule or index: mint a new version, set its checksum, and move the
+# current entry into `history`. A test refuses a version that repeats, and a
+# checksum that repeats under a different version.
+
+rulepack_id: canonical
+version: 1.1.0
+checksum: sha256:6a8259060bee541b44016d1b9e4036353cd2932115b0d31be49896b7cdde1202
+
+history:
+  - version: 1.0.0
+    checksum: null
+    note: >-
+      Named three different rule sets from P6 to P17 — the P6 rules, the bounded
+      idle timeout of ADR 0032, and the NIST mappings of ADR 0035 — and no
+      checksum was recorded while it was current. D125 (ADR 0048) later recorded
+      6aa678d256ec5ba9808f3b72631f87aa893af0afc775cbfb8de22cb39a69d218 for the
+      last of the three, over rule files only, under an earlier convention. A
+      finding citing 1.0.0 cannot say which of the three decided it.

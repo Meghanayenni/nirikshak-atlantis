@@ -62,6 +62,12 @@ class FindingProvenance(BaseModel):
 
     engine_version: str = Constraint(min_length=1)
     rulepack_version: str | None = None
+    rulepack_checksum: str | None = None
+    """The digest of the rules that decided this verdict (ADR 0056).
+
+    The version is a label a person chooses; this is the content. A report
+    compares this, not the version, before showing today's control mappings
+    beside a stored verdict. `None` on every run evaluated before P18."""
     pack_versions: dict[str, str] = Constraint(default_factory=dict)
     evaluated_at: datetime | None = None
 

@@ -295,6 +295,7 @@ def _provenance(
     return FindingProvenance(
         engine_version=ENGINE_VERSION,
         rulepack_version=rulepack.version,
+        rulepack_checksum=rulepack.checksum,
         pack_versions=dict(csm.source.pack_versions),
         evaluated_at=evaluated_at,
     )

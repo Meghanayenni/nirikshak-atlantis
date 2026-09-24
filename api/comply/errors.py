@@ -38,3 +38,13 @@ class RulepackValidationError(ComplianceError):
             "rulepack self-check failed; these rules would abstain on every device "
             "while appearing to be supported:\n" + detail
         )
+
+
+class RulepackIntegrityError(ComplianceError):
+    """The rules on disk are not the rules the declared version names.
+
+    The rulepack counterpart of `PackChecksumError` (D47), added at P18 (ADR
+    0056). Refused at load, because the alternative is every finding produced
+    afterwards citing a version whose contents it did not use — the state the
+    rulepack was in from P6 to P18, when `1.0.0` named three different rulepacks.
+    """

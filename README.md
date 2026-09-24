@@ -379,8 +379,12 @@ removed rather than corrected: a phase label has no runtime source, so the next
 correct value would have the same lifespan as the last. Three declarations that
 could not be derived are now reconciled instead — a pack's version against its
 own filename, the engine version against `pyproject.toml`, and the rulepack
-version against a digest of the rules it contains, so editing a rule fails the
-build until somebody decides whether the version moved.
+version against a checksum of the rules and framework indexes it contains. Since
+ADR 0056 that last binding is enforced **at load**, not only in the test suite:
+`rules/rulepack.yaml` declares version and checksum, the loader refuses rules
+that do not match, and every run records the checksum — so a report shows
+today's control identifiers beside a stored verdict only when the same rules
+decided it, not merely the same label.
 
 **Every skip guard is paired or registered.** A test that skips is a test that
 does not test: four PDF tests skipped wherever the runtime worked, so the

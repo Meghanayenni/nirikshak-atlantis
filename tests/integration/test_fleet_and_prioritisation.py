@@ -288,6 +288,7 @@ def test_the_audit_record_carries_no_configuration_content(client: TestClient) -
         "engine_version",
         "rulepack_id",
         "rulepack_version",
+        "rulepack_checksum",
         "pack_versions",
         "rules_evaluated",
         "verdicts",

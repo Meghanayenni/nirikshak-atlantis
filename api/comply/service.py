@@ -72,6 +72,7 @@ def audit_payload(
         "engine_version": ENGINE_VERSION,
         "rulepack_id": rulepack.rulepack_id,
         "rulepack_version": rulepack.version,
+        "rulepack_checksum": rulepack.checksum,
         "pack_versions": dict(csm.source.pack_versions),
         "rules_evaluated": len(findings),
         "verdicts": {verdict.value: counts.get(verdict, 0) for verdict in Verdict},
