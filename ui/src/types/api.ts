@@ -314,10 +314,10 @@ export interface FrameworkView {
 /**
  * Remediation as the resolver returned it.
  *
- * `commands` is populated only from the vetted snippet library (Rule 4). The
- * library ships empty, so `outcome` is `no_snippet` or `not_actionable` and
- * `statement` carries the sentence an operator should read. The UI never
- * synthesises a command to fill the gap.
+ * `commands` is populated only from the vetted snippet library (Rule 4). Where
+ * the library holds nothing for the rule and platform, `outcome` is
+ * `no_snippet` or `not_actionable` and `statement` carries the sentence an
+ * operator should read. The UI never synthesises a command to fill the gap.
  */
 export interface RemediationRef {
   outcome: string;

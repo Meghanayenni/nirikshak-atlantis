@@ -47,15 +47,13 @@ access lists and first interfaces across three vendors:
 | `juniper/dev/edge-rtr-02.conf` | dev | 31 filter terms |
 | `cisco/eval/edge-rtr-11.cfg` | eval | an overly permissive `permit ip any any` |
 
-**The analyser still produces nothing, and this entry must not be read as saying
-otherwise.** No shipped pack declares an ACL or interface pattern, so neither
-reaches the canonical model — measured directly after registration:
-`CSM acls: 0`, `CSM interfaces: 0`, with the ACL lines sitting in residue.
-
-What changed is the *kind* of blockage, and only that. P7's interval logic and
-P12's ranking waited on material that had to come from outside the repository;
-they now wait on ACL and interface parsing patterns authored from the development
-split, which is ordinary engineering work nobody is prevented from doing.
+*(Until P18 a paragraph here, true when written at P15, said the analyser
+"still produces nothing" and must not be read otherwise. It had been false since
+P16, and the entry's own next paragraph said so. Derived at ADR 0059: six access
+lists are analysed across three dialects — `BRANCH-IN`, `EDGE-IN` and
+`DR-EDGE-IN` on Cisco IOS, `MGMT-IN` on NX-OS, `PROTECT-RE` in both JunOS
+surfaces — none dropped, yielding 5 shadowed, 4 redundant and 3 overly
+permissive observations.)*
 
 **CLOSED IN FULL at P16.** The extraction subsystem landed (ADR 0027) and the
 P7 analyser now reports overly-permissive, redundant and shadowed entries on real
@@ -275,11 +273,13 @@ None of it is scored, and recall 0 is the correct figure. Reported per vendor an
 never pooled (decision D34), so the gap is visible rather than averaged into a
 fleet figure.
 
-**State.** Two Cisco development devices, eight canonical fields, seven rules. That
-is enough to validate the *evaluator* — the two files disagree, so PASS, FAIL and
-UNKNOWN all arise from real data. It is **not** enough to validate a *rule*: a
-check that passes on two devices from one vendor has been tested against a sample
-too small to say anything about the check.
+**State, derived at ADR 0059.** Seven Cisco development devices — six IOS, one
+NX-OS — reading eight and seven canonical fields respectively, against seven
+rules. That is enough to validate the *evaluator*: the files disagree, so PASS,
+FAIL and UNKNOWN all arise from real data. It is **not** enough to validate a
+*rule*: seven hand-written devices from one vendor and one author are a sample
+too small to say anything about the check. *(This paragraph said "two Cisco
+development devices" until P18; that was the P4 corpus.)*
 
 Arista remains detection-only. Juniper is no longer: it reads firewall filters
 in both surfaces and four identity fields (ADR 0033, ADR 0043). **Neither reads
@@ -293,17 +293,20 @@ that legitimately **lack** controls, so absence-aware evaluation has something r
 to reason about.
 
 **Now measured as a cohort size.** P12's peer baselines group devices by platform
-and refuse to claim a deviation below `MIN_COHORT_SIZE` (5). The corpus forms
-three cohorts of 4, 3 and 3, so **no baseline is established for any field on any
-platform** and no device is called an outlier. One more Cisco device would make
-the Cisco cohort comparable for the first time — the cheapest single addition on
-this page, and the only one that would make a built feature produce output.
+and refuse to claim a deviation below `MIN_COHORT_SIZE` (5). Derived at ADR 0059,
+the nineteen non-holdout files form four cohorts: **Cisco IOS 9, JunOS 5, EOS 4,
+NX-OS 1**. The Cisco IOS cohort is comparable: eight baselines are compared and
+no device deviates. NX-OS is too small, and each of its seven fields says so.
+JunOS and EOS produce no baseline at all, because neither pack reads a canonical
+field. *(Until P18 this paragraph described "three cohorts of 4, 3 and 3" and no
+baseline anywhere — the P12 corpus.)*
 
-Note what a fifth Cisco device would and would not buy: the cohort would become
-*comparable*, not *representative*. Five hand-written devices by one author can
-demonstrate the arithmetic; they cannot support a claim about fleet drift.
+Note what the Cisco IOS cohort does and does not buy: it is *comparable*, not
+*representative*. Nine hand-written devices by one author, one of them a
+deliberate near-twin of another, demonstrate the arithmetic; they cannot support
+a claim about fleet drift, and zero deviations may measure one author's habits.
 
-**What must not happen.** Growing the corpus by templating the two existing files.
+**What must not happen.** Growing the corpus by templating existing files.
 Near-identical devices inflate the file count without adding evidence, and they
 make the fleet-cache and peer-baseline numbers look better than the data supports.
 

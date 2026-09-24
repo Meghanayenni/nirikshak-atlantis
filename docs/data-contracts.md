@@ -500,12 +500,15 @@ knowing whether a platform supports a control is precisely not knowing that. Not
 EVALUATE, which needs a documented default that by definition is absent. The other
 two branches remain configurable.
 
-### `frameworks` ships empty (D16)
+### `frameworks` — mapped only against a sourced edition (D16)
 
-`FrameworkRef` is fully specified and no rule uses it. Writing a control
-identifier without having read the benchmark would be inventing it. The field
-exists structurally; it stays empty until a benchmark edition is obtained and
-cited.
+Writing a control identifier without having read the benchmark would be
+inventing it, so from P6 to P17 every rule shipped `frameworks: []`. That state
+ended at P17: every rule now maps to NIST SP 800-53 Rev 5 (ADR 0035), and the
+DISA STIG and CIS editions sourced at P18 add further identifiers (ADR 0052),
+each validated against its edition's index and marked `project_asserted`.
+`not_mapped` records, per rule, a sourced framework it declines and why.
+*(Until P18 this section said the field "ships empty" and "no rule uses it".)*
 
 ---
 

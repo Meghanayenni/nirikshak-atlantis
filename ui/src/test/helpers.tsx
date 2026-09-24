@@ -268,7 +268,7 @@ export const FIXTURES = {
    *
    * Copied from a live `/compliance/audits/{id}/remediation` response. Commands
    * are nested under `snippet`, and `snippet` is null when the vetted library
-   * resolved nothing — which is every step while that library is empty. The
+   * resolved nothing for that rule and platform. The
    * earlier fixtures stubbed this endpoint as 404 or `{steps: []}`, so nothing
    * ever exercised a real step and a wrong assumption about its shape reached
    * the browser.

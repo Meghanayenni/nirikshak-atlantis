@@ -86,7 +86,7 @@ describe('verdict semantics (DEVELOPER_GUIDE.md §10)', () => {
 });
 
 describe('no invented data', () => {
-  it('shows the resolver statement and no command while the library is empty', () => {
+  it('shows the resolver statement and no command when no vetted snippet exists', () => {
     const { container } = render(<RemediationPanel remediation={NO_SNIPPET} />);
     expect(container.textContent).toContain('No vetted remediation is available');
     expect(container.querySelector('pre')).toBeNull();

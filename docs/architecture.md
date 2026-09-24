@@ -3,8 +3,11 @@
 Self-learning, vendor-agnostic network security compliance auditor.
 Smart India Hackathon 2026 · Problem Statement 26155 · NTRO · Team Atlantis.
 
-This document describes the system **as it stands at P14**, not as it was
-planned. Where a capability is built but has no data to run on, that is stated
+This document describes the system **as it is built**, not as it was planned.
+*(Until P18 this sentence said "as it stands at P14" — four phases after the
+document had stopped describing P14. A phase label has no runtime source, which
+is why ADR 0048 removed the one the API served; this was the same claim in
+prose.)* Where a capability is built but has no data to run on, that is stated
 here as plainly as the capability itself — because on this build the difference
 between *"the check passed"* and *"the check could not be made"* is most of what
 NIRIKSHAK is for.
@@ -38,8 +41,8 @@ The deterministic spine does all the work that produces a verdict:
      |          |            |            |             |              |             |
   detect     ConfigTree     CSM        Finding      exposure       snippet        HTML
   vendor,    + residue   (typed,      (PASS/FAIL/   (abstains      lookup       document
-  hash,      per pack    evidence-     UNKNOWN/     without ACL    (library     with cited
-  store                  bearing)      N/A)         + interface    is empty)      lines
+  hash,      per pack    evidence-     UNKNOWN/     without ACL    (vetted      with cited
+  store                  bearing)      N/A)         + interface    library)       lines
                              |                       data)
                              |
                         residue (lines no pack matched)
@@ -282,22 +285,25 @@ was unreachable end to end until P18 — detection was the smallest of four
 blockers, and `SyntaxMode.BRACE` had been deferred since P4 to "the phase whose
 corpus contains a brace-structured platform", which arrived at P15.
 
-The brace-nested form of the same JunOS filters is **not** read, and the blocker
-is upstream: vendor detection does not identify a brace-nested file at all, so
-`corpus/juniper/dev/core-rtr-01.conf` never reaches a pack. A reader for it
-could be written today and nothing would call it, which is a declaration no test
-could show right or wrong. The blocker is pinned by a test that is expected to
-fail when detection is fixed.
+*(A paragraph stood here until P18 saying the brace-nested form was **not**
+read and that detection never identified `core-rtr-01.conf`. Both stopped being
+true at ADR 0043, two paragraphs above it: the file is detected as JunOS, read by
+`juniper/junos` 1.2.0, and its `PROTECT-RE` filter is analysed. Removed rather
+than annotated at length — ADR 0059 records it.)*
 
 **Peer-baseline outliers.** Until P15 every cohort held fewer than the five
 devices a baseline needs, so none was established. Registering the P15 corpus
 took the Cisco IOS cohort to nine and **eight baselines are now computed**, with
 zero deviations. That zero is a result rather than an abstention, and the fleet
 response distinguishes them: a cohort below the floor carries an explanation and
-an outcome that is not `compared`, while these were compared and agreed. Two
-files are reported as skipped rather than silently dropped — `dc1-leaf-01.cfg`
-is NX-OS and `core-rtr-01.conf` is brace-nested JunOS, and neither has an active
-pack.
+an outcome that is not `compared`, while these were compared and agreed.
+
+The other three cohorts, derived at ADR 0059: **NX-OS** is one device, so its
+seven fields each carry the outcome `cohort_too_small`. **JunOS** (five devices)
+and **EOS** (four) produce no baseline row at all — not because they are too
+small, but because neither pack reads a canonical field, so there is nothing to
+compare. Every one of the nineteen files has an active pack; until P18 this
+paragraph said two did not.
 
 **The cohort is comparable, not representative.** Six of the nine Cisco devices
 were written by one author in one sitting, and `edge-rtr-11.cfg` is a deliberate
@@ -457,7 +463,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and forty-four numbered decisions across 58 ADRs. (D63 and D64 were never issued; the
+One hundred and forty-six numbered decisions across 59 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -520,6 +526,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0056 | P18 | A version that means its contents | D141, D142 |
 | 0057 | P18 | A control identifier an operator can see | D143, D144 |
 | 0058 | P18 | A benchmark an operator can choose | D145, D146 |
+| 0059 | P18 | Prose that cannot quietly expire | D147, D148 |
 
 ---
 
