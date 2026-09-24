@@ -157,7 +157,9 @@ against the official OSCAL catalog — edition 5.2.0, pinned by the catalog's ow
 sha256, with withdrawn controls listed so a plausible-but-retired identifier
 cannot ship. **Every mapping is `project_asserted`**: a catalog publishes
 *controls*, not *mappings*, and that a NIRIKSHAK check satisfies a given control
-is this project's judgement. No published crosswalk names our checks.
+is this project's judgement. `official` provenance is reachable only from a
+published **crosswalk** — a document stating the mapping — and none has been
+obtained.
 
 **An audit can be scoped to a selected benchmark.**
 `POST /compliance/audits?file_id=…&framework=nist` evaluates only the rules that

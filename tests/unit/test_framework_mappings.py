@@ -16,7 +16,8 @@ import pytest
 
 from api.comply.frameworks import CatalogIndex, indexes, sourced_frameworks
 from api.comply.rulepacks import load_rulepack
-from api.models.enums import Framework, MappingProvenance
+from api.models.enums import ConditionOp, Framework, MappingProvenance, Severity
+from api.models.rule import CheckSpec, Condition
 
 
 @pytest.fixture(scope="module")
@@ -125,12 +126,20 @@ def test_no_mapping_is_marked_official(rulepack) -> None:
     it — that is this project's judgement, and `OFFICIAL` would claim somebody
     else made it.
 
-    `OFFICIAL` is reserved for a mapping taken from a published crosswalk that
-    names our check. No such document exists or is likely to, so this assertion
-    is expected to hold indefinitely. It is written as a test rather than a
-    convention because `project_asserted` is one word away from `official` in a
-    YAML file, and the difference is the difference between a citation and a
-    claim of endorsement.
+    `OFFICIAL` is reserved for a mapping taken from a **published crosswalk** —
+    a document that states the mapping rather than the control. Those exist:
+    CIS publishes mappings from its Benchmarks to NIST SP 800-53, and NIST
+    publishes crosswalk material between SP 800-53 and ISO/IEC 27001. This
+    project has obtained none of them.
+
+    So this assertion is expected to hold until a crosswalk is obtained, **not
+    indefinitely** — the distinction matters, because `OFFICIAL` is the one
+    route to claiming CIS coverage without purchasing the CIS Benchmark itself,
+    and writing it off as dead would foreclose that (ADR 0045).
+
+    It is a test rather than a convention because `project_asserted` is one word
+    away from `official` in a YAML file, and the difference is the difference
+    between a citation and a claim of endorsement.
     """
     official = [
         f"{rule.rule_id} -> {ref.framework.value}:{ref.control_id}"
@@ -204,3 +213,58 @@ def test_a_control_absent_from_the_catalog_is_not_known(catalogs) -> None:
         "the catalog's own labels are zero-padded; the unpadded form a person "
         "would type from memory must not validate"
     )
+
+
+def test_official_remains_constructible_and_is_not_dead_code() -> None:
+    """The member stays, because the route it names is real and unused.
+
+    Nothing ships `OFFICIAL` and nothing is expected to until a crosswalk is
+    obtained. That is not the same as the value being meaningless, and deleting
+    it would foreclose the one way to claim CIS coverage without buying the CIS
+    Benchmark: ingest a published CIS-to-800-53 crosswalk and mark that hop
+    `OFFICIAL` while our own hop stays `project_asserted`.
+
+    Exercised on a constructed ref rather than a shipped one — the same shape as
+    `test_the_mirror_policy_resolves_to_false` (D73): prove the mechanism works
+    in both directions, and let no shipped data claim anything it cannot cite.
+    """
+    from api.models.rule import ComplianceRule, FrameworkRef
+
+    ref = FrameworkRef(
+        framework=Framework.NIST,
+        control_id="AC-17(02)",
+        version="5.2.0",
+        citation="a published crosswalk, if one were obtained",
+        mapping_provenance=MappingProvenance.OFFICIAL,
+    )
+    assert ref.mapping_provenance is MappingProvenance.OFFICIAL
+
+    rule = ComplianceRule(
+        rule_id="NRK-TEST-001",
+        title="constructed",
+        severity=Severity.LOW,
+        rationale="Exercises the accessor a report would use.",
+        check=CheckSpec(field="ssh_version", condition=Condition(op=ConditionOp.EQUALS, value=2)),
+        frameworks=(ref,),
+    )
+    assert rule.has_official_mapping is True
+
+
+def test_the_enum_explains_what_official_would_require() -> None:
+    """A value nothing uses needs the reason it exists written beside it.
+
+    Otherwise the next person to read `MappingProvenance` finds one live member
+    and one dead one, and tidies.
+
+    Read from the source rather than from `__doc__`: a `StrEnum` member does not
+    carry the string literal that follows it, so the explanation exists only in
+    the file — which is where a reader deciding whether to delete it will look.
+    """
+    from pathlib import Path
+
+    source = Path("api/models/enums.py").read_text(encoding="utf-8")
+    block = source.split('OFFICIAL = "official"', 1)[1].split("PROJECT_ASSERTED", 1)[0]
+
+    assert "crosswalk" in block
+    assert "catalog" in block, "the distinction from a control catalog must be stated"
+    assert "CIS" in block, "the concrete route it keeps open should be named"

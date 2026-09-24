@@ -190,9 +190,17 @@ in `rules/frameworks/`, with the catalog's 182 withdrawn controls listed
 separately — `AC-17(08)` and `AU-08(01)` are both withdrawn and are both exactly
 what a person would have written from memory for the telnet and NTP checks.
 
-**Every mapping is `project_asserted`, and always will be.** A catalog publishes
-controls, not mappings; no published crosswalk names NIRIKSHAK's own checks, so
-`OFFICIAL` would credit a judgement nobody else made.
+**Every mapping is `project_asserted`.** A catalog publishes controls, not
+mappings, so `OFFICIAL` would credit a judgement nobody else made.
+
+**A crosswalk is a separate, acquirable artefact** and is worth its own line
+here (ADR 0045). CIS publishes mappings from its Benchmarks to NIST SP 800-53,
+and NIST publishes crosswalk material between SP 800-53 and ISO/IEC 27001.
+Obtaining one would make a two-hop claim available — our check to a CIS
+recommendation stays `project_asserted`, that recommendation to an 800-53
+control becomes `OFFICIAL` — which is **the only route to claiming CIS coverage
+without purchasing the CIS Benchmark itself**. Nothing here carries `OFFICIAL`
+today; the member is kept so that route is not foreclosed.
 
 **The other three remain open, for three different reasons:**
 

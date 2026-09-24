@@ -107,9 +107,17 @@ project's, made by reading the control statements and deciding — and `OFFICIAL
 would claim somebody else made it.
 
 `MappingProvenance.OFFICIAL` means *this mapping follows a published crosswalk*.
-A crosswalk that names our checks does not exist and is not going to. So every
-mapping here is `project_asserted`, and
-`test_no_mapping_is_marked_official` asserts it will stay that way.
+No crosswalk this project has obtained names our checks, so every mapping here
+is `project_asserted`, and `test_no_mapping_is_marked_official` asserts it stays
+that way until one is.
+
+> **Narrowed at P18 (ADR 0045).** This section originally said such a crosswalk
+> *"does not exist and is not going to"*. That was too strong and the reasoning
+> did not support it: what a control catalog cannot do is publish mappings, and
+> crosswalks are a different artefact that does exist — CIS publishes mappings
+> from its Benchmarks to NIST SP 800-53, and NIST publishes crosswalk material
+> between SP 800-53 and ISO/IEC 27001. `OFFICIAL` is unreachable **from a
+> control catalog**, which is the accurate claim and a narrower one.
 
 What the catalog buys is therefore precisely this much, and it is worth having:
 

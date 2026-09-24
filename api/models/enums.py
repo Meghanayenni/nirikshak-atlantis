@@ -214,7 +214,29 @@ class MappingProvenance(StrEnum):
     """Whether a control mapping follows a published crosswalk (decision R16)."""
 
     OFFICIAL = "official"
+    """Taken from a published crosswalk — a document that states the mapping.
+
+    **Unreachable from a control catalog, which is narrower than unreachable.**
+    NIST's OSCAL edition of SP 800-53 publishes *controls*: it says AC-17(02)
+    exists, what it requires and where it sits. It cannot say that NIRIKSHAK's
+    SSH check satisfies it, because it has never heard of NIRIKSHAK. Every
+    mapping derived from a catalog is therefore this project's judgement and
+    ships `project_asserted` (ADR 0035).
+
+    Crosswalks are a different kind of artefact and they do exist. CIS publishes
+    mappings from its Benchmarks to NIST SP 800-53, and NIST publishes crosswalk
+    material between SP 800-53 and ISO/IEC 27001. A mapping ingested from one of
+    those — our check to a CIS recommendation, that recommendation to an
+    800-53 control — would be `OFFICIAL` for the second hop.
+
+    This project has obtained none of them, so nothing carries this value today.
+    Deleting it would foreclose the one route to claiming CIS coverage without
+    purchasing the CIS Benchmark itself, which is a real option and not a
+    theoretical one (ADR 0045).
+    """
+
     PROJECT_ASSERTED = "project_asserted"
+    """This project read the control and judged that its check evidences it."""
 
 
 # ---------------------------------------------------------------------------

@@ -225,7 +225,7 @@ is real; the output is an honest refusal.
 | Not claimed | Why |
 | --- | --- |
 | **Coverage against CIS, DISA STIG or ISO/IEC 27001** | No catalog for any of the three could be obtained. CIS Benchmarks are behind registration, DISA's STIG index is rendered client-side and exposes no resolvable file URL, and ISO/IEC 27001 is a purchased standard. A framework with no sourced catalog is **absent** from the selector, never present and empty. |
-| **An *official* mapping to NIST SP 800-53** | Seven rules now carry NIST control identifiers validated against the Rev 5 OSCAL catalog (ADR 0035), but every one is `project_asserted`. A catalog publishes *controls*; it does not publish *mappings*. That NIRIKSHAK's `NRK-SSH-001` satisfies `AC-17(02)` is this project's judgement, and no published crosswalk names our checks. |
+| **An *official* mapping to any framework** | Seven rules carry NIST control identifiers validated against the Rev 5 OSCAL catalog (ADR 0035), and every one is `project_asserted`. A catalog publishes *controls*; it does not publish *mappings*. `OFFICIAL` is reachable only from a published **crosswalk** — CIS's Benchmark-to-800-53 mappings, NIST's 800-53-to-27001 material — and this project has obtained none (ADR 0045). The value is kept because it is the one route to CIS coverage without buying the CIS Benchmark, not because anything uses it. |
 | **Absence-aware evaluation accuracy** | No platform default and no capability claim ships, so the `EVALUATE` branch has never fired on real data. |
 | **Exposure scores or a priority ranking** | Interfaces and access lists are read, and `interface_roles` now exists for a pack to declare which names are management-plane (ADR 0034) — but **no pack declares one**, because no vendor documentation has been sourced. Exposure stays indeterminate. Severity alone must not determine remediation order, so no severity-sorted list is offered in its place. |
 | **Held-out generalisation** | Blocked: the metric is defined over the held-out vendor's commands, reading them needs an XML parser, and that parser waits on a sample independent of the holdout. |
@@ -448,7 +448,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and fifteen numbered decisions across 44 ADRs. (D63 and D64 were never issued; the
+One hundred and sixteen numbered decisions across 45 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -497,6 +497,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0042 | P18 | A test that skips is a test that does not test | D110, D111 |
 | 0043 | P18 | The second surface JunOS ships | D112, D113, D114, D115 |
 | 0044 | P18 | A serial is not a parsing gap | D116, D117 |
+| 0045 | P18 | `OFFICIAL` is narrower, not dead | D118 |
 
 ---
 
