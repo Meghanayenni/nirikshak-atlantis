@@ -480,10 +480,26 @@ pip install -e ".[dev]"
 #     without either, report.pdf answers 503 and HTML reports still work.
 pip install -e ".[report]"
 
+# 3c. For AI mapping suggestions (optional): the [ai] extra, then the model once.
+pip install -e ".[ai]"
+python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
 # 4. Verify
 pytest
 ruff check .
 ```
+
+**GTK3 on Windows**, for 3b: install [MSYS2](https://www.msys2.org), run
+`pacman -S mingw-w64-x86_64-pango mingw-w64-x86_64-cairo` in its shell, and add
+`C:\msys64\mingw64\bin` to `PATH` — the route the verifying machine uses;
+`GET /health` then reports `pdf_reporting.available: true`.
+
+**Without 3c, the mapping screen works and suggestions do not**: an
+administrator can still map an unknown line by hand, but no ranked candidates
+are offered, and `/health` says the model is unavailable. On the verifying
+machine the `[ai]` stack occupies about 0.7 GB installed (torch alone 531 MB)
+and the model weights 92 MB in the Hugging Face cache; the download is smaller
+than the installed size, and needs network access once (ADR 0018).
 
 Dependency groups are installed as the phases need them:
 
@@ -500,6 +516,13 @@ install quickly and stay within the 8 GB target hardware budget.
 ---
 
 ## Running
+
+Create the first administrator out-of-band — it prompts for the password, and
+there is no self-registration:
+
+```bash
+python scripts/create_admin.py --username alice
+```
 
 ```bash
 uvicorn api.main:app --reload          # the API, on :8000
@@ -518,6 +541,13 @@ The dev server proxies `/health`, `/ingest`, `/compliance`, `/fleet`, `/training
 API host is baked into the bundle. Sign in with an account created by
 `scripts/create_admin.py`; **there is no self-registration**, and the role comes
 from the server rather than from anything the login form offers.
+
+**The Report tab is gated, deliberately.** It opens once every configuration line
+no pack recognised has been decided in *Needs review* (13 on
+`corpus/cisco/dev/rtr-core-01.cfg`; "not security relevant" counts) and every
+vetted command has been marked reviewed — a careless confirmation enters a
+vendor pack permanently, so the interface makes the operator look first. The gate
+is the interface's; `report.html` and `report.pdf` on the API are not gated.
 
 ```bash
 cd ui
@@ -579,12 +609,6 @@ back to HTML under a `.pdf` name and never substitutes a different PDF engine;
 Every failing finding carries either a vetted command or the sentence *"No vetted
 remediation is available for this platform and rule."* There is no third
 possibility: commands are read from `snippets/` and never generated.
-
-Create the first administrator out-of-band:
-
-```bash
-python scripts/create_admin.py --username alice
-```
 
 ## Measuring accuracy
 
