@@ -20,6 +20,7 @@ disk, and the defects that are genuinely open.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -148,21 +149,111 @@ def test_every_adr_on_disk_appears_in_the_index(text: str) -> None:
 OPEN_DEFECTS = {"DEF-3", "DEF-16", "DEF-18"}
 """The defects that are genuinely open at this commit.
 
-Kept here as an explicit constant rather than parsed from prose: the point of the
-test is to fail when reality and the document diverge, and both sides being
-derived from the same text would make it pass vacuously.
+Kept as an explicit constant rather than parsed from the document: a test whose
+expectation and subject are both derived from the same prose passes vacuously.
+Updating this set is a deliberate act, and whoever closes a defect should have
+to say so here.
 
-Updating this set is a deliberate act. Closing DEF-3 or DEF-8 means changing a
-contract or a measurement, and whoever does that should also have to say so here.
+**It went stale anyway.** It read `{"DEF-3", "DEF-8"}` while DEF-16, DEF-17 and
+DEF-18 existed, so two open defects were unguarded and one fixed defect was
+still listed. A hand-maintained list beside a document drifts from it; the fix
+is not a more careful list but
+`test_the_register_and_the_guard_agree`, which fails the moment they disagree.
 """
 
 
-def test_the_document_lists_every_defect(text: str) -> None:
-    """DEF-1 through DEF-15 all appear in the register."""
-    listed = set(re.findall(r"DEF-\d+", text))
-    expected = {f"DEF-{n}" for n in range(1, 16)}
-    missing = sorted(expected - listed, key=lambda d: int(d.split("-")[1]))
-    assert missing == [], f"the defect register omits: {missing}"
+@dataclass(frozen=True)
+class DefectRow:
+    """One row of the register table in `docs/architecture.md` §9."""
+
+    number: int
+    identifier: str
+    description: str
+    status: str
+
+    @property
+    def is_open(self) -> bool:
+        return "OPEN" in self.status.upper()
+
+
+def _register_rows(text: str) -> list[DefectRow]:
+    """Parse the defect register out of the document.
+
+    The table is the source of truth for *what the document says*; the constant
+    above is the source of truth for *what is true*. Keeping them separate is
+    what lets a test compare them.
+    """
+    rows: list[DefectRow] = []
+    for line in text.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        identifier = cells[0].replace("*", "").strip()
+        found = re.fullmatch(r"DEF-(\d+)", identifier)
+        if found is None:
+            continue
+        rows.append(
+            DefectRow(
+                number=int(found.group(1)),
+                identifier=identifier,
+                description=cells[1],
+                status=cells[2],
+            )
+        )
+    return rows
+
+
+def test_the_register_is_contiguous_from_one(text: str) -> None:
+    """Every defect number up to the highest issued has a row.
+
+    Replaces a hardcoded `range(1, 16)`, which stopped covering DEF-16, -17 and
+    -18 the moment they were opened and said nothing about it. The bound is now
+    the register's own highest row, so a numbering gap fails rather than a
+    number somebody forgot to raise.
+    """
+    rows = _register_rows(text)
+    assert rows, "the defect register has no parseable rows"
+
+    numbers = {row.number for row in rows}
+    expected = set(range(1, max(numbers) + 1))
+    missing = sorted(expected - numbers)
+
+    assert missing == [], f"the defect register omits: {[f'DEF-{n}' for n in missing]}"
+
+
+def test_no_defect_is_listed_twice(text: str) -> None:
+    """Two rows for one defect is how a register starts contradicting itself."""
+    numbers = [row.number for row in _register_rows(text)]
+    duplicates = sorted({n for n in numbers if numbers.count(n) > 1})
+
+    assert duplicates == [], f"duplicated rows: {[f'DEF-{n}' for n in duplicates]}"
+
+
+def test_the_register_and_the_guard_agree(text: str) -> None:
+    """**The guard against this guard going stale.**
+
+    `OPEN_DEFECTS` is maintained by hand so the comparison is not vacuous, and
+    the document is maintained by hand because it is prose. Either can drift.
+    This fails the moment they disagree, in whichever direction — which is the
+    only arrangement in which the hand-kept list cannot quietly rot.
+    """
+    in_document = {row.identifier for row in _register_rows(text) if row.is_open}
+
+    unguarded = sorted(in_document - OPEN_DEFECTS)
+    overstated = sorted(OPEN_DEFECTS - in_document)
+
+    assert unguarded == [], (
+        f"the register marks {unguarded} OPEN and OPEN_DEFECTS does not list them. "
+        "Every open defect must be covered by the guard, or opening one silently "
+        "escapes it."
+    )
+    assert overstated == [], (
+        f"OPEN_DEFECTS lists {overstated} but the register does not mark them open. "
+        "Either the defect was fixed and the constant was not updated, or the row "
+        "was softened without the fix."
+    )
 
 
 def test_the_open_defects_are_marked_open(text: str) -> None:
@@ -171,25 +262,67 @@ def test_the_open_defects_are_marked_open(text: str) -> None:
     A register that reported an open defect as handled would be the one failure
     this document could commit that actually misleads somebody making a decision.
     """
+    rows = {row.identifier: row for row in _register_rows(text)}
     for defect in sorted(OPEN_DEFECTS):
-        row = next((line for line in text.splitlines() if f"**{defect}**" in line), None)
-        assert row is not None, f"{defect} should be emphasised as open in the register"
-        assert "**OPEN**" in row, f"{defect} is open but its row does not say so: {row.strip()}"
+        row = rows.get(defect)
+        assert row is not None, f"{defect} has no row in the register"
+        assert row.is_open, f"{defect} is open but its row says {row.status!r}"
+        assert f"**{defect}**" in text, f"{defect} should be emphasised as open"
 
 
 def test_no_fixed_defect_is_claimed_open(text: str) -> None:
-    """The converse. A fixed defect still listed as open would understate the work."""
-    # The upper bound is the highest defect number issued. It was left at 16
-    # when DEF-16, -17 and -18 were opened, so this guard silently stopped
-    # covering the three newest defects — including the two that were open.
-    fixed = {f"DEF-{n}" for n in range(1, 19)} - OPEN_DEFECTS
-    for line in text.splitlines():
-        if "| **OPEN**" not in line and "**OPEN**" not in line:
+    """The converse. A fixed defect still listed as open would understate the work.
+
+    The bound is the register's own contents rather than a literal, which is what
+    the previous `range(1, 19)` had to be raised by hand and was not.
+    """
+    for row in _register_rows(text):
+        if row.identifier in OPEN_DEFECTS:
             continue
-        for defect in fixed:
-            assert f"**{defect}**" not in line, (
-                f"{defect} is fixed but appears in a row marked OPEN: {line.strip()}"
-            )
+        assert not row.is_open, f"{row.identifier} is fixed but its row says {row.status!r}"
+
+
+def test_the_headline_count_matches_the_rows(text: str) -> None:
+    """The sentence above the table is a claim too, and it is the one people read.
+
+    "Eighteen numbered defects. Three are open." — both halves are checkable
+    against the rows beneath them, and a table edited without the sentence is
+    exactly the drift this section keeps producing.
+    """
+    rows = _register_rows(text)
+    spelled = {
+        1: "One",
+        2: "Two",
+        3: "Three",
+        4: "Four",
+        5: "Five",
+        6: "Six",
+        7: "Seven",
+        8: "Eight",
+        9: "Nine",
+        10: "Ten",
+    }
+    open_count = sum(1 for row in rows if row.is_open)
+
+    assert f"{len(rows)} numbered defects" in text or _spelled_total(len(rows)) in text, (
+        f"the register holds {len(rows)} rows and the headline does not say so"
+    )
+    phrase = f"**{spelled.get(open_count, open_count)} are open.**"
+    assert phrase in text or f"**{open_count} are open.**" in text, (
+        f"{open_count} defects are open and the headline does not say so"
+    )
+
+
+def _spelled_total(count: int) -> str:
+    words = {
+        15: "Fifteen",
+        16: "Sixteen",
+        17: "Seventeen",
+        18: "Eighteen",
+        19: "Nineteen",
+        20: "Twenty",
+    }
+    return f"{words.get(count, count)} numbered defects"
 
 
 def test_the_document_explains_why_the_open_defects_stay_open(text: str) -> None:
@@ -235,8 +368,7 @@ def test_no_unsourced_framework_identifier_is_written(text: str) -> None:
         if framework in sourced:
             continue
         assert re.search(pattern, text) is None, (
-            f"the document writes {description}, and no {framework.value} catalog "
-            "has been sourced"
+            f"the document writes {description}, and no {framework.value} catalog has been sourced"
         )
 
 
@@ -329,3 +461,73 @@ def test_the_advisory_branch_is_described_as_advisory(text: str) -> None:
     assert "AI suggests. Rules decide." in text
     for phrase in ["never inside it", "not a verdict"]:
         assert phrase.lower() in text.lower(), f"the document should state: {phrase!r}"
+
+
+# ---------------------------------------------------------------------------
+# The register guard must be able to fail
+# ---------------------------------------------------------------------------
+
+
+DOCTORED = """
+| # | Description | Status |
+| --- | --- | --- |
+| DEF-1 | something | Fixed (ADR 0001) |
+| **DEF-2** | **something open** | **OPEN** |
+| DEF-4 | a gap where DEF-3 should be | Fixed (ADR 0002) |
+| DEF-4 | the same number twice | Fixed (ADR 0003) |
+"""
+
+
+def test_the_register_parser_reads_both_row_styles() -> None:
+    """Fixed rows are plain; open rows are bold. Both must parse.
+
+    If `_register_rows` silently skipped the emphasised rows, every test above
+    would pass while covering nothing — the failure mode `test_detector_actually_fires`
+    exists for elsewhere in this suite.
+    """
+    rows = {row.identifier: row for row in _register_rows(DOCTORED)}
+
+    assert set(rows) == {"DEF-1", "DEF-2", "DEF-4"}
+    assert rows["DEF-2"].is_open
+    assert not rows["DEF-1"].is_open
+
+
+def test_the_contiguity_check_actually_fires() -> None:
+    """DEF-3 is missing from the doctored register and must be caught."""
+    numbers = {row.number for row in _register_rows(DOCTORED)}
+    missing = set(range(1, max(numbers) + 1)) - numbers
+
+    assert missing == {3}, "a numbering gap would go unnoticed"
+
+
+def test_the_duplicate_check_actually_fires() -> None:
+    numbers = [row.number for row in _register_rows(DOCTORED)]
+
+    assert numbers.count(4) == 2, "a repeated defect number would go unnoticed"
+
+
+def test_the_reconciliation_actually_fires() -> None:
+    """A defect open in the document and absent from the guard is caught.
+
+    This is the exact drift that happened: `OPEN_DEFECTS` read
+    `{"DEF-3", "DEF-8"}` while DEF-16 and DEF-18 were open in the register, so
+    two open defects were unguarded for three phases.
+    """
+    in_document = {row.identifier for row in _register_rows(DOCTORED) if row.is_open}
+    pretend_guard = {"DEF-1"}
+
+    assert in_document - pretend_guard == {"DEF-2"}, "an unguarded open defect must show up"
+    assert pretend_guard - in_document == {"DEF-1"}, "a stale guard entry must show up"
+
+
+def test_an_open_row_with_a_trailing_note_still_reads_as_open() -> None:
+    """DEF-18's row is `**OPEN** — evidence secured (ADR 0031)`.
+
+    A status cell that qualifies itself must not read as closed; softening a row
+    into prose is precisely how an open defect would disappear.
+    """
+    row = next(
+        r for r in _register_rows("| **DEF-9** | **x** | **OPEN** — mitigated, not closed |")
+    )
+
+    assert row.is_open

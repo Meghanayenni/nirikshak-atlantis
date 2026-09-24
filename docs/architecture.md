@@ -448,7 +448,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and sixteen numbered decisions across 45 ADRs. (D63 and D64 were never issued; the
+One hundred and eighteen numbered decisions across 46 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -498,6 +498,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0043 | P18 | The second surface JunOS ships | D112, D113, D114, D115 |
 | 0044 | P18 | A serial is not a parsing gap | D116, D117 |
 | 0045 | P18 | `OFFICIAL` is narrower, not dead | D118 |
+| 0046 | P18 | A register that cannot drift from its guard | D119, D120 |
 
 ---
 
