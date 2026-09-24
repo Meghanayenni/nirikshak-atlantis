@@ -73,35 +73,34 @@ bound to an interface**. Every earlier list carried an empty `applied_to`
 because no development file applied one, so the Cisco pack's `applied` regex had
 been declared and unexercised since ADR 0027.
 
-Still unread, and each for a different reason: the **brace-nested** JunOS form
-(vendor detection does not identify such a file, so it never reaches a pack —
-the blocker is upstream of extraction), **Arista** CIDR lists (the pack declares
-no extraction), and JunOS **security policies**, which are a zone-based grammar
-rather than a filter and appear in the corpus as a single orphan line.
+**P18 added the brace-nested JunOS surface** (ADR 0043), taking the tally to
+**6 analysed, 0 dropped** and producing the corpus's first shadowed result on a
+non-Cisco platform. Detection turned out to be the smallest of four blockers
+there; the syntax mode was keyed to the platform rather than the file, and
+`SyntaxMode.BRACE` had never been implemented.
 
-The P12 exposure ranking is the half that did **not** open. Interfaces are read,
-but nothing establishes which one is the management plane, so exposure remains
-indeterminate — the blocker moved from `no_interface_data` to
+Still unread, and each for a different reason: **Arista** CIDR lists (the pack
+declares no extraction), and JunOS **security policies**, which are a zone-based
+grammar rather than a filter and appear in the corpus as a single orphan line.
+
+The P12 exposure ranking is the half that did **not** open. Interfaces are read
+— 23 across the fleet — but **none is classified as management plane**, so
+exposure remains indeterminate: the blocker moved from `no_interface_data` to
 `indeterminate_interfaces`. That is gap 2 (vendor capability documentation) in a
 new place, not this gap, and it is recorded there.
 
-The P7 analyser is built and exhaustively tested against constructed `ACL`
-objects. It has never seen a parsed one.
+*(Two paragraphs stood here until P18, written at P12 and P14: that the analyser
+had "never seen a parsed one", and that the corpus held zero interfaces and zero
+ACLs across ten devices. Both were true when written and had been false since
+P16. They are removed rather than annotated, because this is a working document
+rather than a decision record — but the fact that a superseded paragraph
+survived two phases inside an entry whose later text contradicted it is worth
+one line.)*
 
-**Now blocking a second built feature.** P12 shipped the Prioritise stage, and it
-abstains on every finding of every device: exposure needs interfaces *and* access
-lists, and the corpus holds **zero interfaces and zero ACLs** across all ten
-non-holdout devices. `exposure_score` and `priority_rank` are `None` everywhere
-and the audit response reports `no_interface_data` as the blocker. Two phases of
-machinery — P7's interval logic and P12's ranking — now wait on this one gap.
-
-**What would close the remaining half.** ACL and interface parsing patterns for
-at least one platform, authored from the development split. The shapes now
-present cover a shadowed entry, an overly permissive entry, a clean list and a
-list applied to an interface with a direction. Still absent from the corpus: a
-*redundant* entry, a partial overlap that is neither shadowed nor redundant, and
-an object-group reference — so those three branches of the analyser remain
-unexercised even once patterns exist.
+**Still absent from the corpus**, so three branches of the analyser remain
+unexercised on real data: a partial overlap that is neither shadowed nor
+redundant, an object-group reference, and an entry whose wildcard mask is
+non-contiguous enough to drop a list.
 
 **What must not happen.** Writing ACL parsing patterns from general vendor
 knowledge. The P4 corpus-provenance test would reject them, and it should.
