@@ -214,7 +214,7 @@ with opposite terms:
 
 - **DISA STIG** — the Cisco IOS XE Router NDM STIG, V3R7, is committed as XCCDF
   under `docs/sources/disa/` and its index re-derives from it on every test run.
-  Five rules map to five STIG IDs.
+  Three rules map to four STIG IDs.
 - **CIS Benchmarks** — the Cisco IOS XE 17.x Benchmark, v2.2.1, is **referenced,
   never held**: its own terms forbid third-party hosting, so it is read from
   outside the tree and only recommendation numbers are recorded. Six rules map
@@ -226,7 +226,7 @@ XE — and are scoped to releases matching 17.x, so on every other device in the
 corpus (classic IOS 15.x, NX-OS, JunOS, EOS) neither edition's identifiers are
 shown, a report says why, and selecting either is refused with 409 (ADR 0054). Four rules are looser than the STIG control the prepared reading
 proposed for them and carry no STIG identifier, each with its reason recorded.
-Five of 42 STIG requirements and six of 84 CIS recommendations carry a mapping:
+Four of 42 STIG requirements and six of 84 CIS recommendations carry a mapping:
 that is evidence about seven checks, not coverage of either benchmark.
 
 **Open for the team, not answered here:** whether this repository may

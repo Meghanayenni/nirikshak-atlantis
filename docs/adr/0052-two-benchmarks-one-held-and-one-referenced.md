@@ -208,10 +208,21 @@ itself.
 
 ## What is still not claimed
 
-- **Coverage.** Five STIG IDs of 42 and six CIS recommendations of 84 carry a
+- **Coverage.** Four STIG IDs of 42 and six CIS recommendations of 84 carry a
   NIRIKSHAK mapping. That is evidence about seven checks, not an assessment
   against either benchmark, and no document may call it one.
 - **Official mappings.** Every one is `project_asserted`. Neither artifact is a
   crosswalk (ADR 0041, ADR 0045).
 - **Any finding on the corpus's in-scope devices that depends on HTTP.** The
   two IOS XE 17 corpus files both carry `no ip http server`.
+
+## Erratum (same day)
+
+As first committed, this ADR and README, `docs/architecture.md` and
+`SOURCING_BACKLOG.md` said **five** STIG IDs were mapped by five rules. The
+table above was right and the prose was not: three rules carry four STIG IDs —
+`CISC-ND-001210` and `CISC-ND-001200` (SSH), `CISC-ND-000140` (telnet),
+`CISC-ND-000470` (HTTP). Seven rules less four declined is three. Found by
+deriving the figure from the rulepack for the session's closing statement, and
+now reconciled by `test_the_mapped_counts_in_prose_match_the_rulepack`, which
+did not exist when the wrong number was written.

@@ -175,7 +175,7 @@ a constructed pack, so an abstention here is a refusal rather than a breakage.
 All seven rules carry NIST SP 800-53 Rev 5 control identifiers, each validated
 against the official OSCAL catalog — edition 5.2.0, pinned by the catalog's own
 sha256, with withdrawn controls listed so a plausible-but-retired identifier
-cannot ship. Five rules carry DISA STIG IDs and six carry CIS recommendation
+cannot ship. Three rules carry four DISA STIG IDs and six carry CIS recommendation
 numbers (ADR 0052), each validated against an index of its edition. **Every mapping is `project_asserted`**: a catalog publishes
 *controls*, not *mappings*, and that a NIRIKSHAK check satisfies a given control
 is this project's judgement. `official` provenance is reachable only from a
@@ -224,7 +224,7 @@ No legal claim is made about either set of terms.
 selector rather than present and empty: an empty result reads as a clean bill of
 health, and "we never read this benchmark" is a different statement. **No claim
 of coverage against any framework is made or supported by this repository** —
-five of 42 STIG requirements and six of 84 CIS recommendations carry a mapping —
+four of 42 STIG requirements and six of 84 CIS recommendations carry a mapping —
 and none of the four supports a claim of *certified* compliance. See
 `docs/adr/0035-framework-mappings-against-a-content-addressed-catalog.md` and
 `docs/adr/0052-two-benchmarks-one-held-and-one-referenced.md`.

@@ -194,3 +194,54 @@ def test_the_existence_guard_rejects_an_invented_identifier() -> None:
     assert not available[Framework.STIG].knows("CISC-ND-999999")
     assert not available[Framework.CIS].knows("9.9.9")
     assert not available[Framework.NIST].knows("AC-99")
+
+
+WORDS = {
+    w: i
+    for i, w in enumerate(
+        "zero one two three four five six seven eight nine ten eleven twelve".split()
+    )
+}
+
+
+def test_the_mapped_counts_in_prose_match_the_rulepack() -> None:
+    """ "N of 42 STIG requirements", "N of 84 CIS recommendations" — derived, not declared.
+
+    ADR 0052 first shipped "five of 42" in four documents; the rulepack maps
+    four. Nothing was checking, which is the ADR 0048 lesson one more time.
+    """
+    from api.comply.rulepacks import load_rulepack
+
+    rulepack = load_rulepack()
+    available = indexes()
+    mapped = {
+        framework: len(
+            {
+                r.control_id
+                for rule in rulepack.rules
+                for r in rule.frameworks
+                if r.framework is framework
+            }
+        )
+        for framework in (Framework.STIG, Framework.CIS)
+    }
+    phrases = {
+        Framework.STIG: rf"\b(\w+) of {available[Framework.STIG].control_count} STIG requirements",
+        Framework.CIS: rf"\b(\w+) of {available[Framework.CIS].control_count} CIS recommendations",
+    }
+
+    wrong: list[str] = []
+    seen = 0
+    for document in documents():
+        text = document.read_text(encoding="utf-8")
+        for framework, pattern in phrases.items():
+            for match in re.finditer(pattern, text, re.IGNORECASE):
+                seen += 1
+                word = match.group(1).lower()
+                value = WORDS.get(word, int(word) if word.isdigit() else -1)
+                if value != mapped[framework]:
+                    wrong.append(
+                        f"{document.name}: {match.group(0)!r}, rulepack maps {mapped[framework]}"
+                    )
+    assert seen, "no document states the mapped counts; this test would pass vacuously"
+    assert wrong == [], "\n".join(wrong)
