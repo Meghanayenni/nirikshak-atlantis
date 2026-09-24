@@ -15,6 +15,11 @@ htmlcov/
 # committed, even from the sample corpus workflow.
 *.db
 *.db-journal
+# api/db/connection.py opens every database in WAL mode, so a running API keeps
+# its most recent writes — configuration-derived content — in these side files
+# beside the .db. `*.db` does not match them.
+*.db-wal
+*.db-shm
 uploads/
 
 # Runtime-generated vendor packs (P11, decision D45).

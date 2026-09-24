@@ -473,6 +473,10 @@ source .venv/bin/activate     # Linux / macOS
 # 3. Install the core and development dependencies
 pip install -e ".[dev]"
 
+# 3b. For PDF reports: WeasyPrint. Also needs the GTK3 runtime (see Requirements);
+#     without either, report.pdf answers 503 and HTML reports still work.
+pip install -e ".[report]"
+
 # 4. Verify
 pytest
 ruff check .
@@ -533,12 +537,17 @@ Endpoints so far:
 | GET | `/compliance/audits/{id}/report.html` | Evidence-linked report | user |
 | GET | `/compliance/audits/{id}/report.pdf` | The same, or 503 (see below) | user |
 | GET | `/compliance/audits/{id}/remediation` | Plan, in application order | user |
+| GET | `/compliance/audits/frameworks` | Sourced benchmarks, each edition and sha256 | public |
+| GET | `/compliance/audits/frameworks/device/{file_id}` | Which benchmarks describe this device, and why not | user |
+| GET | `/ingest/files/{file_id}/lines` | Stored lines of a file you uploaded (evidence context) | user |
 | GET | `/fleet/baseline` | Peer baselines and deviations | **admin** |
 | GET | `/training/queue` | Unknown shapes, clustered and ranked | **admin** |
 | POST | `/training/confirm` | Record one administrator decision | **admin** |
 | POST | `/training/compile` | Compile it into a DRAFT pack version | **admin** |
 | POST | `/training/activate` | Activate a validated pack — no restart | **admin** |
 | POST | `/training/rollback` | Return a platform to an earlier pack | **admin** |
+| POST | `/training/withdraw` | Withdraw a trained mapping | **admin** |
+| GET | `/training/packs` | Pack inventory | **admin** |
 | GET | `/training/examples` | Decisions recorded so far | **admin** |
 | GET | `/audit/head` · `/audit/records` · `/audit/verify` | The hash chain | user |
 | GET · POST | `/users`, `/users/{id}/disable` | Account management | **admin** |

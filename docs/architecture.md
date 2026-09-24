@@ -420,9 +420,10 @@ root, each still verifying against its own declared checksum — so the bytes th
 read those two runs are in the repository rather than in a scratch directory.
 Nothing resolves a version *through* that directory: a human can open the file, a
 loader cannot. The repair — a version resolvable for provenance and ineligible
-for activation, plus a `pack_versions` column that is keyed by `pack_id` rather
-than by vendor, so `cisco/ios` and `cisco/nxos` cannot collide in it — is still
-open.
+for activation — is still open. *(This sentence also listed a `pack_versions`
+column keyed by `pack_id` rather than by vendor as outstanding. That half landed
+at ADR 0038: `CsmSource.pack_versions` is keyed `vendor/os_family`, so
+`cisco/ios` and `cisco/nxos` no longer collide in it.)*
 
 **DEF-16 — the detector now runs, and the defect is unchanged** (ADR 0051). Its
 guard scans `packs/trained/`, which is gitignored and empty on every checkout,
