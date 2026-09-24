@@ -322,6 +322,30 @@ pointed a fleet's logs at an address nobody chose would be worse than no snippet
 
 ---
 
+## 6b. A second input type, for facts a configuration does not carry
+
+**Blocks:** device serial numbers, and any hardware detail a running-config
+omits. **Added at P18.**
+
+**This is not a sourcing item and not a parsing gap**, which is why it sits
+apart. A serial appears in `show version` and `show inventory` output; a
+configuration export does not contain one. No pattern over the current input
+could ever match, so no pattern author and no vendor document closes it.
+
+**What would close it.** Accepting `show version` / `show inventory` output as a
+second input type alongside configuration exports, with detection for it and
+pack syntax scoped to it. `SourceType` already distinguishes artefacts and
+`Evidence` already records which one a citation came from, so the contracts are
+in place; ingestion, detection and pack declarations are not.
+
+**What must not happen.** Authoring a `serial` pattern against a running-config.
+It would be a regex no input can satisfy, and DEVELOPER_GUIDE.md §3 names the result —
+a field present in the schema and never matching looks supported while
+producing UNKNOWN forever. `api/models/source_limits.py` records the limit and a
+test asserts no pack declares such a pattern.
+
+---
+
 ## 7. Line-level ground truth for the similarity layer
 
 **Blocks:** top-3 mapping accuracy on any population, and confidence calibration.

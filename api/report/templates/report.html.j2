@@ -36,8 +36,9 @@
 <div class="doc-h">
   <h1>NIRIKSHAK &mdash; compliance report</h1>
   <p class="sub">
-    Configuration file <span class="num">{{ report.config_file_id[:16] }}</span>
-    &middot; {{ report.platform_label }}
+    {% if report.identity.hostname %}<span class="num">{{ report.identity.hostname }}</span>
+    &middot; {% endif %}{{ report.platform_label }}
+    &middot; file <span class="num">{{ report.config_file_id[:16] }}</span>
     &middot; {{ report.total }} check{{ '' if report.total == 1 else 's' }} evaluated
     {% if report.evaluated_at %}&middot; audited <span class="num">{{ report.evaluated_at }}</span>{% endif %}
   </p>
@@ -62,6 +63,41 @@
   <h2>Subject</h2>
   <div class="card"><div class="pad">
     <dl class="kv">
+      {#
+        Device identity. Every field here was already extracted and stored and
+        stopped at the report boundary until P18 - a report named only by a
+        content hash cannot be matched to a router by the person holding it.
+
+        A field nothing read renders as "not reported", and the SERIAL renders
+        with the reason it cannot be read at all. Blank would say "we looked and
+        failed"; a configuration export does not contain a serial, and the two
+        call for different responses.
+      #}
+      <dt>Hostname</dt>
+      <dd>
+        {% if report.identity.hostname %}<span class="num">{{ report.identity.hostname }}</span>
+        {% else %}<span style="color:var(--muted)">not reported</span>{% endif %}
+      </dd>
+      <dt>Model</dt>
+      <dd>
+        {% if report.identity.model %}<span class="num">{{ report.identity.model }}</span>
+        {% else %}<span style="color:var(--muted)">not reported</span>{% endif %}
+      </dd>
+      <dt>OS version</dt>
+      <dd>
+        {% if report.identity.os_version %}<span class="num">{{ report.identity.os_version }}</span>
+        {% else %}<span style="color:var(--muted)">not reported</span>{% endif %}
+      </dd>
+      <dt>Serial</dt>
+      <dd>
+        {% if report.identity.serial %}<span class="num">{{ report.identity.serial }}</span>
+        {% else %}<span style="color:var(--muted)">not applicable</span>
+        {% if report.identity.serial_note %}
+        <div style="color:var(--muted);font-size:11.5px;margin-top:2px">
+          {{ report.identity.serial_note }}
+        </div>
+        {% endif %}{% endif %}
+      </dd>
       <dt>Configuration file</dt>
       <dd>
         <span class="num">{{ report.config_file_id }}</span>

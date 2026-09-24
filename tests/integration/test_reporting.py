@@ -516,3 +516,45 @@ def test_the_pdf_endpoint_returns_a_pdf_when_the_runtime_is_present(
     assert response.headers["content-type"].startswith("application/pdf")
     assert response.content.startswith(b"%PDF-"), "a .pdf response must contain a PDF"
     assert len(response.content) > 1000, "a report of one page is still not 200 bytes"
+
+
+# ---------------------------------------------------------------------------
+# The device the report is about (ADR 0044)
+# ---------------------------------------------------------------------------
+
+
+def test_the_report_names_the_device_not_only_the_file(client: TestClient) -> None:
+    """Until P18 the subject was a content hash and nothing else.
+
+    Hostname, model, OS version and serial were all extracted, stored in
+    `device` and reaching the canonical model — and stopped at the report
+    boundary, so an operator handed a report for `8995304d…` could not tell
+    which router it was (ADR 0041).
+    """
+    audit_id = audited(client)
+    html = client.get(f"/compliance/audits/{audit_id}/report.html", auth=ALICE).text
+
+    assert "sw-access-02" in html, "the report does not name the device"
+    assert "Hostname" in html
+    assert "OS version" in html
+
+
+def test_the_serial_says_why_it_is_absent_rather_than_being_blank(
+    client: TestClient,
+) -> None:
+    """A serial is not missing from the parser; it is absent from the input.
+
+    Blank reads as "we looked and failed". A configuration export does not
+    contain a serial — it is `show version` output — and the two call for
+    different responses from whoever reads the report. `not applicable` plus the
+    reason is the honest rendering (ADR 0044).
+    """
+    audit_id = audited(client)
+    html = client.get(f"/compliance/audits/{audit_id}/report.html", auth=ALICE).text
+
+    assert "Serial" in html
+    assert "not applicable" in html
+    assert "show version" in html, "the reason the serial is absent is not given"
+    assert "not reported" not in html.split("Serial")[1][:400], (
+        "a serial must not render as merely unreported — that is a different claim"
+    )

@@ -31,13 +31,14 @@ implying the audit knew.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from api.models.enums import Framework, Severity, UnknownReason, Verdict
+from api.models.enums import Framework, Severity, SourceType, UnknownReason, Verdict
 from api.models.finding import Finding
 from api.models.rule import FrameworkRef
+from api.models.source_limits import not_determinable
 from api.remediate.library import SnippetLibrary
 from api.remediate.resolver import RemediationResolution, ResolutionOutcome, resolve
 
@@ -92,6 +93,33 @@ class ReportedFinding:
 
 
 @dataclass(frozen=True)
+class ReportedIdentity:
+    """What the report can say about which device this is.
+
+    Until P18 the report named the subject only by `config_file_id`, a content
+    hash. Every one of these fields was already extracted, stored in `device`
+    and reaching the canonical model — they simply stopped at the report
+    boundary, so an operator handed a report for `8995304d…` could not tell
+    which router it was (ADR 0041).
+
+    `serial_note` carries the reason the serial is absent rather than leaving it
+    blank. Blank reads as "we failed to find it"; the truth is that a
+    configuration export does not contain one, and those call for different
+    responses from whoever reads the report.
+    """
+
+    hostname: str | None = None
+    model: str | None = None
+    os_version: str | None = None
+    serial: str | None = None
+    serial_note: str | None = None
+
+    @property
+    def is_empty(self) -> bool:
+        return not any((self.hostname, self.model, self.os_version, self.serial))
+
+
+@dataclass(frozen=True)
 class ReportProvenance:
     """Exactly which code and data produced this document.
 
@@ -133,6 +161,7 @@ class Report:
     verdict_counts: dict[str, int]
     provenance: ReportProvenance
     disclosures: tuple[str, ...]
+    identity: ReportedIdentity = field(default_factory=ReportedIdentity)
     framework_selection: tuple[str, ...] = ()
     """Benchmarks this run was scoped to. Empty means no filter was applied —
     NIRIKSHAK's own checks — and is **not** the same as a benchmark that matched
@@ -160,6 +189,19 @@ class Report:
     @property
     def resolved_remediation_count(self) -> int:
         return sum(1 for f in self.findings if f.remediation.outcome is ResolutionOutcome.RESOLVED)
+
+
+def _identity(row: Mapping[str, Any]) -> ReportedIdentity:
+    """The device row, with the serial's absence explained rather than blank."""
+    serial = row.get("serial")
+    return ReportedIdentity(
+        hostname=row.get("hostname"),
+        model=row.get("model"),
+        os_version=row.get("os_version"),
+        serial=serial,
+        serial_note=None if serial else not_determinable("serial", SourceType.CLI),
+    )
+
 
 
 def _disclosures(reported: tuple[ReportedFinding, ...], library: SnippetLibrary) -> tuple[str, ...]:
@@ -251,6 +293,7 @@ def build_report(
     config_file_path: str | None,
     generated_at: datetime | None = None,
     rule_frameworks: Mapping[str, tuple[FrameworkRef, ...]] | None = None,
+    identity: Mapping[str, Any] | None = None,
 ) -> Report:
     """Assemble one report from a persisted run.
 
@@ -300,6 +343,7 @@ def build_report(
         config_file_path=config_file_path,
         vendor=vendor,
         os_family=os_family,
+        identity=_identity(identity or {}),
         evaluated_at=run.get("evaluated_at"),
         findings=ordered,
         verdict_counts=dict(run.get("verdicts", {})),

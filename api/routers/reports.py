@@ -79,6 +79,25 @@ def _authorise(conn: sqlite3.Connection, user: User, audit_id: str) -> None:
     require_access(user, exists=exists, owner_id=owner_id)
 
 
+def _identity_row(conn: sqlite3.Connection, device_id: str) -> dict[str, Any]:
+    """Hostname, model, OS version and serial for the audited device.
+
+    Read at render time like the snippet library and the control mappings, and
+    for the same reason: it is looked up rather than copied into the run, so a
+    report cannot show identity the `device` row no longer holds.
+
+    Returns `{}` when there is no row. A report for a device whose identity was
+    never extracted still renders — it simply names the configuration file, as
+    every report did before P18.
+    """
+    row = conn.execute(
+        "SELECT hostname, model, os_version, serial FROM device WHERE device_id = ?",
+        (device_id,),
+    ).fetchone()
+    return dict(row) if row is not None else {}
+
+
+
 def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
     """Authorise, load, and build the view model. Shared by both representations."""
     _authorise(conn, user, audit_id)
@@ -113,6 +132,7 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
         os_family=os_family,
         config_file_path=blob_path,
         rule_frameworks=rule_frameworks,
+        identity=_identity_row(conn, run["device_id"]),
     )
 
 

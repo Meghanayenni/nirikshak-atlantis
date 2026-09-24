@@ -97,7 +97,7 @@ contract, not by intention.
 
 ## 4. Packages and responsibilities
 
-Fifteen packages under `api/`, 111 modules.
+Fifteen packages under `api/`, 112 modules.
 
 | Package | Responsibility |
 | --- | --- |
@@ -228,11 +228,19 @@ is real; the output is an honest refusal.
 | **An *official* mapping to NIST SP 800-53** | Seven rules now carry NIST control identifiers validated against the Rev 5 OSCAL catalog (ADR 0035), but every one is `project_asserted`. A catalog publishes *controls*; it does not publish *mappings*. That NIRIKSHAK's `NRK-SSH-001` satisfies `AC-17(02)` is this project's judgement, and no published crosswalk names our checks. |
 | **Absence-aware evaluation accuracy** | No platform default and no capability claim ships, so the `EVALUATE` branch has never fired on real data. |
 | **Exposure scores or a priority ranking** | Interfaces and access lists are read, and `interface_roles` now exists for a pack to declare which names are management-plane (ADR 0034) — but **no pack declares one**, because no vendor documentation has been sourced. Exposure stays indeterminate. Severity alone must not determine remediation order, so no severity-sorted list is offered in its place. |
-| **A device serial number, on any platform** | No configuration export in the corpus carries one — a serial lives in `show version` and `show inventory`, not in a running-config. The contract, the column and the report field all exist and abstain. PS 26155 names it as a deliverable; this is it not being delivered, said plainly (ADR 0037). |
 | **Held-out generalisation** | Blocked: the metric is defined over the held-out vendor's commands, reading them needs an XML parser, and that parser waits on a sample independent of the holdout. |
 | **Top-3 mapping accuracy or a calibrated confidence** | No line-level ground truth exists, and no calibrator is fitted. Every similarity score is a ranking, never a probability. |
 | **Real-world accuracy** | Every corpus file is hand-written by one author. The harness measures a synthetic sample honestly; that is not field accuracy. |
 | **Independent ground truth** | The labels are unreviewed, and the Cisco labels share an author with the Cisco parsing patterns. |
+
+**A device serial number.** Previously listed here as a deliverable not being
+delivered. That was the wrong description: a serial is inventory data from
+`show version` and `show inventory`, and a configuration export does not contain
+one — so no pattern over this input could ever match, and nobody could close it
+by writing a regex. Recorded against the **input type** rather than the platform
+(every platform here *can* express a serial), and the report renders it as *not
+applicable* with the reason rather than blank. The clean path is a second input
+type; it is named in ADR 0044 and not built.
 
 Four items have since left this table.
 
@@ -440,7 +448,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and thirteen numbered decisions across 43 ADRs. (D63 and D64 were never issued; the
+One hundred and fifteen numbered decisions across 44 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -488,6 +496,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0041 | P18 | A working deliverable described as blocked | D108, D109 |
 | 0042 | P18 | A test that skips is a test that does not test | D110, D111 |
 | 0043 | P18 | The second surface JunOS ships | D112, D113, D114, D115 |
+| 0044 | P18 | A serial is not a parsing gap | D116, D117 |
 
 ---
 

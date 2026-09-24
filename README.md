@@ -178,13 +178,30 @@ against those three is made or supported by this repository**, and none of the
 four supports a claim of *certified* compliance. See
 `docs/adr/0035-framework-mappings-against-a-content-addressed-catalog.md`.
 
-**No device serial number is reported, on any platform.** Not one configuration
-export in the corpus carries one: a serial is inventory data from
-`show version` / `show inventory`, not from a running-config. The contract, the
-database column and the report field exist and abstain. The hardware **model**
-*is* read on Arista, from the `! device:` header EOS writes itself — and was
-removed from Cisco IOS, where the pattern's only evidence was an annotation
-somebody typed into one corpus file and no real device emits. See
+**A serial number is not readable from a configuration, and that is a limit of
+the input rather than of the parser.** A serial is inventory data from
+`show version` / `show inventory`; a configuration export does not contain one,
+so no pattern over this input could ever match and nobody can close it by
+writing a regex. It is recorded against the **input type** rather than the
+platform — every platform here can express a serial — and the report renders it
+as *not applicable* with that reason rather than blank, because "we looked and
+failed" and "this input does not contain one" call for different responses. The
+clean path is accepting `show version` output as a second input type; it is
+named in `docs/adr/0044-a-serial-is-not-a-parsing-gap.md` and not built.
+
+**The report names the device.** Hostname, model and OS version appear in a
+Subject block and the hostname is in the header. All three were extracted and
+stored from the beginning and stopped at the report boundary until P18, so a
+report for `8995304d…` could not be matched to a router by the person holding
+it.
+
+**The hardware model is read on Arista**, from the `! device:` header EOS writes
+itself — and was **removed** from Cisco IOS, where the pattern's only evidence
+was an annotation somebody typed into one corpus file that no real device emits.
+That pattern shipped in a builtin pack for ten phases, reporting a fabricated
+model as observed identity *with a citation*. It is the sharpest example in this
+repository of why sourced provenance matters: an absent field invites a
+question, and a field carrying a file name and a line number invites belief. See
 `docs/adr/0037-a-model-read-from-a-line-a-device-writes.md`.
 
 **The corpus is synthetic and small.** Two Cisco development devices are enough to
