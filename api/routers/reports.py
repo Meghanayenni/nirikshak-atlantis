@@ -29,14 +29,14 @@ from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import HTMLResponse
 
 from api.audit.chain import AuditChain
-from api.comply.frameworks import explain_absence, mappings_for_device, scope_selection
+from api.comply.frameworks import run_framework_view
 from api.comply.rulepacks import load_active_rulepack
 from api.config import settings
 from api.db import findings as finding_store
 from api.db.connection import connect
 from api.models.audit import Subject
 from api.models.auth import User
-from api.models.enums import AuditAction, Framework
+from api.models.enums import AuditAction
 from api.remediate.library import load_active_library
 from api.remediate.resolver import ResolutionOutcome, order_snippets
 from api.report.errors import PdfBackendUnavailableError
@@ -122,32 +122,19 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
     # each missing framework is missing, rather than calling it unsourced.
     rulepack = load_active_rulepack()
     identity = _identity_row(conn, run["device_id"])
-    os_version = identity.get("os_version")
-    # By content, not label (ADR 0056). A run from before migration 0005 has no
-    # checksum and never matches: nobody recorded which rules decided it.
-    same_rulepack = rulepack.checksum is not None and (
-        run.get("rulepack_checksum") == rulepack.checksum
+    # One view, shared with the findings API (ADR 0057): mappings by content,
+    # never by label (ADR 0056), only those true of this device (ADR 0052), and
+    # the selection's scope recomputed by the function the audit route used.
+    view = run_framework_view(
+        rulepack.checksum,
+        rulepack.version,
+        rulepack.rules,
+        run,
+        vendor,
+        os_family,
+        identity.get("os_version"),
     )
-    rule_frameworks = (
-        mappings_for_device(rulepack.rules, vendor, os_family, os_version)
-        if same_rulepack
-        else None
-    )
-
-    # What the run's benchmark selection left out, recomputed by the function
-    # the audit route used and on the same condition as the mappings: only
-    # under the rulepack that evaluated the run (ADR 0054).
-    scope = (
-        scope_selection(
-            frozenset(Framework(f) for f in run.get("framework_selection") or ()),
-            rulepack.rules,
-            vendor,
-            os_family,
-            os_version,
-        )
-        if same_rulepack
-        else None
-    )
+    scope = view.scope
 
     return build_report(
         report_id=uuid.uuid4().hex,
@@ -158,8 +145,8 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
         vendor=vendor,
         os_family=os_family,
         config_file_path=blob_path,
-        rule_frameworks=rule_frameworks,
-        framework_absence=explain_absence(vendor, os_family, os_version),
+        rule_frameworks=view.mappings if view.attached else None,
+        framework_absence=view.absent,
         not_assessed=(tuple((n.rule_id, n.reason) for n in scope.not_assessed) if scope else ()),
         frameworks_excluded=(
             {f.value: why for f, why in sorted(scope.excluded.items())} if scope else {}

@@ -349,6 +349,88 @@ def scope_selection(
     return SelectionScope(frozenset(selection), effective, excluded, tuple(left_out))
 
 
+@dataclass(frozen=True, slots=True)
+class RunFrameworkView:
+    """Everything a surface may say about frameworks for one stored run (ADR 0057).
+
+    Computed once, here, and read by every route that re-reads findings — the
+    report and the findings API — so the document and the interface cannot
+    disagree about which identifiers a verdict carries, which it declines, or
+    why none are shown. The interface resolves nothing itself.
+    """
+
+    attached: bool
+    """True when the run was decided by the active rulepack's exact content."""
+    withheld_reason: str | None
+    """Why no identifiers are shown, when `attached` is False."""
+    mappings: dict[str, tuple[FrameworkRef, ...]]
+    declined: dict[str, tuple[tuple[Framework, str], ...]]
+    """Per rule: sourced frameworks that describe this device and the rule declines."""
+    absent: dict[str, str]
+    """Per framework: why it contributes nothing on this device (unsourced, or not described)."""
+    scope: SelectionScope | None
+
+
+def run_framework_view(
+    rulepack_checksum: str | None,
+    rulepack_version: str,
+    rules: Iterable[ComplianceRule],
+    run: dict,
+    vendor: str | None,
+    os_family: str | None,
+    os_version: str | None,
+) -> RunFrameworkView:
+    """Resolve mappings for a persisted run — by content, never by label (ADR 0056)."""
+    rules = tuple(rules)
+    absent = explain_absence(vendor, os_family, os_version)
+    recorded = run.get("rulepack_checksum")
+    if rulepack_checksum is None or recorded != rulepack_checksum:
+        if recorded is None:
+            why = (
+                f"This run was evaluated under rulepack {run.get('rulepack_version') or 'unknown'} "
+                "before rulepack contents were recorded, so the rules that decided it cannot be "
+                "identified. Control mappings are shown only beside verdicts the active rules "
+                "decided; re-run the audit to see them."
+            )
+        else:
+            why = (
+                f"This run was evaluated under rulepack {run.get('rulepack_version')} "
+                f"({recorded[:19]}…); the active rulepack is {rulepack_version} "
+                f"({rulepack_checksum[:19] if rulepack_checksum else 'unverified'}…). Control "
+                "mappings are shown only beside verdicts the same rules decided; re-run the "
+                "audit to see them."
+            )
+        return RunFrameworkView(False, why, {}, {}, absent, None)
+
+    available = indexes()
+    covering = {
+        framework
+        for framework, index in available.items()
+        if index.coverage(vendor, os_family, os_version) is Coverage.COVERED
+    }
+    declined = {
+        rule.rule_id: tuple(
+            (gap.framework, gap.reason) for gap in rule.not_mapped if gap.framework in covering
+        )
+        for rule in rules
+    }
+    scope = scope_selection(
+        frozenset(Framework(f) for f in run.get("framework_selection") or ()),
+        rules,
+        vendor,
+        os_family,
+        os_version,
+    )
+    return RunFrameworkView(
+        True,
+        None,
+        mappings_for_device(rules, vendor, os_family, os_version),
+        declined,
+        absent,
+        scope,
+    )
+
+
 def mappings_for_device(
     rules: Iterable[ComplianceRule],
     vendor: str | None,

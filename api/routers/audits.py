@@ -30,8 +30,8 @@ from api.comply.engine import evaluate_device, new_audit_id
 from api.comply.frameworks import (
     UnsourcedFrameworkError,
     indexes,
-    mappings_for_device,
     resolve_selection,
+    run_framework_view,
     scope_selection,
 )
 from api.comply.rulepacks import load_active_rulepack
@@ -43,7 +43,7 @@ from api.ingest.device_identity import extract_identity
 from api.ingest.lines import split_lines
 from api.ingest.packs import find_pack
 from api.models.audit import Subject
-from api.models.enums import AuditAction
+from api.models.enums import AuditAction, Framework
 from api.models.finding import Finding
 from api.normalise.service import build_csm
 from api.parse.service import parse_configuration
@@ -78,7 +78,11 @@ def _os_version(conn: sqlite3.Connection, device_id: str) -> str | None:
     return row["os_version"] if row is not None else None
 
 
-def _finding_json(finding: Finding, resolution: RemediationResolution) -> dict[str, Any]:
+def _finding_json(
+    finding: Finding,
+    resolution: RemediationResolution,
+    declined: tuple[tuple[Framework, str], ...] = (),
+) -> dict[str, Any]:
     """One finding, as the UI will consume it.
 
     Evidence is included in full — an operator reading a FAIL needs the line that
@@ -119,10 +123,23 @@ def _finding_json(finding: Finding, resolution: RemediationResolution) -> dict[s
             }
             for e in finding.evidence
         ],
-        # Only identifiers whose edition describes this device (ADR 0052).
+        # Only identifiers whose edition describes this device (ADR 0052), each
+        # with the edition it was validated against and whose judgement the
+        # mapping is — a control ID without its provenance claims more than the
+        # repository supports (ADR 0057).
         "frameworks": [
-            {"framework": f.framework.value, "control_id": f.control_id} for f in finding.frameworks
+            {
+                "framework": f.framework.value,
+                "control_id": f.control_id,
+                "edition": f.version,
+                "citation": f.citation,
+                "mapping_provenance": f.mapping_provenance.value,
+            }
+            for f in finding.frameworks
         ],
+        # Sourced frameworks that describe this device and that this rule
+        # deliberately does not map to, with the reason the rule records.
+        "declined": [{"framework": f.value, "reason": why} for f, why in declined],
         # Rule 4 — a command here was read from `snippets/`, or there is no
         # command. `outcome` says which case this is and `statement` carries the
         # sentence an operator should read; `commands` is present only when a
@@ -429,22 +446,24 @@ def get_findings(
     vendor, os_family = _platform(conn, run["device_id"]) if run else (None, None)
     library = load_active_library()
 
-    # Control mappings are rulepack data and are not stored per finding (D96),
-    # so a persisted finding comes back with none. Until ADR 0052 this route
-    # returned them that way — every stored finding, empty — while the report
-    # re-attached them; the interface reads this route. Re-attached here by the
-    # same function and on the same condition: only under the rulepack that
-    # evaluated the run, and only the identifiers true of this device.
+    # Control mappings are rulepack data and are not stored per finding (D96).
+    # Resolved by the same view the report uses (ADR 0057), so the interface
+    # reading this route and the document cannot disagree — and when nothing
+    # is attached, the reason travels with the response rather than leaving the
+    # interface to guess at one.
     rulepack = load_active_rulepack()
-    same_rulepack = rulepack.checksum is not None and (
-        run is not None and run.get("rulepack_checksum") == rulepack.checksum
+    view = run_framework_view(
+        rulepack.checksum,
+        rulepack.version,
+        rulepack.rules,
+        run or {},
+        vendor,
+        os_family,
+        _os_version(conn, run["device_id"]) if run else None,
     )
-    if run is not None and same_rulepack:
-        mappings = mappings_for_device(
-            rulepack.rules, vendor, os_family, _os_version(conn, run["device_id"])
-        )
+    if view.attached:
         results = [
-            f.model_copy(update={"frameworks": mappings.get(f.rule_id, ())})
+            f.model_copy(update={"frameworks": view.mappings.get(f.rule_id, ())})
             if not f.frameworks
             else f
             for f in results
@@ -454,6 +473,22 @@ def get_findings(
         "audit_id": audit_id,
         "count": len(results),
         "snippet_library_version": library.version,
+        "framework_view": {
+            "attached": view.attached,
+            "withheld_reason": view.withheld_reason,
+            "absent": view.absent,
+            "selection": (run or {}).get("framework_selection"),
+            "not_applied": (
+                {f.value: why for f, why in sorted(view.scope.excluded.items())}
+                if view.scope
+                else {}
+            ),
+            "not_assessed": (
+                [{"rule_id": n.rule_id, "reason": n.reason} for n in view.scope.not_assessed]
+                if view.scope
+                else []
+            ),
+        },
         "findings": [
             _finding_json(
                 f,
@@ -464,6 +499,7 @@ def get_findings(
                     os_family=os_family,
                     actionable=f.is_actionable,
                 ),
+                view.declined.get(f.rule_id, ()),
             )
             for f in results
         ],

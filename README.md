@@ -130,6 +130,16 @@ renders the reason rather than an empty table — an empty list and a refusal ar
 different statements, and confusing them is how an operator concludes their
 fleet is clean when nothing was measured.
 
+**A finding shows the controls it maps to** (ADR 0057). Each carries its
+framework, identifier, the edition it was validated against and *project
+asserted* — the mapping is this project's judgement, not a published crosswalk.
+A mapping the rule declines is shown with its recorded reason (`CISC-ND-000720
+not mapped — requires five minutes or less; this rule passes up to ten`), and a
+framework that contributes nothing on the device says why. Until ADR 0057 the
+finding view said "No framework control is mapped" on every finding, NIST
+included, from P17 onward; when mappings are withheld because the run's rules
+are not the active rules, it now gives that reason instead.
+
 **Prioritisation runs and abstains.** The Prioritise stage exists as of P12 and
 produces no ranking on this corpus, because exposure needs interfaces and access
 lists. Both are now read from Cisco IOS configurations, and the ACL analyser

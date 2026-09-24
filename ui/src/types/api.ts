@@ -253,9 +253,40 @@ export interface ObservedValue {
   is_probability: boolean;
 }
 
+/**
+ * One control a finding's rule is mapped to, as the API resolved it (ADR 0057).
+ *
+ * Every field is rendered. A control identifier shown without its edition and
+ * its provenance claims more than the repository supports: `project_asserted`
+ * means the mapping is this project's judgement, not a published crosswalk.
+ */
 export interface FrameworkRef {
   framework: string;
   control_id: string;
+  edition: string | null;
+  citation: string | null;
+  mapping_provenance: 'project_asserted' | 'official';
+}
+
+/** A sourced framework the rule deliberately does not map to, and why. */
+export interface DeclinedMapping {
+  framework: string;
+  reason: string;
+}
+
+/**
+ * What the API says about frameworks for the whole run. The interface resolves
+ * none of it: `attached` is false when the run's rules are not the active
+ * rules, and `withheld_reason` says so; `absent` names each framework that
+ * contributes nothing on this device, with why.
+ */
+export interface FrameworkView {
+  attached: boolean;
+  withheld_reason: string | null;
+  absent: Record<string, string>;
+  selection: string[] | null;
+  not_applied: Record<string, string>;
+  not_assessed: { rule_id: string; reason: string }[];
 }
 
 /**
@@ -287,6 +318,7 @@ export interface Finding {
   absence_reason: string | null;
   evidence: Evidence[];
   frameworks: FrameworkRef[];
+  declined: DeclinedMapping[];
   remediation: RemediationRef;
   /** Populated by P12 only when exposure was determined. Null otherwise. */
   priority_rank?: number | null;
@@ -297,6 +329,7 @@ export interface FindingList {
   audit_id: string;
   count: number;
   snippet_library_version: string;
+  framework_view: FrameworkView;
   findings: Finding[];
 }
 

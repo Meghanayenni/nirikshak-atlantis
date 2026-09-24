@@ -724,9 +724,7 @@ def _junos_addresses(
         members: list[str] = []
         for value in values:
             members.extend(prefix_lists.get(value, []))
-        return AddrSpec(
-            kind=AddrKind.OBJECT, value=" ".join(values), resolved_cidrs=tuple(members)
-        )
+        return AddrSpec(kind=AddrKind.OBJECT, value=" ".join(values), resolved_cidrs=tuple(members))
 
     cidrs: list[str] = []
     for value in values:
@@ -824,7 +822,7 @@ def _extract_junos_brace_lists(
                 AclExtractionFailure(
                     acl_name=name,
                     reason=(
-                        f"term {defeated.text[len('term '):]!r} uses syntax this dialect "
+                        f"term {defeated.text[len('term ') :]!r} uses syntax this dialect "
                         "does not read, and a filter missing one term would let the "
                         "analyser call a reachable term unreachable"
                     ),
@@ -1057,7 +1055,6 @@ tables agree, because that failure cost an afternoon once.
 """
 
 
-
 def _why_unreadable(node: ConfigNode) -> str:
     """Name the specific thing that defeated the parser, not that it failed.
 
@@ -1200,8 +1197,7 @@ def extract_acls(
     # had to answer it would answer it once per dialect.
     return (
         tuple(
-            acl.model_copy(update={"applied_to": tuple(bindings.get(acl.name, ()))})
-            for acl in out
+            acl.model_copy(update={"applied_to": tuple(bindings.get(acl.name, ()))}) for acl in out
         ),
         tuple(failures),
     )

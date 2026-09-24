@@ -457,7 +457,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and forty numbered decisions across 56 ADRs. (D63 and D64 were never issued; the
+One hundred and forty-two numbered decisions across 57 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -518,6 +518,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0054 | P18 | A selector with something to select | D137, D138 |
 | 0055 | P18 | A sanitisation gate that fails closed | D139, D140 |
 | 0056 | P18 | A version that means its contents | D141, D142 |
+| 0057 | P18 | A control identifier an operator can see | D143, D144 |
 
 ---
 
@@ -538,6 +539,14 @@ without leaving the screen. **Fleet** is the device list; **device** is the
 workspace beside it; **finding** expands in place inside that workspace, with its
 evidence, its remediation and its abstention reason. Nothing navigates to a
 separate page to answer the next question down.
+
+The finding also shows its **mapped controls** — framework, identifier, edition,
+*project asserted* — its **declined mappings** with the reason each rule
+records, and the frameworks that do not apply to the device, with why (ADR
+0057). All of it arrives resolved from `/findings`, through the same
+`run_framework_view` the report uses; the interface resolves no mapping. When
+the run's rulepack content is not the active one, the API withholds the
+identifiers and says why, and the interface prints that reason.
 
 Inside a device the tabs are the pipeline again: *Overview* (what was read),
 *Findings* (what was decided), *Needs review* (what no pack recognised),

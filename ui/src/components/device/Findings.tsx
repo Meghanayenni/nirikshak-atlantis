@@ -18,7 +18,7 @@ import {
 } from '@/components/domain/Verdict';
 import { Field, NotAvailable, Table, Td, Th } from '@/components/ui/Primitives';
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/States';
-import type { Finding, Verdict } from '@/types/api';
+import type { Finding, FrameworkView, Verdict } from '@/types/api';
 import { humanise, ruleLabel } from '@/utils/format';
 
 import type { DeviceWorkspace } from './useDeviceWorkspace';
@@ -31,7 +31,92 @@ const FILTERS: { id: '' | Verdict; label: string }[] = [
   { id: 'not_applicable', label: 'N/A' },
 ];
 
-function FindingDetail({ finding }: { finding: Finding }) {
+/**
+ * The controls this finding's rule maps to — every value from the API.
+ *
+ * Plain metadata, never a verdict-coloured chip: a mapping is a cross-reference,
+ * and a second colour scale would compete with the verdict (§10, ADR 0036).
+ * Each identifier carries its edition and its provenance, because a control ID
+ * without "project asserted" beside it claims a crosswalk nobody published.
+ *
+ * Three states, and each says what it is (ADR 0057):
+ *   - withheld: the run's rules are not the active rules; the API's reason;
+ *   - mapped, with declined frameworks and their recorded reasons;
+ *   - frameworks absent on this device, each with why.
+ * "No framework control is mapped" appeared here on every finding from P17 to
+ * P18 while every rule was mapped; it is not said by default any more.
+ */
+function FrameworkMappings({ finding, view }: { finding: Finding; view: FrameworkView | null }) {
+  if (view && !view.attached) {
+    return (
+      <div>
+        <p className="label mb-1">Frameworks</p>
+        <p className="text-muted">
+          Control mappings are not shown for this run. {view.withheld_reason}
+        </p>
+      </div>
+    );
+  }
+
+  const absent = Object.entries(view?.absent ?? {});
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="label mb-1">Frameworks</p>
+        {finding.frameworks.length === 0 ? (
+          <p className="text-muted">
+            No control in a sourced framework that describes this device is mapped to this check.
+          </p>
+        ) : (
+          <ul className="space-y-1.5" aria-label="Mapped controls">
+            {finding.frameworks.map((ref) => (
+              <li key={`${ref.framework}-${ref.control_id}`}>
+                <span className="label mr-2 uppercase">{ref.framework}</span>
+                <span className="mono text-ink">{ref.control_id}</span>
+                <span className="block text-xs text-muted">
+                  {ref.edition ? `edition ${ref.edition} · ` : ''}
+                  {ref.mapping_provenance === 'project_asserted'
+                    ? 'project asserted — our judgement, not a published crosswalk'
+                    : humanise(ref.mapping_provenance)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {finding.declined.length > 0 && (
+        <div>
+          <p className="label mb-1">Declined mappings</p>
+          <ul className="space-y-1.5" aria-label="Declined mappings">
+            {finding.declined.map((gap) => (
+              <li key={gap.framework} className="text-ink-2">
+                <span className="label mr-2 uppercase">{gap.framework}</span>
+                not mapped — {gap.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {absent.length > 0 && (
+        <div>
+          <p className="label mb-1">Not applicable to this device</p>
+          <ul className="space-y-1 text-xs text-muted" aria-label="Frameworks absent on this device">
+            {absent.map(([framework, why]) => (
+              <li key={framework}>
+                <span className="uppercase">{framework}</span> — {why}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FindingDetail({ finding, view }: { finding: Finding; view: FrameworkView | null }) {
   return (
     <div className="grid gap-5 bg-surface px-4 py-5 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
@@ -90,21 +175,7 @@ function FindingDetail({ finding }: { finding: Finding }) {
           <RemediationPanel remediation={finding.remediation} />
         </div>
 
-        <div>
-          <p className="label mb-1">Frameworks</p>
-          {finding.frameworks.length === 0 ? (
-            <p className="text-muted">No framework control is mapped to this check.</p>
-          ) : (
-            <ul className="space-y-1">
-              {finding.frameworks.map((ref) => (
-                <li key={`${ref.framework}-${ref.control_id}`}>
-                  <span className="label mr-2">{ref.framework}</span>
-                  <span className="mono">{ref.control_id}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <FrameworkMappings finding={finding} view={view} />
 
         <div>
           <p className="label mb-1">Priority</p>
@@ -226,7 +297,10 @@ export function FindingsPanel({ workspace }: { workspace: DeviceWorkspace }) {
                 {open && (
                   <tr>
                     <td colSpan={5} className="border-b border-border p-0">
-                      <FindingDetail finding={finding} />
+                      <FindingDetail
+                        finding={finding}
+                        view={findings.data?.framework_view ?? null}
+                      />
                     </td>
                   </tr>
                 )}

@@ -115,9 +115,7 @@ def missing_libraries() -> tuple[str, ...]:
     on, so this asks the same question the renderer would ask, rather than
     checking a list of directories that happen to be conventional today.
     """
-    return tuple(
-        name for name in required_libraries() if ctypes.util.find_library(name) is None
-    )
+    return tuple(name for name in required_libraries() if ctypes.util.find_library(name) is None)
 
 
 def weasyprint_installed() -> bool:

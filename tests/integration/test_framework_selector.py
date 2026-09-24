@@ -268,7 +268,9 @@ def test_the_same_device_fails_under_stig_and_is_not_assessed_under_cis(
     assert stig.status_code == 201, stig.text
     [finding] = _http(client, stig.json()["audit_id"])
     assert finding["status"] == "fail"
-    assert {"framework": "stig", "control_id": "CISC-ND-000470"} in finding["frameworks"]
+    assert ("stig", "CISC-ND-000470") in {
+        (m["framework"], m["control_id"]) for m in finding["frameworks"]
+    }
     assert finding["evidence"][0]["raw_line"].strip() == "ip http server"
     assert "NRK-HTTP-001" not in {n["rule_id"] for n in stig.json()["not_assessed"]}
 
@@ -420,3 +422,76 @@ def test_same_version_different_content_shows_no_identifiers(
     html = client.get(f"/compliance/audits/{audit_id}/report.html", auth=ALICE).text
     assert "CISC-ND-" not in html and "AC-17(02)" not in html
     assert "content not recorded" in html
+
+
+# ---------------------------------------------------------------------------
+# What the interface reads (ADR 0057, ADR 0058) — the API decides, the UI shows
+# ---------------------------------------------------------------------------
+
+
+def _findings(api: TestClient, audit_id: str) -> dict:
+    return api.get(f"/compliance/audits/{audit_id}/findings", auth=ALICE).json()
+
+
+def test_every_mapping_carries_its_edition_and_whose_judgement_it_is(client: TestClient) -> None:
+    file_id = _upload(client, IOS_XE_17)
+    audit_id = client.post(f"/compliance/audits?file_id={file_id}", auth=ALICE).json()["audit_id"]
+    body = _findings(client, audit_id)
+
+    assert body["framework_view"]["attached"] is True
+    refs = [m for f in body["findings"] for m in f["frameworks"]]
+    assert refs
+    for ref in refs:
+        assert ref["edition"] and ref["citation"]
+        assert ref["mapping_provenance"] == "project_asserted"
+    stig = next(m for m in refs if m["control_id"] == "CISC-ND-000470")
+    assert stig["edition"] == "V3R7 (2026-04-01)"
+
+
+def test_a_declined_mapping_travels_with_its_reason(client: TestClient) -> None:
+    """The clearest evidence that mappings were checked rather than assembled."""
+    file_id = _upload(client, IOS_XE_17)
+    audit_id = client.post(f"/compliance/audits?file_id={file_id}", auth=ALICE).json()["audit_id"]
+    timeout = next(
+        f for f in _findings(client, audit_id)["findings"] if f["rule_id"] == "NRK-TIMEOUT-001"
+    )
+    [declined] = timeout["declined"]
+    assert declined["framework"] == "stig"
+    assert "CISC-ND-000720" in declined["reason"] and "five minutes" in declined["reason"]
+
+
+def test_a_decline_is_not_shown_where_the_framework_does_not_apply(client: TestClient) -> None:
+    """On JunOS the STIG says nothing, so its declines say nothing either; the absence says why."""
+    file_id = _upload(client, JUNOS)
+    audit_id = client.post(f"/compliance/audits?file_id={file_id}", auth=ALICE).json()["audit_id"]
+    body = _findings(client, audit_id)
+
+    assert all(f["declined"] == [] for f in body["findings"])
+    assert "does not describe" in body["framework_view"]["absent"]["stig"]
+    assert "no ISO catalog has been sourced" in body["framework_view"]["absent"]["iso"]
+
+
+def test_withheld_mappings_say_why_instead_of_saying_none_exist(
+    client: TestClient, tmp_path: Path
+) -> None:
+    file_id = _upload(client, IOS_XE_17)
+    audit_id = client.post(f"/compliance/audits?file_id={file_id}", auth=ALICE).json()["audit_id"]
+    conn = connect(tmp_path / "nirikshak.db")
+    conn.execute("UPDATE audit_run SET rulepack_checksum = NULL WHERE audit_id = ?", (audit_id,))
+    conn.commit()
+    conn.close()
+
+    view = _findings(client, audit_id)["framework_view"]
+    assert view["attached"] is False
+    assert "re-run the audit" in view["withheld_reason"]
+
+
+def test_the_findings_view_carries_the_selections_scope(client: TestClient) -> None:
+    file_id = _upload_bytes(client, *_ios_xe_17_with_http_server())
+    audit_id = client.post(
+        f"/compliance/audits?file_id={file_id}&framework=cis", auth=ALICE
+    ).json()["audit_id"]
+    view = _findings(client, audit_id)["framework_view"]
+
+    assert view["selection"] == ["cis"]
+    assert [n["rule_id"] for n in view["not_assessed"]] == ["NRK-HTTP-001"]

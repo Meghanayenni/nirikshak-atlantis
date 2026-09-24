@@ -134,6 +134,16 @@ export const FIXTURES = {
     audit_id: 'aud-1',
     count: 2,
     snippet_library_version: 'empty',
+    // The shape `/findings` returns since ADR 0057: the API has already decided
+    // which identifiers apply, which are declined, and why any are absent.
+    framework_view: {
+      attached: true,
+      withheld_reason: null,
+      absent: { iso: 'no ISO catalog has been sourced, so this report says nothing about it either way' },
+      selection: null,
+      not_applied: {},
+      not_assessed: [],
+    },
     findings: [
       {
         finding_id: 'aud-1:dev:NRK-TELNET-001',
@@ -160,7 +170,24 @@ export const FIXTURES = {
             cite: 'c0/config.cfg:42',
           },
         ],
-        frameworks: [],
+        frameworks: [
+          {
+            framework: 'nist',
+            control_id: 'CM-07',
+            edition: '5.2.0',
+            citation: 'NIST SP 800-53 Rev 5 — OSCAL catalog, edition 5.2.0, control CM-07',
+            mapping_provenance: 'project_asserted',
+          },
+          {
+            framework: 'stig',
+            control_id: 'CISC-ND-000140',
+            edition: 'V3R7 (2026-04-01)',
+            citation:
+              'DISA Cisco IOS XE Router NDM STIG — XCCDF manual benchmark, edition V3R7 (2026-04-01), control CISC-ND-000140',
+            mapping_provenance: 'project_asserted',
+          },
+        ],
+        declined: [],
         remediation: {
           outcome: 'no_snippet',
           statement: 'No vetted remediation is available for this platform and rule.',
@@ -188,6 +215,13 @@ export const FIXTURES = {
         absence_reason: null,
         evidence: [],
         frameworks: [],
+        declined: [
+          {
+            framework: 'stig',
+            reason:
+              'CISC-ND-000720 requires five minutes or less; this rule passes up to ten.',
+          },
+        ],
         remediation: {
           outcome: 'not_actionable',
           statement: 'No remediation is proposed: this finding is not a failure.',

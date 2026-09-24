@@ -111,28 +111,66 @@ describe('no invented data', () => {
     expect(container.textContent).toContain('a.operator');
   });
 
-  it('renders no framework identifier while every rule ships an empty list', async () => {
+  // Replaces "renders no framework identifier while every rule ships an empty
+  // list" (ADR 0057). Its premise stopped being true at P17, when every rule was
+  // mapped to NIST; it went on passing only because the fixtures still shipped
+  // empty lists, so the suite defended a string the product should not say.
+  async function openFirstFinding(findings: unknown) {
     signIn(ADMIN_SESSION);
     mockApi([
       { match: '/ingest/devices', body: FIXTURES.devices },
-      { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
+      { match: '/compliance/audits/aud-1/findings', body: findings },
       { match: '/compliance/audits/aud-1/remediation', body: { steps: [] }, status: 404 },
       { match: '/compliance/audits', body: FIXTURES.audits },
       { match: '/training/queue', body: { size: 0, confirmable: 0, entries: [] }, status: 403 },
       { match: '/training/examples', body: { count: 0, examples: [] }, status: 403 },
       { match: '/health', body: FIXTURES.health },
     ]);
-
     renderApp('/devices');
     const user = userEvent.setup();
-
     await screen.findByRole('tab', { name: /findings/i });
     await user.click(screen.getByRole('tab', { name: /findings/i }));
-    await user.click((await screen.findAllByRole('button', { name: /expand finding/i }))[0]);
+    return { user, expanders: await screen.findAllByRole('button', { name: /expand finding/i }) };
+  }
 
-    expect(await screen.findByText(/no framework control is mapped/i)).toBeInTheDocument();
-    // No CIS / NIST / STIG / ISO identifier may appear anywhere on the screen.
-    expect(document.body.textContent).not.toMatch(/\b(CIS|NIST|STIG|ISO)[- ]?\d/);
+  it('shows each mapped control with its edition and project-asserted provenance', async () => {
+    const { user, expanders } = await openFirstFinding(FIXTURES.findings);
+    await user.click(expanders[0]);
+
+    const mapped = await screen.findByRole('list', { name: /mapped controls/i });
+    expect(mapped).toHaveTextContent('CISC-ND-000140');
+    expect(mapped).toHaveTextContent('edition V3R7 (2026-04-01)');
+    expect(mapped).toHaveTextContent('CM-07');
+    expect(mapped).toHaveTextContent(/project asserted/i);
+    expect(document.body.textContent).not.toMatch(/no framework control is mapped/i);
+  });
+
+  it('shows a declined mapping with the reason the rule records', async () => {
+    const { user, expanders } = await openFirstFinding(FIXTURES.findings);
+    await user.click(expanders[1]);
+
+    const declined = await screen.findByRole('list', { name: /declined mappings/i });
+    expect(declined).toHaveTextContent('CISC-ND-000720');
+    expect(declined).toHaveTextContent(/not mapped/i);
+  });
+
+  it('says why mappings are withheld rather than that none exist', async () => {
+    const withheld = {
+      ...FIXTURES.findings,
+      framework_view: {
+        ...FIXTURES.findings.framework_view,
+        attached: false,
+        withheld_reason:
+          'This run was evaluated under rulepack 1.0.0 before rulepack contents were recorded; re-run the audit to see them.',
+      },
+      findings: FIXTURES.findings.findings.map((f) => ({ ...f, frameworks: [], declined: [] })),
+    };
+    const { user, expanders } = await openFirstFinding(withheld);
+    await user.click(expanders[0]);
+
+    expect(await screen.findByText(/control mappings are not shown for this run/i)).toBeInTheDocument();
+    expect(document.body.textContent).toMatch(/re-run the audit/i);
+    expect(document.body.textContent).not.toMatch(/no framework control is mapped/i);
   });
 
   it('states that exposure was undetermined rather than showing a rank', async () => {
