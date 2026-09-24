@@ -188,7 +188,8 @@ see decision D37 and ADR 0017.
 
 **Blocks:** any claim of CIS, NIST SP 800-53, DISA STIG or ISO/IEC 27001 coverage.
 
-**State: ONE OF FOUR CLOSED at P17 (ADR 0035).** NIST SP 800-53 Rev 5 is
+**State: THREE OF FOUR CLOSED — NIST at P17 (ADR 0035), DISA STIG and CIS at
+P18 (ADR 0052).** NIST SP 800-53 Rev 5 is
 published by NIST as OSCAL JSON and was obtained. All seven rules now carry
 control identifiers validated against edition 5.2.0, whose own sha256 is recorded
 in `rules/frameworks/`, with the catalog's 182 withdrawn controls listed
@@ -207,25 +208,39 @@ control becomes `OFFICIAL` — which is **the only route to claiming CIS coverag
 without purchasing the CIS Benchmark itself**. Nothing here carries `OFFICIAL`
 today; the member is kept so that route is not foreclosed.
 
-**The other three remain open, for three different reasons:**
+**THREE OF FOUR CLOSED at P18 (ADR 0052).** Both remaining retrieval problems
+were solved the same way — a file obtained by hand — and the two files arrived
+with opposite terms:
 
-- **DISA STIG** — the DoD Cyber Exchange download index is rendered client-side
-  and serves no file URLs; five direct paths were probed and all 404'd. Needs
-  either a browser-driven fetch or a file obtained by hand. The XCCDF format is
-  machine readable and `lxml` is already a dependency, so this is a *retrieval*
-  problem, not an engineering one.
-- **CIS Benchmarks** — distribution is behind registration and terms acceptance,
-  with no free machine-readable edition.
-- **ISO/IEC 27001** — a purchased standard.
+- **DISA STIG** — the Cisco IOS XE Router NDM STIG, V3R7, is committed as XCCDF
+  under `docs/sources/disa/` and its index re-derives from it on every test run.
+  Five rules map to five STIG IDs.
+- **CIS Benchmarks** — the Cisco IOS XE 17.x Benchmark, v2.2.1, is **referenced,
+  never held**: its own terms forbid third-party hosting, so it is read from
+  outside the tree and only recommendation numbers are recorded. Six rules map
+  to six recommendations.
+- **ISO/IEC 27001** — still open. A purchased standard.
+
+**What those two do not close.** Both editions describe one platform — Cisco IOS
+XE — and are scoped to releases matching 17.x, so on every other device in the
+corpus (classic IOS 15.x, NX-OS, JunOS, EOS) neither edition's identifiers are
+shown, and a report says why. Four rules are looser than the STIG control the prepared reading
+proposed for them and carry no STIG identifier, each with its reason recorded.
+Five of 42 STIG requirements and six of 84 CIS recommendations carry a mapping:
+that is evidence about seven checks, not coverage of either benchmark.
 
 **Open for the team, not answered here:** whether this repository may
-redistribute a catalog file. Only the derived index is committed; ADR 0005 set
-the precedent that this project makes no legal claims.
+redistribute the NIST catalog, and whether to ask CIS Legal about using portions
+of the CIS recommendations. The STIG is held; the CIS Benchmark is not and must
+not be. ADR 0005 set the precedent that this project makes no legal claims —
+`docs/CONTENT_POLICY.md` records what was read and which reading was taken.
 
 This is the most visible gap against the problem statement, which asks explicitly
 for evaluation against user-selected benchmarks. It is also the one most tempting
-to close by writing plausible-looking identifiers, which is why the empty state is
-asserted by a test written to fail when the first mapping appears.
+to close by writing plausible-looking identifiers, which is why every identifier
+a rule or a document writes is checked against its framework's index
+(`tests/unit/test_framework_mappings.py`,
+`tests/architecture/test_framework_claims.py`).
 
 **What would close it.** A benchmark edition obtained and read, so a mapping can
 name a control **and its source document**. `FrameworkRef` already carries

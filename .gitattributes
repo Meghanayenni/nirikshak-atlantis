@@ -5,3 +5,8 @@
 *.woff2 binary
 *.woff binary
 *.pdf binary
+
+# Third-party source documents held for content addressing (ADR 0052). Their
+# sha256 is recorded in rules/frameworks/, so git must store and check out the
+# exact published bytes — no line-ending normalisation, ever.
+docs/sources/** -text

@@ -18,3 +18,16 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+  - framework: cis
+    control_id: "2.3.2"
+    version: "v2.2.1 (2025-07-17)"
+    citation: "CIS Cisco IOS XE 17.x Benchmark, edition v2.2.1 (2025-07-17), control 2.3.2"
+    # The recommendation's remediation sets the floor at one server, which is
+    # this rule's condition; it prefers more, and so would we (ADR 0052).
+    mapping_provenance: project_asserted
+not_mapped:
+  - framework: stig
+    reason: >-
+      CISC-ND-001030 requires redundant time sources and shows two; this rule
+      passes one. Mapping it would show a STIG identifier beside a PASS the STIG calls a
+      finding (ADR 0052).

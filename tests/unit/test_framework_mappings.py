@@ -42,7 +42,23 @@ def mappings(rulepack):
 def test_mappings_are_shipped_at_all(rulepack) -> None:
     """The replacement for the old empty-state assertion, in the new direction."""
     assert mappings(rulepack), "no rule maps to any framework"
-    assert rulepack.frameworks_covered == frozenset({Framework.NIST})
+    assert rulepack.frameworks_covered == frozenset({Framework.NIST, Framework.STIG, Framework.CIS})
+
+
+def test_every_rule_answers_every_sourced_framework(rulepack) -> None:
+    """A mapping, or the reason there is none. Never silence (ADR 0052).
+
+    A rule with no CIS identifier could be one nobody looked at, or one somebody
+    looked at and found CIS does not ask for. Those are different facts, and a
+    report can only tell them apart if the rule does.
+    """
+    silent = [
+        f"{rule.rule_id} says nothing about {framework.value}"
+        for rule in rulepack.rules
+        for framework in sourced_frameworks()
+        if framework not in rule.frameworks_covered and rule.gap_reason(framework) is None
+    ]
+    assert silent == [], "\n".join(silent)
 
 
 def test_every_rule_is_mapped(rulepack) -> None:
@@ -146,8 +162,8 @@ def test_no_mapping_is_marked_official(rulepack) -> None:
         for rule, ref in mappings(rulepack)
         if ref.mapping_provenance is MappingProvenance.OFFICIAL
     ]
-    assert official == [], (
-        "these mappings claim to come from a published crosswalk:\n" + "\n".join(official)
+    assert official == [], "these mappings claim to come from a published crosswalk:\n" + "\n".join(
+        official
     )
 
 
@@ -172,7 +188,12 @@ def test_the_index_records_the_catalog_bytes_it_came_from(catalogs) -> None:
     for index in catalogs.values():
         assert len(index.sha256) == 64
         assert int(index.sha256, 16) >= 0, "sha256 must be hexadecimal"
-        assert index.source_url.startswith("https://")
+        # Where the digested document can be found: a public URL (NIST), a path
+        # in this tree (the STIG), or a statement that it is deliberately
+        # neither (CIS). A digest nobody can locate the document for is a label.
+        assert index.source_url.startswith("https://") or index.held_at or index.source_note, (
+            index.framework
+        )
 
 
 def test_only_frameworks_with_a_catalog_are_offered(catalogs) -> None:
@@ -183,8 +204,6 @@ def test_only_frameworks_with_a_catalog_are_offered(catalogs) -> None:
     same would turn a sourcing gap into a clean bill of health.
     """
     assert sourced_frameworks() == frozenset(catalogs)
-    assert Framework.CIS not in sourced_frameworks()
-    assert Framework.STIG not in sourced_frameworks()
     assert Framework.ISO not in sourced_frameworks()
 
 
@@ -268,3 +287,79 @@ def test_the_enum_explains_what_official_would_require() -> None:
     assert "crosswalk" in block
     assert "catalog" in block, "the distinction from a control catalog must be stated"
     assert "CIS" in block, "the concrete route it keeps open should be named"
+
+
+def test_every_citation_is_the_one_its_catalog_would_write(rulepack, catalogs) -> None:
+    """Document, edition, identifier — composed by the index, not typed by hand."""
+    drift = [
+        f"{rule.rule_id} -> {ref.control_id}: {ref.citation!r}"
+        for rule, ref in mappings(rulepack)
+        if ref.citation != catalogs[ref.framework].cite(ref.control_id)
+    ]
+    assert drift == [], "\n".join(drift)
+
+
+# ---------------------------------------------------------------------------
+# The worksheet rows that did not survive being read (ADR 0052)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "control_id", "why"),
+    [
+        (
+            "NRK-TIMEOUT-001",
+            "CISC-ND-000720",
+            "passes up to 600 s; the STIG requires 300 s or less",
+        ),
+        ("NRK-LOGGING-001", "CISC-ND-001450", "passes one syslog host; the STIG requires two"),
+        ("NRK-NTP-001", "CISC-ND-001030", "passes one server; the STIG requires redundant sources"),
+        (
+            "NRK-BANNER-001",
+            "CISC-ND-000160",
+            "reads banner motd presence; the STIG requires banner login carrying mandated text",
+        ),
+    ],
+)
+def test_a_rule_looser_than_the_stig_does_not_carry_its_identifier(
+    rulepack, rule_id: str, control_id: str, why: str
+) -> None:
+    """The mapping would print a STIG identifier beside a PASS the STIG calls a finding.
+
+    That is a wrong-confident verdict produced by a cross-reference rather than
+    by the engine, and it is the failure DEVELOPER_GUIDE.md §13 names as critical.
+    """
+    rule = rulepack.rule(rule_id)
+    assert control_id not in rule.framework_ids(Framework.STIG), why
+    assert rule.gap_reason(Framework.STIG), f"{rule_id} must say why it declines the STIG"
+
+
+def test_the_http_disagreement_is_recorded_as_data(rulepack) -> None:
+    """STIG says the server must not be configured; CIS constrains it. Both are sourced."""
+    rule = rulepack.rule("NRK-HTTP-001")
+    assert rule.framework_ids(Framework.STIG) == ("CISC-ND-000470",)
+    assert rule.framework_ids(Framework.CIS) == ()
+    reason = rule.gap_reason(Framework.CIS)
+    assert reason and all(n in reason for n in ("1.1.5", "1.2.9", "1.2.10"))
+
+
+def test_the_banner_maps_to_the_directive_the_pack_reads(rulepack) -> None:
+    """The Cisco pack reads `banner motd` (1.3.3). The worksheet proposed 1.3.2, `banner login`."""
+    assert rulepack.rule("NRK-BANNER-001").framework_ids(Framework.CIS) == ("1.3.3",)
+
+
+def test_a_rule_cannot_both_map_to_and_decline_a_framework() -> None:
+    from api.models.rule import ComplianceRule, FrameworkGap, FrameworkRef
+
+    with pytest.raises(ValueError, match="both maps to and declines"):
+        ComplianceRule(
+            rule_id="NRK-TEST-002",
+            title="constructed",
+            severity=Severity.LOW,
+            rationale="Exercises the validator.",
+            check=CheckSpec(
+                field="ssh_version", condition=Condition(op=ConditionOp.EQUALS, value=2)
+            ),
+            frameworks=(FrameworkRef(framework=Framework.CIS, control_id="2.1.1.2"),),
+            not_mapped=(FrameworkGap(framework=Framework.CIS, reason="contradiction"),),
+        )

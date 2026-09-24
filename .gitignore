@@ -38,3 +38,15 @@ ui/dist/
 Thumbs.db
 .idea/
 .vscode/
+
+# CIS Benchmarks — never held in this repository (ADR 0052).
+# A CIS Benchmark's own terms say it may not be hosted on a third-party site,
+# and this repository has a public remote. The benchmark is read from an
+# operator-supplied path OUTSIDE the tree; only its recommendation numbers,
+# edition and sha256 are recorded, in rules/frameworks/. This entry is the
+# accident guard; tests/architecture/test_cis_material_is_not_held.py is the
+# check, and it fails on an ignored copy too.
+*CIS*Benchmark*
+*CIS*benchmark*
+*cis*benchmark*
+*CIS_Cisco_IOS*

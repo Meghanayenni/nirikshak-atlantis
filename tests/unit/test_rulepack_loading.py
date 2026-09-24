@@ -9,6 +9,8 @@ they route to different people.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from api.comply.errors import RulepackLoadError, RulepackValidationError
@@ -110,7 +112,9 @@ def test_no_rule_references_a_snippet_that_does_not_exist() -> None:
 
 def test_the_rulepack_carries_a_version() -> None:
     """`FindingProvenance.rulepack_version` had no source before P6."""
-    assert load_rulepack().version == "1.0.0"
+    # Not restated as a literal: the version is bound to the rule files by a
+    # digest (D125), and a second copy of it here is one more place to forget.
+    assert re.fullmatch(r"\d+\.\d+\.\d+", load_rulepack().version)
 
 
 def test_duplicate_rule_ids_are_rejected() -> None:

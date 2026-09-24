@@ -1,0 +1,61 @@
+# Derived by scripts/fetch_framework_catalog.py. Identifiers only — no
+# control text, per docs/CONTENT_POLICY.md. Do not hand-edit.
+framework: stig
+document: "DISA Cisco IOS XE Router NDM STIG \u2014 XCCDF manual benchmark"
+edition: V3R7 (2026-04-01)
+held_at: docs/sources/disa/U_Cisco_IOS-XE_Router_NDM_STIG_V3R7_Manual-xccdf.xml
+source_note: Obtained by hand from the DoD Cyber Exchange public STIG library as U_Cisco_IOS-XE_Router_Y26M04_STIG.zip
+  (sha256 01900ad03d8972698160db7c1fdfc71b64a3c7188ee53c4f1047fc827986f36d); the XCCDF file inside it
+  is committed at held_at, byte for byte.
+catalog_sha256: 748fab27a38ba2e980250338c8140bdc0eb00fc19cc269bc326a60185b8dd956
+covers:
+  vendor: cisco
+  os_family: ios
+  os_version: ^17\.
+  basis: The document names Cisco IOS XE routers and states no release. 17.x is the only release family
+    any source in hand ties to IOS XE; classic IOS 15.x shares os_family 'ios' in NIRIKSHAK and is not
+    covered. Device role (router or switch) is not determinable.
+controls:
+- CISC-ND-000010
+- CISC-ND-000090
+- CISC-ND-000100
+- CISC-ND-000110
+- CISC-ND-000120
+- CISC-ND-000140
+- CISC-ND-000150
+- CISC-ND-000160
+- CISC-ND-000210
+- CISC-ND-000280
+- CISC-ND-000290
+- CISC-ND-000330
+- CISC-ND-000380
+- CISC-ND-000390
+- CISC-ND-000460
+- CISC-ND-000470
+- CISC-ND-000490
+- CISC-ND-000550
+- CISC-ND-000570
+- CISC-ND-000580
+- CISC-ND-000590
+- CISC-ND-000600
+- CISC-ND-000610
+- CISC-ND-000620
+- CISC-ND-000720
+- CISC-ND-000880
+- CISC-ND-000980
+- CISC-ND-001000
+- CISC-ND-001030
+- CISC-ND-001130
+- CISC-ND-001140
+- CISC-ND-001150
+- CISC-ND-001200
+- CISC-ND-001210
+- CISC-ND-001250
+- CISC-ND-001260
+- CISC-ND-001270
+- CISC-ND-001370
+- CISC-ND-001410
+- CISC-ND-001440
+- CISC-ND-001450
+- CISC-ND-001470
+withdrawn: []

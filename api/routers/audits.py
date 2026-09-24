@@ -30,6 +30,7 @@ from api.comply.engine import evaluate_device, new_audit_id
 from api.comply.frameworks import (
     UnsourcedFrameworkError,
     indexes,
+    mappings_for_device,
     resolve_selection,
 )
 from api.comply.rulepacks import load_active_rulepack
@@ -68,6 +69,12 @@ def _platform(conn: sqlite3.Connection, file_id: str) -> tuple[str | None, str |
     if row is None:
         return None, None
     return row["detected_vendor"], row["detected_os_family"]
+
+
+def _os_version(conn: sqlite3.Connection, device_id: str) -> str | None:
+    """The release ingestion read from the file — what an edition's scope is tested on."""
+    row = conn.execute("SELECT os_version FROM device WHERE device_id = ?", (device_id,)).fetchone()
+    return row["os_version"] if row is not None else None
 
 
 def _finding_json(finding: Finding, resolution: RemediationResolution) -> dict[str, Any]:
@@ -111,8 +118,7 @@ def _finding_json(finding: Finding, resolution: RemediationResolution) -> dict[s
             }
             for e in finding.evidence
         ],
-        # Empty until a benchmark edition is sourced (decision D16). Present in
-        # the payload so the UI can render the column without a later reshape.
+        # Only identifiers whose edition describes this device (ADR 0052).
         "frameworks": [
             {"framework": f.framework.value, "control_id": f.control_id} for f in finding.frameworks
         ],
@@ -153,6 +159,13 @@ def list_frameworks() -> dict[str, Any]:
                 "edition": index.edition,
                 "catalog_sha256": index.sha256,
                 "source_url": index.source_url,
+                # Where the digested document is: a path in this repository (the
+                # STIG), or a statement that it is deliberately not held (CIS).
+                "held_at": index.held_at or None,
+                "source_note": index.source_note or None,
+                # The platform the edition is written for; None means any. A
+                # STIG or CIS identifier is true only there (ADR 0052).
+                "covers": index.covers.describe() if index.covers else None,
                 "controls_indexed": index.control_count,
             }
             for framework, index in sorted(indexes().items(), key=lambda kv: kv[0].value)
@@ -390,6 +403,24 @@ def get_findings(
     run = finding_store.read_run(conn, audit_id)
     vendor, os_family = _platform(conn, run["device_id"]) if run else (None, None)
     library = load_active_library()
+
+    # Control mappings are rulepack data and are not stored per finding (D96),
+    # so a persisted finding comes back with none. Until ADR 0052 this route
+    # returned them that way — every stored finding, empty — while the report
+    # re-attached them; the interface reads this route. Re-attached here by the
+    # same function and on the same condition: only under the rulepack that
+    # evaluated the run, and only the identifiers true of this device.
+    rulepack = load_active_rulepack()
+    if run is not None and run.get("rulepack_version") == rulepack.version:
+        mappings = mappings_for_device(
+            rulepack.rules, vendor, os_family, _os_version(conn, run["device_id"])
+        )
+        results = [
+            f.model_copy(update={"frameworks": mappings.get(f.rule_id, ())})
+            if not f.frameworks
+            else f
+            for f in results
+        ]
 
     return {
         "audit_id": audit_id,

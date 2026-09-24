@@ -29,6 +29,7 @@ from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import HTMLResponse
 
 from api.audit.chain import AuditChain
+from api.comply.frameworks import explain_absence, mappings_for_device
 from api.comply.rulepacks import load_active_rulepack
 from api.config import settings
 from api.db import findings as finding_store
@@ -97,7 +98,6 @@ def _identity_row(conn: sqlite3.Connection, device_id: str) -> dict[str, Any]:
     return dict(row) if row is not None else {}
 
 
-
 def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
     """Authorise, load, and build the view model. Shared by both representations."""
     _authorise(conn, user, audit_id)
@@ -115,9 +115,16 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
     # rulepack would cite a document that did not decide it. When they differ the
     # report simply carries no control identifiers, which is visibly less rather
     # than quietly wrong.
+    #
+    # And only those that hold on THIS device (ADR 0052). A STIG or CIS edition
+    # is written for one platform and release, so the same rule on a Juniper
+    # router carries NIST identifiers and nothing else — and the report says why
+    # each missing framework is missing, rather than calling it unsourced.
     rulepack = load_active_rulepack()
+    identity = _identity_row(conn, run["device_id"])
+    os_version = identity.get("os_version")
     rule_frameworks = (
-        {rule.rule_id: rule.frameworks for rule in rulepack.rules}
+        mappings_for_device(rulepack.rules, vendor, os_family, os_version)
         if run.get("rulepack_version") == rulepack.version
         else None
     )
@@ -132,7 +139,8 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
         os_family=os_family,
         config_file_path=blob_path,
         rule_frameworks=rule_frameworks,
-        identity=_identity_row(conn, run["device_id"]),
+        framework_absence=explain_absence(vendor, os_family, os_version),
+        identity=identity,
     )
 
 

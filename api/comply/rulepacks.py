@@ -32,7 +32,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RULES_ROOT = REPO_ROOT / "rules" / "canonical"
 
 CANONICAL_RULEPACK_ID = "canonical"
-CANONICAL_RULEPACK_VERSION = "1.0.0"
+CANONICAL_RULEPACK_VERSION = "1.1.0"
 
 
 def load_rule(path: Path) -> ComplianceRule:

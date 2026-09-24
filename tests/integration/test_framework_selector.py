@@ -81,7 +81,7 @@ def test_a_sourced_framework_resolves() -> None:
     assert resolve_selection(["NIST", " nist "]) == frozenset({Framework.NIST})
 
 
-@pytest.mark.parametrize("name", ["cis", "stig", "iso"])
+@pytest.mark.parametrize("name", ["iso"])
 def test_a_framework_with_no_catalog_is_refused(name: str) -> None:
     """Not answered with zero findings. Refused, with the reason."""
     with pytest.raises(UnsourcedFrameworkError, match="no catalog has been sourced"):
@@ -95,7 +95,7 @@ def test_an_unknown_name_is_refused_differently() -> None:
 
 
 def test_the_selector_offers_only_what_has_a_catalog() -> None:
-    assert sourced_frameworks() == frozenset({Framework.NIST})
+    assert sourced_frameworks() == frozenset({Framework.NIST, Framework.STIG, Framework.CIS})
 
 
 # ---------------------------------------------------------------------------
@@ -109,11 +109,11 @@ def test_the_frameworks_endpoint_lists_the_catalog_behind_each_option(
     """An option names the document and the bytes it was read from."""
     body = client.get("/compliance/audits/frameworks").json()
 
-    assert [f["framework"] for f in body["frameworks"]] == ["nist"]
-    entry = body["frameworks"][0]
-    assert len(entry["catalog_sha256"]) == 64
-    assert entry["edition"]
-    assert entry["controls_indexed"] > 0
+    assert [f["framework"] for f in body["frameworks"]] == ["cis", "nist", "stig"]
+    for entry in body["frameworks"]:
+        assert len(entry["catalog_sha256"]) == 64
+        assert entry["edition"]
+        assert entry["controls_indexed"] > 0
     assert "does not publish mappings" in body["note"]
 
 
@@ -125,8 +125,6 @@ def test_the_frameworks_endpoint_omits_frameworks_with_no_catalog(
         f["framework"] for f in client.get("/compliance/audits/frameworks").json()["frameworks"]
     }
 
-    assert "cis" not in offered
-    assert "stig" not in offered
     assert "iso" not in offered
 
 
@@ -174,3 +172,50 @@ def test_the_selection_survives_into_the_report(client: TestClient) -> None:
     assert "Benchmark scope" in html
     assert "NIST" in html
     assert "only rules mapping to these were evaluated" in html
+
+
+# ---------------------------------------------------------------------------
+# A platform benchmark's identifiers hold only on its platform (ADR 0052)
+# ---------------------------------------------------------------------------
+
+IOS_XE_17 = Path("corpus/cisco/dev/rtr-core-01.cfg")
+JUNOS = Path("corpus/juniper/dev/edge-rtr-02.conf")
+
+
+def _upload(api: TestClient, path: Path) -> str:
+    upload = api.post(
+        "/ingest/upload",
+        files={"files": (path.name, path.read_bytes(), "text/plain")},
+        auth=ALICE,
+    )
+    assert upload.status_code == 200, upload.text
+    return upload.json()["accepted"][0]["file_id"]
+
+
+def _mapped(body: dict) -> set[str]:
+    return {m["framework"] for f in body["findings"] for m in f["frameworks"]}
+
+
+def test_an_ios_xe_17_device_carries_stig_and_cis_identifiers(client: TestClient) -> None:
+    file_id = _upload(client, IOS_XE_17)
+    body = client.post(f"/compliance/audits?file_id={file_id}", auth=ALICE).json()
+    findings = client.get(f"/compliance/audits/{body['audit_id']}/findings", auth=ALICE).json()
+
+    assert _mapped(findings) == {"nist", "stig", "cis"}
+
+    html = client.get(f"/compliance/audits/{body['audit_id']}/report.html", auth=ALICE).text
+    assert "CISC-ND-000470" in html
+    assert "ISO: no ISO catalog has been sourced" in html
+
+
+def test_a_junos_device_carries_nist_only_and_the_report_says_why(client: TestClient) -> None:
+    """Not "no catalog sourced" — the STIG and CIS were read and do not describe JunOS."""
+    file_id = _upload(client, JUNOS)
+    body = client.post(f"/compliance/audits?file_id={file_id}", auth=ALICE).json()
+    findings = client.get(f"/compliance/audits/{body['audit_id']}/findings", auth=ALICE).json()
+
+    assert _mapped(findings) <= {"nist"}
+    html = client.get(f"/compliance/audits/{body['audit_id']}/report.html", auth=ALICE).text
+    assert "CISC-ND-" not in html
+    assert "which the edition does not describe" in html
+    assert "no STIG catalog has been sourced" not in html

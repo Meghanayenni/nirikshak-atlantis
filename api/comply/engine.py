@@ -37,11 +37,12 @@ from datetime import UTC, datetime
 from typing import Any
 
 from api.comply.conditions import describe_all, evaluate_all
+from api.comply.frameworks import refs_for_device
 from api.models.csm import CanonicalSecurityModel
 from api.models.enums import AbsenceAction, FieldState, Framework, UnknownReason, Verdict
 from api.models.field import Field
 from api.models.finding import Finding, FindingProvenance, ObservedValue
-from api.models.rule import ComplianceRule, Rulepack
+from api.models.rule import ComplianceRule, FrameworkRef, Rulepack
 
 ENGINE_VERSION = "0.1.0"
 """The evaluator's own version, recorded on every finding.
@@ -212,7 +213,7 @@ def _finding(
         # Copied from what P5 resolved, never composed here: the engine does not
         # author citations, it carries them.
         absence_reason=field.default_ref,
-        frameworks=rule.frameworks,
+        frameworks=_refs(rule, csm),
         # Always None, and not because P8 is unfinished (decision D26).
         # `comply` may not import `remediate` — a verdict is decided before
         # anything is proposed to fix it — so the engine has no way to resolve a
@@ -248,9 +249,20 @@ def _abstain(
         # carries the very lines an operator needs in order to see the conflict.
         evidence=observed.evidence if observed is not None else (),
         unknown_reason=reason,
-        frameworks=rule.frameworks,
+        frameworks=_refs(rule, csm),
         provenance=_provenance(csm, rulepack, evaluated_at),
     )
+
+
+def _refs(rule: ComplianceRule, csm: CanonicalSecurityModel) -> tuple[FrameworkRef, ...]:
+    """The rule's control mappings that hold on this device's platform (ADR 0052).
+
+    Filtered here rather than at render time alone so that the finding the API
+    returns and the finding a report re-reads can never disagree about which
+    edition applied.
+    """
+    device = csm.device
+    return refs_for_device(rule.frameworks, device.vendor, device.os_family, device.os_version)
 
 
 def _observed(field: Field[Any] | None) -> ObservedValue:

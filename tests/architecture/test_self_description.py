@@ -113,6 +113,8 @@ def rulepack_digest() -> str:
 
 RULEPACK_CONTENT: dict[str, str] = {
     "1.0.0": "6aa678d256ec5ba9808f3b72631f87aa893af0afc775cbfb8de22cb39a69d218",
+    # ADR 0052 — DISA STIG and CIS mappings, and the recorded framework gaps.
+    "1.1.0": "930f28a3c270e7d4f1c055cef49097e1dcdc0971ef1249a066a61fc238933a81",
 }
 """`rulepack_version` -> the digest of the rules that version contains.
 

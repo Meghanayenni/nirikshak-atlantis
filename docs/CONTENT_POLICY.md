@@ -49,6 +49,35 @@ exists, tight enough to catch wholesale pasting.
 
 ---
 
+## Framework source documents — held, or referenced
+
+A framework index in `rules/frameworks/` records the sha256 and edition of the
+document its identifiers were read from. Whether the **document itself** may sit
+in this repository depends on that document's own terms, and the answer differs
+by framework (ADR 0052):
+
+| Source | In the repository? | Why |
+| --- | --- | --- |
+| NIST SP 800-53 Rev 5 (OSCAL) | No — fetched by `scripts/`, digest recorded | Left open for the team (ADR 0035) |
+| DISA Cisco IOS XE Router NDM STIG (XCCDF) | **Yes** — `docs/sources/disa/`, byte for byte | A US Government work published for public download |
+| CIS Cisco IOS XE 17.x Benchmark (PDF) | **Never** — read from an operator-supplied path outside the tree | Its own terms say it may not be hosted on a third-party site; this repository has a public remote |
+
+For CIS that means, concretely: the recommendation **number** and our own
+description of the check, and nothing else — no title, rationale, audit
+procedure or remediation text, and no extract of the PDF in any format.
+`.gitignore` guards against accident, and
+`tests/architecture/test_cis_material_is_not_held.py` fails on any CIS-named
+file, or any file whose bytes match the pinned digest, anywhere in the working
+tree — ignored files included.
+
+**This is not a legal claim** about any of those terms. They were read, and the
+conservative reading was taken. Whether to ask CIS Legal for guidance on using
+portions of its recommendations is a decision for the team.
+
+A file under `docs/sources/` is held *because* it is content-addressed, so
+`.gitattributes` marks it `-text`: git stores and checks out the published bytes
+unaltered, and the recorded sha256 stays true of the file on disk.
+
 ## Sample configurations
 
 `corpus/` holds sanitised sample device configurations.
@@ -76,8 +105,10 @@ field shaped to hold vendor prose, and must load through
 `vetted_by` that looks automated is refused: the field exists to name the person
 accountable for the commands.
 
-The library is currently **empty**, because no vendor documentation has been
-sourced. See `snippets/README.md`.
+The library holds twenty snippets across three platforms, each naming its vetter
+and the vendor document it was checked against. See `snippets/README.md`.
+*(Until P18 this sentence said the library was empty, which had been false
+since the snippets shipped.)*
 
 ## Vendor packs
 

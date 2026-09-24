@@ -18,3 +18,23 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+  - framework: stig
+    control_id: "CISC-ND-001210"
+    version: "V3R7 (2026-04-01)"
+    citation: "DISA Cisco IOS XE Router NDM STIG — XCCDF manual benchmark, edition V3R7 (2026-04-01), control CISC-ND-001210"
+    # The check names `ip ssh version 2` as the compliant form. The control also
+    # requires FIPS-approved ciphers, which this rule does not read (ADR 0052).
+    mapping_provenance: project_asserted
+  - framework: stig
+    control_id: "CISC-ND-001200"
+    version: "V3R7 (2026-04-01)"
+    citation: "DISA Cisco IOS XE Router NDM STIG — XCCDF manual benchmark, edition V3R7 (2026-04-01), control CISC-ND-001200"
+    # The check names `ip ssh version 2` exactly as CISC-ND-001210 does; SSHv1
+    # carries no HMAC at all. The MAC algorithm list is not read (ADR 0052).
+    mapping_provenance: project_asserted
+  - framework: cis
+    control_id: "2.1.1.2"
+    version: "v2.2.1 (2025-07-17)"
+    citation: "CIS Cisco IOS XE 17.x Benchmark, edition v2.2.1 (2025-07-17), control 2.1.1.2"
+    # Same directive, same value. Recommendation number only; no CIS text is held.
+    mapping_provenance: project_asserted

@@ -18,3 +18,16 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+  - framework: cis
+    control_id: "1.3.3"
+    version: "v2.2.1 (2025-07-17)"
+    citation: "CIS Cisco IOS XE 17.x Benchmark, edition v2.2.1 (2025-07-17), control 1.3.3"
+    # The Cisco pack reads `banner motd`, which is this recommendation's directive.
+    # 1.3.2 (`banner login`) is a different directive and is not mapped (ADR 0052).
+    mapping_provenance: project_asserted
+not_mapped:
+  - framework: stig
+    reason: >-
+      CISC-ND-000160 requires `banner login` carrying the mandated DoD notice
+      text. This rule reads `banner motd` and checks presence only, so it passes devices
+      the STIG calls a finding (ADR 0052).

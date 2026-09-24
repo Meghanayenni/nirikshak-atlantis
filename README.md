@@ -47,7 +47,7 @@ on. And the accuracy of that pipeline is a measurement rather than a claim —
 | Platforms reading canonical security fields | **2** — IOS (eight fields), NX-OS (seven) |
 | Access lists analysed, across 3 packs | **6**, none dropped |
 | ACL observations on real corpus files | 5 shadowed, 4 redundant, 3 overly permissive |
-| Frameworks with a sourced catalog | **1 of 4** — NIST SP 800-53 Rev 5, edition 5.2.0, pinned by sha256 |
+| Frameworks with a sourced catalog | **3 of 4** — NIST SP 800-53 Rev 5 (5.2.0); DISA Cisco IOS XE Router NDM STIG (V3R7); CIS Cisco IOS XE 17.x Benchmark (v2.2.1). Each pinned by sha256; ISO/IEC 27001 not sourced |
 | Vetted remediation snippets | **20**, across 3 platforms — every one with a rollback and preconditions |
 | Report formats | HTML and PDF, both from the same persisted run |
 
@@ -171,11 +171,12 @@ be a guess wearing a citation, and a name matching no role stays *undocumented*
 rather than becoming *not management* (DEF-2). The path is proven end to end on
 a constructed pack, so an abstention here is a refusal rather than a breakage.
 
-**One framework of four is mapped, and no mapping claims to be official.** All
-seven rules now carry NIST SP 800-53 Rev 5 control identifiers, each validated
+**Three frameworks of four are mapped, and no mapping claims to be official.**
+All seven rules carry NIST SP 800-53 Rev 5 control identifiers, each validated
 against the official OSCAL catalog — edition 5.2.0, pinned by the catalog's own
 sha256, with withdrawn controls listed so a plausible-but-retired identifier
-cannot ship. **Every mapping is `project_asserted`**: a catalog publishes
+cannot ship. Five rules carry DISA STIG IDs and six carry CIS recommendation
+numbers (ADR 0052), each validated against an index of its edition. **Every mapping is `project_asserted`**: a catalog publishes
 *controls*, not *mappings*, and that a NIRIKSHAK check satisfies a given control
 is this project's judgement. `official` provenance is reachable only from a
 published **crosswalk** — a document stating the mapping — and none has been
@@ -190,15 +191,32 @@ that scope and shows each finding's mapped controls.
 frameworks with a sourced catalog — asking for one without a catalog is refused
 with 400, never answered with zero findings.
 
-**CIS, DISA STIG and ISO/IEC 27001 are unmapped**, each for its own reason: CIS
-Benchmarks are behind registration, DISA's STIG index is rendered client-side and
-exposed no resolvable file URL, and ISO/IEC 27001 is a purchased standard. A
-framework with no sourced catalog is **absent** from the selector rather than
-present and empty — an empty result reads as a clean bill of health, and "we
-never read this benchmark" is a different statement. **No claim of coverage
-against those three is made or supported by this repository**, and none of the
-four supports a claim of *certified* compliance. See
-`docs/adr/0035-framework-mappings-against-a-content-addressed-catalog.md`.
+**DISA STIG and CIS are mapped narrowly, and on one platform.** Both editions
+describe Cisco IOS XE, so their identifiers appear only on `cisco/ios` devices
+whose release reads 17.x — not on classic IOS 15.x, NX-OS, JunOS or EOS, where a
+report says why rather than leaving the column blank. Four rules are looser than
+the STIG control a prepared reading proposed for them (a 10-minute timeout
+against the STIG's 5; one syslog host or NTP server against its two; a banner's
+presence against its mandated text) and carry no STIG identifier, with the reason
+recorded in the rule. **The two frameworks disagree about the HTTP server**: the
+STIG says it must not be configured, and CIS constrains it without requiring it
+disabled — so `NRK-HTTP-001` maps to the STIG and records the CIS disagreement
+rather than forcing a row to look complete.
+
+The STIG's XCCDF file is held in this repository and its index re-derives from it
+on every test run. **The CIS Benchmark is never held**: its own terms forbid
+third-party hosting, so it is read from outside the tree and only recommendation
+numbers are recorded, and a test fails if any copy appears in the working tree.
+No legal claim is made about either set of terms.
+
+**ISO/IEC 27001 is unmapped** — a purchased standard. It is **absent** from the
+selector rather than present and empty: an empty result reads as a clean bill of
+health, and "we never read this benchmark" is a different statement. **No claim
+of coverage against any framework is made or supported by this repository** —
+five of 42 STIG requirements and six of 84 CIS recommendations carry a mapping —
+and none of the four supports a claim of *certified* compliance. See
+`docs/adr/0035-framework-mappings-against-a-content-addressed-catalog.md` and
+`docs/adr/0052-two-benchmarks-one-held-and-one-referenced.md`.
 
 **A serial number is not readable from a configuration, and that is a limit of
 the input rather than of the parser.** A serial is inventory data from

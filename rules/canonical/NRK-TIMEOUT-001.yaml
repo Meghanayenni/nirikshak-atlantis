@@ -31,3 +31,15 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+  - framework: cis
+    control_id: "1.2.8"
+    version: "v2.2.1 (2025-07-17)"
+    citation: "CIS Cisco IOS XE 17.x Benchmark, edition v2.2.1 (2025-07-17), control 1.2.8"
+    # At most ten minutes on vty, which is exactly this rule's upper bound.
+    mapping_provenance: project_asserted
+not_mapped:
+  - framework: stig
+    reason: >-
+      CISC-ND-000720 requires five minutes or less; this rule passes up to ten.
+      Mapping it would print a STIG identifier beside a PASS the STIG calls a finding,
+      for any timeout from 301 to 600 seconds (ADR 0052).

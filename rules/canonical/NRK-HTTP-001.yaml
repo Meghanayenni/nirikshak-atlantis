@@ -25,3 +25,18 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+  - framework: stig
+    control_id: "CISC-ND-000470"
+    version: "V3R7 (2026-04-01)"
+    citation: "DISA Cisco IOS XE Router NDM STIG — XCCDF manual benchmark, edition V3R7 (2026-04-01), control CISC-ND-000470"
+    # `ip http server` is on the control's list of commands that must not be
+    # configured. The other services on that list are not read (ADR 0052).
+    mapping_provenance: project_asserted
+not_mapped:
+  - framework: cis
+    reason: >-
+      CIS Cisco IOS XE 17.x v2.2.1 has no recommendation requiring the plaintext
+      HTTP server be disabled. Its three HTTP recommendations (1.1.5, 1.2.9, 1.2.10) all
+      constrain a server assumed to be running. DISA's CISC-ND-000470 says the opposite,
+      and the two sourced frameworks are recorded as disagreeing rather than reconciled
+      (ADR 0052).

@@ -203,8 +203,11 @@ def _identity(row: Mapping[str, Any]) -> ReportedIdentity:
     )
 
 
-
-def _disclosures(reported: tuple[ReportedFinding, ...], library: SnippetLibrary) -> tuple[str, ...]:
+def _disclosures(
+    reported: tuple[ReportedFinding, ...],
+    library: SnippetLibrary,
+    framework_absence: Mapping[str, str] | None = None,
+) -> tuple[str, ...]:
     """What this report cannot claim, measured from what it contains.
 
     Every sentence below is produced by a condition over the actual findings. As
@@ -234,18 +237,21 @@ def _disclosures(reported: tuple[ReportedFinding, ...], library: SnippetLibrary)
             "certification of compliance with any framework."
         )
 
-    unmapped = {
-        framework.value.upper()
-        for framework in Framework
-        if framework not in mapped
-    }
+    unmapped = sorted(framework for framework in Framework if framework not in mapped)
     if unmapped and mapped:
+        # Two absences that must not read alike (ADR 0052): a benchmark nobody has
+        # read, and one that was read and does not describe this device. The
+        # route supplies which is which; without it, the sentence claims neither.
+        reasons = framework_absence or {}
+        named = "; ".join(
+            f"{framework.value.upper()}: {reasons[framework.value]}"
+            if framework.value in reasons
+            else framework.value.upper()
+            for framework in unmapped
+        )
         out.append(
-            "No control mapping is present for "
-            + ", ".join(sorted(unmapped))
-            + ". No catalog for those frameworks has been sourced, so this report "
-            "says nothing about them either way — the absence of a finding is not a "
-            "passing result."
+            f"No control mapping is present for {named}. The absence of a finding "
+            "under a framework is not a passing result against it."
         )
 
     if library.is_empty:
@@ -294,6 +300,7 @@ def build_report(
     generated_at: datetime | None = None,
     rule_frameworks: Mapping[str, tuple[FrameworkRef, ...]] | None = None,
     identity: Mapping[str, Any] | None = None,
+    framework_absence: Mapping[str, str] | None = None,
 ) -> Report:
     """Assemble one report from a persisted run.
 
@@ -357,5 +364,5 @@ def build_report(
             generated_at=generated_at or datetime.now(UTC),
         ),
         framework_selection=tuple(run.get("framework_selection") or ()),
-        disclosures=_disclosures(ordered, library),
+        disclosures=_disclosures(ordered, library, framework_absence),
     )

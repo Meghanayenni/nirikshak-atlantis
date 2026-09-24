@@ -212,6 +212,35 @@ class FrameworkRef(BaseModel):
     mapping_provenance: MappingProvenance = MappingProvenance.PROJECT_ASSERTED
 
 
+MAX_GAP_REASON_CHARS = 600
+"""Enough to say why no control fits; too short to paste a control into."""
+
+
+class FrameworkGap(BaseModel):
+    """A sourced framework this check deliberately does **not** map to, and why.
+
+    Added at P18 (ADR 0052), because silence has two readings. A rule with no
+    CIS identifier might be one nobody checked, or one somebody checked and found
+    CIS does not ask for — `NRK-HTTP-001`, where CIS IOS XE 17.x constrains the
+    HTTP server and never requires it disabled, while the DISA STIG says it must
+    not be configured at all. Those two frameworks disagree about the same
+    control, and the disagreement is a fact worth carrying rather than a blank
+    that looks like an oversight.
+
+    The same shape records a mapping *refused* because the rule is looser than
+    the control: a check passing a ten-minute timeout must not sit beside a
+    control that calls anything over five a finding.
+
+    `reason` is the project's own words. It names identifiers, never quotes the
+    benchmark (`docs/CONTENT_POLICY.md`).
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    framework: Framework
+    reason: str = Constraint(min_length=1, max_length=MAX_GAP_REASON_CHARS)
+
+
 class ComplianceRule(BaseModel):
     """One deterministic check, cross-mapped to every framework it satisfies."""
 
@@ -231,6 +260,7 @@ class ComplianceRule(BaseModel):
     absence_policy: AbsencePolicy = Constraint(default_factory=AbsencePolicy)
 
     frameworks: tuple[FrameworkRef, ...] = ()
+    not_mapped: tuple[FrameworkGap, ...] = ()
     remediation_ref: str | None = None
     references: tuple[str, ...] = ()
 
@@ -244,7 +274,22 @@ class ComplianceRule(BaseModel):
                     f"rule {self.rule_id!r} maps to {ref.framework}:{ref.control_id} twice"
                 )
             seen.add(key)
+
+        gaps = [gap.framework for gap in self.not_mapped]
+        if len(gaps) != len(set(gaps)):
+            raise ValueError(f"rule {self.rule_id!r} records a framework gap twice")
+        both = set(gaps) & self.frameworks_covered
+        if both:
+            raise ValueError(
+                f"rule {self.rule_id!r} both maps to and declines "
+                f"{sorted(f.value for f in both)}; a rule either evidences a framework "
+                "or says why it does not"
+            )
         return self
+
+    def gap_reason(self, framework: Framework) -> str | None:
+        """Why this rule declines `framework`, when it has said so."""
+        return next((g.reason for g in self.not_mapped if g.framework is framework), None)
 
     # -- access ------------------------------------------------------------
 

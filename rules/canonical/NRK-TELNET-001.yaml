@@ -25,3 +25,17 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+  - framework: stig
+    control_id: "CISC-ND-000140"
+    version: "V3R7 (2026-04-01)"
+    citation: "DISA Cisco IOS XE Router NDM STIG — XCCDF manual benchmark, edition V3R7 (2026-04-01), control CISC-ND-000140"
+    # Check and fix configure `transport input ssh` on vty. The control's
+    # primary ask, an inbound access-class, is not read by this rule (ADR 0052).
+    mapping_provenance: project_asserted
+  - framework: cis
+    control_id: "1.2.2"
+    version: "v2.2.1 (2025-07-17)"
+    citation: "CIS Cisco IOS XE 17.x Benchmark, edition v2.2.1 (2025-07-17), control 1.2.2"
+    # Same directive. The pack reads only `ssh` and `none` as telnet-free, so
+    # nothing this rule passes admits another transport (ADR 0052).
+    mapping_provenance: project_asserted

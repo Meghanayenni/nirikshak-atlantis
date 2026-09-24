@@ -25,3 +25,15 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+  - framework: cis
+    control_id: "2.2.4"
+    version: "v2.2.1 (2025-07-17)"
+    citation: "CIS Cisco IOS XE 17.x Benchmark, edition v2.2.1 (2025-07-17), control 2.2.4"
+    # One or more syslog hosts, which is this rule's condition.
+    mapping_provenance: project_asserted
+not_mapped:
+  - framework: stig
+    reason: >-
+      CISC-ND-001450 requires at least two syslog servers; this rule passes one.
+      Mapping it would show a STIG identifier beside a PASS the STIG calls a finding
+      (ADR 0052).
