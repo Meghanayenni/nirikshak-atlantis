@@ -343,8 +343,22 @@ One vendor — **PAN-OS** — is held out entirely for the generalisation experi
 Two files under `corpus/holdout/panos/` are recorded in `corpus/MANIFEST.yaml`
 with `split: holdout`.
 
-**They have never been opened.** Not read, not hashed, not parsed, at any point
-in any phase. The seal is structural rather than procedural:
+**They have never been parsed, never been shown to a person, and never been used
+to author a pattern.** They *are* read — by exactly two integrity guards, stated
+here because a seal that is verified is a stronger claim than one merely asserted:
+
+- `test_every_checksum_matches` hashes both files on every test run against the
+  sha256 the manifest records, so an edit to a held-out file fails the build;
+- the contamination check in `tests/integration/test_corpus_policy.py` reads
+  their lines to prove no vendor-pack example appears only in the evaluation or
+  holdout splits — a string comparison that reports only the offending pack
+  example, a line already in a pack rather than one read out of the held-out
+  file.
+
+Neither guard reaches a parser, a model, the similarity index or a screen.
+*(Until the pre-submission audit this section said the files had "never been
+opened … not read, not hashed", which both guards contradicted on every run.)*
+The seal on the experiment itself is structural rather than procedural:
 
 - The evaluation harness raises before a file handle is opened for a held-out
   split.
@@ -355,8 +369,8 @@ in any phase. The seal is structural rather than procedural:
   path fragments `holdout/`, `corpus/holdout`, `panos` and `paloalto`, with
   docstrings stripped first: explaining the rule is expected, constructing a path
   is not.
-- Tests that must reason about splits skip holdout manifest entries **before any
-  read**, and a helper that would receive one asserts against it.
+- Every other test that reasons about splits skips holdout manifest entries
+  **before any read**, and a helper that would receive one asserts against it.
 
 The reason is single-use: once those files have been studied to build a parser,
 top-3 accuracy on them measures memory rather than generalisation. The experiment
@@ -366,7 +380,7 @@ can be run once, and it has not been spent.
 
 ## 9. Defect register
 
-Eighteen numbered defects. **Three are open.**
+Nineteen numbered defects. **Four are open.**
 
 | # | Description | Status |
 | --- | --- | --- |
@@ -388,6 +402,7 @@ Eighteen numbered defects. **Three are open.**
 | **DEF-16** | **The confirmation loop does not know about corpus splits, so an administrator working the Needs-review queue can compile a pattern from a file reserved for measuring the parser** | **OPEN** |
 | DEF-17 | Two patterns asserting different values for one field collapsed to UNKNOWN, so a device whose weakest vty line enables telnet reported no FAIL | Fixed (ADR 0026) |
 | **DEF-18** | **Deleting a trained pack orphans every stored finding that cites it — two audit runs on this deployment can no longer name the pack that read them** | **OPEN** — evidence secured (ADR 0031) |
+| **DEF-19** | **A second account that uploads a file another account uploaded first is shown the device and refused its audit — `POST /compliance/audits` answers 404, because a file's owner is its first uploader** | **OPEN** — deferred past submission |
 
 ### Why the remaining defects are open
 
@@ -424,6 +439,16 @@ for activation — is still open. *(This sentence also listed a `pack_versions`
 column keyed by `pack_id` rather than by vendor as outstanding. That half landed
 at ADR 0038: `CsmSource.pack_versions` is keyed `vendor/os_family`, so
 `cisco/ios` and `cisco/nxos` no longer collide in it.)*
+
+**DEF-19** — found by the pre-submission audit, from a clean clone. Bob uploads
+`rtr-core-01.cfg` after Alice already has: the upload is accepted as a
+duplicate and the device appears in Bob's list, but the audit route resolves
+ownership from the file's *first* ingestion and answers 404, so the interface
+shows Bob a device he cannot audit. One account per reviewer, or one shared
+account, never meets it. The fix is to the ownership rule in the audit and
+report routes — authorisation code — and changing that two days before
+submission was judged riskier than the defect; it is recorded rather than
+patched.
 
 **DEF-16 — the detector now runs, and the defect is unchanged** (ADR 0051). Its
 guard scans `packs/trained/`, which is gitignored and empty on every checkout,

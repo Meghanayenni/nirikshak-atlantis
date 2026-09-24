@@ -306,7 +306,9 @@ No similarity number in this system may be read as a probability.
 layer exists, so that is no longer the obstacle. The metric is defined over the
 held-out vendor's commands, reading them needs a parser for its format, and that
 parser waits on a sample independent of the held-out files — building it from
-them would destroy the experiment. **The holdout has never been opened.**
+them would destroy the experiment. **The holdout has never been parsed, studied
+or used to author a pattern**; two integrity guards hash and scan its files on
+every test run, and neither surfaces a held-out line to anyone (architecture §8).
 
 **Evaluation results are synthetic-corpus results.** Every configuration in
 `corpus/` is hand-written, so the harness scores the parser against its author's
@@ -440,7 +442,8 @@ See `docs/CORPUS_PREREQUISITES.md` and `docs/SOURCING_BACKLOG.md`.
 
 Held-out generalisation, top-3 mapping accuracy and confidence calibration
 remain **unmeasured**, each for a reason recorded in `docs/adr/0017-similarity-layer.md`;
-the PAN-OS holdout has still not been opened. `docs/ui_reference.html` remains
+the PAN-OS holdout has still not been parsed or studied, and the experiment
+remains unspent. `docs/ui_reference.html` remains
 the untouched visual specification the P13 interface was translated from. See `docs/adr/` for the decisions taken so far,
 and `docs/SOURCING_BACKLOG.md` for the eight gaps that cannot be closed by writing
 code.
@@ -553,7 +556,9 @@ Endpoints so far:
 | GET · POST | `/users`, `/users/{id}/disable` | Account management | **admin** |
 | GET | `/users/me` | Who you are | user |
 
-**Everything except `/health` requires authentication** (HTTP Basic). A user sees
+**Everything except `/health` and `/compliance/audits/frameworks` requires
+authentication** (HTTP Basic). Those two expose no user data: liveness and
+settings, and the sourced benchmark catalogs' names, editions and digests. A user sees
 only what they uploaded and audited; an admin sees the fleet. A resource you may
 not see answers 404, not 403 — 403 would confirm the id exists.
 

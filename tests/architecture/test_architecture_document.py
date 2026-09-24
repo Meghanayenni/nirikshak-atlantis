@@ -146,7 +146,7 @@ def test_every_adr_on_disk_appears_in_the_index(text: str) -> None:
 # The defect register — the claim most costly to get wrong
 # ---------------------------------------------------------------------------
 
-OPEN_DEFECTS = {"DEF-3", "DEF-16", "DEF-18"}
+OPEN_DEFECTS = {"DEF-3", "DEF-16", "DEF-18", "DEF-19"}
 """The defects that are genuinely open at this commit.
 
 Kept as an explicit constant rather than parsed from the document: a test whose
@@ -411,7 +411,9 @@ def test_the_document_states_what_is_not_claimed(text: str) -> None:
         # the corpus and a parser behind them. The claim §7 must still carry is
         # the one that replaced it: the analyser runs, on data this team wrote.
         "still measured on synthetic data written by this team",
-        "never been opened",
+        # Was "never been opened" — false: two integrity guards read the
+        # held-out files on every run. The true claim is narrower and checked.
+        "never been parsed",
     ]:
         assert phrase.lower() in text.lower(), f"the document should state: {phrase!r}"
 
@@ -426,9 +428,17 @@ def test_the_document_records_the_sealed_holdout(text: str) -> None:
 
     This test reads the document only. It does not open, hash or parse any file
     under `corpus/holdout/`, and neither may anything else in this module.
+
+    Until the pre-submission audit it asserted "never been opened", and so
+    defended a sentence two integrity guards contradicted on every run. It now
+    asserts the narrower true claim, and that the document names both guards
+    that do read the files — so the disclosure cannot quietly disappear.
     """
     assert "PAN-OS" in text
-    assert "never been opened" in text
+    assert "never been parsed" in text
+    assert "never been opened" not in text, "the files are read by two guards; say so"
+    assert "test_every_checksum_matches" in text
+    assert "tests/integration/test_corpus_policy.py" in text
     assert "UnsupportedSyntaxModeError" in text, (
         "the document should say why a held-out file cannot enter the pipeline"
     )

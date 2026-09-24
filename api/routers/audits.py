@@ -5,8 +5,10 @@ Mounted under `/compliance/` rather than `/audits`, deliberately. P2 already own
 `/audit/head` beside `/audits` would be two unrelated resources one character
 apart. A test caught the collision; the names were the thing worth fixing.
 
-Four endpoints, all authenticated (decision D25), all scoped to what the caller
-owns unless they are an admin. Deliberately narrow: these are the shapes P8's
+Six endpoints. Five are authenticated (decision D25) and scoped to what the
+caller owns unless they are an admin; `GET /frameworks` is public, because it
+lists only sourced catalog detail — document, edition, sha256 — and no data of
+any user's. Deliberately narrow: these are the shapes P8's
 reporting layer needs, and P8 is the first real client. Anything speculative
 waits for the phase that needs it, because an endpoint nobody exercises is an
 endpoint designed against a guess.
