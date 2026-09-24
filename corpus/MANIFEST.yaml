@@ -290,7 +290,7 @@ files:
     sanitisation_notes: "RFC 5737/1918 addressing; invented hostnames; hash-shaped and key-shaped values are literal placeholders"
     is_real_world_data: false
     labelled: false
-    sha256: f10332679f448cd03cbbd60f11437900415e70c2fe76e4f7a61ad423a3f396e6
+    sha256: c71b5f90f67f55373a0ee32dcc947b2c5820d7e6dab21f722f3dd3d017c2be8b
     added: 2026-09-23
   - path: cisco/dev/edge-rtr-09.cfg
     split: dev

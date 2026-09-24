@@ -489,7 +489,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and forty-six numbered decisions across 59 ADRs. (D63 and D64 were never issued; the
+One hundred and forty-eight numbered decisions across 60 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -553,6 +553,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0057 | P18 | A control identifier an operator can see | D143, D144 |
 | 0058 | P18 | A benchmark an operator can choose | D145, D146 |
 | 0059 | P18 | Prose that cannot quietly expire | D147, D148 |
+| 0060 | P18 | A check is only as real as where it ran | D149, D150 |
 
 ---
 
