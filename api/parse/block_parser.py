@@ -44,16 +44,22 @@ from api.models.enums import SyntaxMode
 from api.models.pack import LiteralBlock
 from api.parse.errors import UnsupportedSyntaxModeError, UnterminatedLiteralBlockError
 
-IMPLEMENTED_MODES: frozenset[SyntaxMode] = frozenset({SyntaxMode.INDENT, SyntaxMode.SET_PATH})
+IMPLEMENTED_MODES: frozenset[SyntaxMode] = frozenset(
+    {SyntaxMode.INDENT, SyntaxMode.SET_PATH, SyntaxMode.BRACE}
+)
 """Modes with real corpus files behind them.
 
-`BRACE` and `JSON` have no corpus example at all. `XML` has only the held-out
-vendor, so building it now would mean either testing against files we have
-committed not to open, or building blind — see decision D8. Each unimplemented
-mode raises; none returns an empty tree."""
+`BRACE` was deferred "to the phase whose corpus contains a brace-structured
+platform". `corpus/juniper/dev/core-rtr-01.conf` has been that file since P15,
+and it was implemented at P18 (ADR 0043) once it became the thing standing
+between a registered corpus file and any part of the pipeline.
+
+`JSON` still has no corpus example at all. `XML` has only the held-out vendor,
+so building it now would mean either testing against files we have committed not
+to open, or building blind — see decision D8. Each unimplemented mode raises;
+none returns an empty tree."""
 
 DEFERRED_MODE_PHASE: dict[SyntaxMode, str] = {
-    SyntaxMode.BRACE: "the phase whose corpus contains a brace-structured platform",
     SyntaxMode.XML: "P6, and only once an XML sample independent of the PAN-OS holdout exists",
     SyntaxMode.JSON: "the phase whose corpus contains a JSON export",
 }
@@ -103,6 +109,14 @@ def build_tree(
         raise UnsupportedSyntaxModeError(mode, DEFERRED_MODE_PHASE.get(mode, "a later phase"))
 
     lines = split_lines(text)
+
+    if mode is SyntaxMode.BRACE:
+        return _build_braced(
+            lines,
+            file_id=file_id,
+            file_path=file_path,
+            comment_prefixes=comment_prefixes,
+        )
 
     if mode is SyntaxMode.SET_PATH:
         return _build_flat(
@@ -201,6 +215,148 @@ def _build_indented(
     return _assemble(
         nodes, children, roots, unplaced, file_id, file_path, SyntaxMode.INDENT, len(lines)
     )
+
+
+C_COMMENT_OPEN = "/*"
+C_COMMENT_CLOSE = "*/"
+REASON_C_COMMENT = "block comment"
+REASON_TERMINATOR = "block terminator"
+REASON_UNMATCHED_BRACE = "unmatched closing brace"
+
+
+def _build_braced(
+    lines: list[str],
+    *,
+    file_id: str,
+    file_path: str,
+    comment_prefixes: tuple[str, ...],
+) -> ConfigTree:
+    """A line ending `{` opens a block; a line that is `}` closes one.
+
+    JunOS in its hierarchical form, and the second of the two surfaces that
+    platform ships. The same configuration written with `set` commands parses
+    through `_build_flat`; which one a file uses is a property of how it was
+    exported, not of the platform, so the mode is chosen from the text (see
+    `api/parse/service.py`) rather than from the vendor pack.
+
+    Three shapes, and each is read exactly as written:
+
+        system {              -> a block node, text `system`
+            host-name r1;     -> a leaf node, text `host-name r1`
+        }                     -> closes, and is not a node
+
+    **The braces and the terminating semicolon are stripped from `text` and kept
+    in `raw_line`.** A pattern author writes `^host-name (\\S+)$` and matches
+    what they see in the file; requiring them to write `;?$` on every pattern
+    would move punctuation into every regex in the pack, and the first one
+    written without it would fail silently.
+
+    `/* … */` block comments are removed as comment lines rather than nodes, on
+    the same rule as `#`: a commented-out directive must never produce a PRESENT
+    field. JunOS writes its file header that way, and `## SECRET-DATA` markers
+    are trailing annotations on otherwise ordinary statements, so those are
+    stripped from `text` and preserved in `raw_line`.
+
+    A `}` with no open block does not raise. The tree is built from an operator's
+    file, and refusing to read the rest of a configuration because one brace is
+    unbalanced would turn a cosmetic defect into a device nobody can audit; the
+    line is recorded as unplaced instead, where it is visible.
+    """
+    nodes: dict[str, ConfigNode] = {}
+    children: dict[str, list[str]] = {}
+    unplaced: list[UnplacedLine] = []
+    roots: list[str] = []
+    stack: list[str] = []
+
+    in_block_comment = False
+
+    for number, raw in enumerate(lines, start=1):
+        stripped = raw.strip()
+
+        if in_block_comment:
+            unplaced.append(UnplacedLine(line_number=number, raw_line=raw, reason=REASON_C_COMMENT))
+            if C_COMMENT_CLOSE in stripped:
+                in_block_comment = False
+            continue
+
+        if not stripped:
+            unplaced.append(UnplacedLine(line_number=number, raw_line=raw, reason=REASON_BLANK))
+            continue
+
+        if stripped.startswith(C_COMMENT_OPEN):
+            unplaced.append(UnplacedLine(line_number=number, raw_line=raw, reason=REASON_C_COMMENT))
+            if C_COMMENT_CLOSE not in stripped[len(C_COMMENT_OPEN) :]:
+                in_block_comment = True
+            continue
+
+        if _is_comment(raw, comment_prefixes):
+            unplaced.append(UnplacedLine(line_number=number, raw_line=raw, reason=REASON_COMMENT))
+            continue
+
+        if stripped in ("}", "};"):
+            # Recorded either way: `ConfigTree` requires every source line to be
+            # a node or an unplaced line, never dropped, so that "the parser read
+            # your whole file" is a checkable claim rather than an assurance.
+            reason = REASON_TERMINATOR if stack else REASON_UNMATCHED_BRACE
+            if stack:
+                stack.pop()
+            unplaced.append(UnplacedLine(line_number=number, raw_line=raw, reason=reason))
+            continue
+
+        text = _brace_text(stripped)
+        if not text:
+            unplaced.append(UnplacedLine(line_number=number, raw_line=raw, reason=REASON_BLANK))
+            continue
+
+        parent_id = stack[-1] if stack else None
+        node_id = f"n{number}"
+
+        nodes[node_id] = ConfigNode(
+            node_id=node_id,
+            file_id=file_id,
+            line_number=number,
+            raw_line=raw,
+            text=text,
+            depth=len(stack),
+            parent_id=parent_id,
+            children=(),
+            block_path=tuple(nodes[pid].text for pid in stack),
+            syntax_mode=SyntaxMode.BRACE,
+        )
+        children.setdefault(node_id, [])
+        if parent_id is None:
+            roots.append(node_id)
+        else:
+            children.setdefault(parent_id, []).append(node_id)
+
+        if stripped.endswith("{"):
+            stack.append(node_id)
+
+    return _assemble(
+        nodes, children, roots, unplaced, file_id, file_path, SyntaxMode.BRACE, len(lines)
+    )
+
+
+def _brace_text(stripped: str) -> str:
+    """The statement, without its structural punctuation or trailing annotation.
+
+    `host-name r1;` -> `host-name r1`
+    `system {`      -> `system`
+    `encrypted-password "…"; ## SECRET-DATA` -> `encrypted-password "…"`
+
+    The annotation is dropped rather than kept because it is JunOS metadata
+    about the line, not part of the statement, and leaving it on would make
+    every pattern matching such a line carry it too.
+    """
+    text = stripped
+    marker = text.find("##")
+    if marker != -1:
+        text = text[:marker].rstrip()
+    if text.endswith("{"):
+        text = text[:-1].rstrip()
+    elif text.endswith(";"):
+        text = text[:-1].rstrip()
+    return text
 
 
 def _build_flat(

@@ -49,7 +49,15 @@ from api.models.acl import (
 )
 from api.models.config_tree import ConfigNode, ConfigTree
 from api.models.csm import AclExtractionFailure, Interface, InterfaceAcl
-from api.models.enums import AclAction, AclDialect, AddrKind, Direction, PortOp, SourceType
+from api.models.enums import (
+    AclAction,
+    AclDialect,
+    AddrKind,
+    Direction,
+    PortOp,
+    SourceType,
+    SyntaxMode,
+)
 from api.models.evidence import Evidence
 from api.models.pack import AclExtraction, VendorPack
 
@@ -479,11 +487,12 @@ def _why_junos_unreadable(term: _JunosTerm) -> tuple[ConfigNode, str]:
             continue
         if tokens[0] not in _JUNOS_FROM_KEYWORDS:
             return node, f"matches on {tokens[0]!r}, which this dialect does not read"
-        if len(tokens) != 2:
+        if tokens[0] == "protocol" and len(_bracket_values(" ".join(tokens[1:]))) != 1:
             return node, (
-                f"writes {tokens[0]!r} as a list of {len(tokens) - 1} values, and one "
-                "entry cannot hold two intervals for one field; splitting it would "
-                "invent an ordering the configuration does not state"
+                "matches on several protocols in one term. A port list expands into "
+                "adjacent entries because they share an action and an order; several "
+                "protocols would need the same treatment and no configuration here "
+                "writes one, so it is refused rather than guessed at"
             )
         if tokens[0].endswith("port") and _port_number(tokens[1]) is None:
             return node, (
@@ -539,11 +548,26 @@ def _extract_junos_set_lists(
         entries: list[ACLEntry] = []
         defeated: _JunosTerm | None = None
         for term in terms.values():
-            entry = _build_junos_entry(term, len(entries) + 1, tree, prefix_lists, source_type)
-            if entry is None:
+            # Both surfaces assemble through `_junos_entries`. The `set` form and
+            # the brace form are the same filter language, so a construct that
+            # expands in one and drops the filter in the other would make the
+            # result depend on how the device happened to be exported.
+            clauses = [
+                (tokens[0], _bracket_values(" ".join(tokens[1:])))
+                for _, clause in term.from_clauses
+                if (tokens := clause.split())
+            ]
+            built = _junos_entries(
+                clauses,
+                [clause for _, clause in term.then_clauses],
+                len(entries),
+                tuple(_evidence(node, tree, source_type) for node in term.nodes),
+                prefix_lists,
+            )
+            if built is None:
                 defeated = term
                 break
-            entries.append(entry)
+            entries.extend(built)
 
         if defeated is not None:
             node, reason = _why_junos_unreadable(defeated)
@@ -568,6 +592,298 @@ def _extract_junos_set_lists(
             )
         )
     return out, failures
+
+
+def _bracket_values(text: str) -> list[str]:
+    """`[ ssh https ]` -> `['ssh', 'https']`; `tcp` -> `['tcp']`.
+
+    JunOS writes a set of alternatives for one match condition in brackets. It
+    is a disjunction over a single field, not two conditions, and reading it is
+    not optional: `destination-port [ ssh https ]` is how the corpus's only
+    brace-form filter matches management traffic.
+    """
+    stripped = text.strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        return stripped[1:-1].split()
+    return stripped.split()
+
+
+def _junos_entries(
+    clauses: list[tuple[str, list[str]]],
+    then_tokens: list[str],
+    seq_start: int,
+    evidence: tuple[Evidence, ...],
+    prefix_lists: dict[str, list[str]],
+) -> list[ACLEntry] | None:
+    """One JunOS term as one or more entries, or None if it cannot be read.
+
+    Shared by both surfaces. The `set` form and the brace form are the same
+    filter language written two ways, so they differ in how clauses are
+    *collected* and not at all in what a clause means — and two copies of this
+    would drift in the flag handling, which is where a silent difference costs
+    most.
+
+    **A bracketed port list becomes consecutive entries, not a dropped list.**
+    `destination-port [ ssh https ]` matches 22 or 443; `PortSpec` holds one
+    interval, so the term expands into two adjacent entries with the same action
+    and everything else equal. That preserves both the semantics and the
+    ordering: the entries are adjacent, so nothing can come between them, and
+    an entry the original term shadowed is still shadowed by one of the pair or
+    by neither.
+
+    It does cost something, and the direction matters. `covers()` is pairwise,
+    so a later entry covered only by the *union* of the expanded pair is
+    reported as not shadowed. That under-reports rather than over-reports, which
+    is the trade `address_covers` already makes deliberately: a missed shadow
+    costs the operator one finding, an invented one costs their trust in every
+    other finding.
+
+    A bracketed **address** list needs no expansion — `AddrSpec.resolved_cidrs`
+    holds several networks already, and the interval analysis consumes all of
+    them.
+    """
+    protocol = ProtocolSpec(name="any")
+    src: AddrSpec = AddrSpec(kind=AddrKind.ANY, value="any")
+    dst: AddrSpec = AddrSpec(kind=AddrKind.ANY, value="any")
+    src_ports: list[PortSpec] = [PortSpec(op=PortOp.ANY)]
+    dst_ports: list[PortSpec] = [PortSpec(op=PortOp.ANY)]
+
+    for keyword, values in clauses:
+        if keyword not in _JUNOS_FROM_KEYWORDS or not values:
+            return None
+
+        if keyword == "protocol":
+            if len(values) != 1:
+                # Two protocols in one term would need the same expansion ports
+                # get, and no corpus file writes one. Refused rather than
+                # guessed at, per D75.
+                return None
+            protocol = ProtocolSpec(name=values[0].lower())
+        elif keyword in ("source-address", "source-prefix-list"):
+            resolved = _junos_addresses(values, prefix_lists, keyword.endswith("prefix-list"))
+            if resolved is None:
+                return None
+            src = resolved
+        elif keyword in ("destination-address", "destination-prefix-list"):
+            resolved = _junos_addresses(values, prefix_lists, keyword.endswith("prefix-list"))
+            if resolved is None:
+                return None
+            dst = resolved
+        else:
+            ports = [_junos_port(value) for value in values]
+            if any(port is None for port in ports):
+                return None
+            if keyword == "source-port":
+                src_ports = ports  # type: ignore[assignment]
+            else:
+                dst_ports = ports  # type: ignore[assignment]
+
+    action: AclAction | None = None
+    log = False
+    for token in then_tokens:
+        text = token.strip()
+        if text in _JUNOS_ACCEPT:
+            action = AclAction.PERMIT
+        elif text in _JUNOS_REJECT:
+            action = AclAction.DENY
+        elif text in _JUNOS_LOG:
+            log = True
+        else:
+            # `next term`, `count`, `policer`, `routing-instance`. `next term`
+            # in particular decides nothing, so modelling it as permit or deny
+            # would state something about the device that is not true.
+            return None
+
+    if action is None:
+        return None
+
+    out: list[ACLEntry] = []
+    for src_port in src_ports:
+        for dst_port in dst_ports:
+            out.append(
+                ACLEntry(
+                    seq=seq_start + len(out) + 1,
+                    action=action,
+                    protocol=protocol,
+                    src=src,
+                    src_port=src_port,
+                    dst=dst,
+                    dst_port=dst_port,
+                    flags=AclEntryFlags(log=log),
+                    evidence=evidence,
+                )
+            )
+    return out
+
+
+def _junos_addresses(
+    values: list[str], prefix_lists: dict[str, list[str]], is_list: bool
+) -> AddrSpec | None:
+    """Several networks for one field become one spec, not several entries."""
+    if is_list:
+        members: list[str] = []
+        for value in values:
+            members.extend(prefix_lists.get(value, []))
+        return AddrSpec(
+            kind=AddrKind.OBJECT, value=" ".join(values), resolved_cidrs=tuple(members)
+        )
+
+    cidrs: list[str] = []
+    for value in values:
+        try:
+            cidrs.append(str(ipaddress.ip_network(value, strict=False)))
+        except ValueError:
+            return None
+    return AddrSpec(kind=AddrKind.CIDR, value=" ".join(values), resolved_cidrs=tuple(cidrs))
+
+
+def _brace_term_clauses(
+    term_node: ConfigNode, tree: ConfigTree
+) -> tuple[list[tuple[str, list[str]]], list[str], list[ConfigNode]]:
+    """Collect one brace-form term's `from` conditions and `then` actions.
+
+    Three shapes appear, and all three are in the corpus:
+
+        from { protocol tcp; }                  a leaf inside `from`
+        from { source-address { 10.0.0.0/8; } } a block whose children are values
+        then accept;                            a leaf `then`, not a block
+    """
+    clauses: list[tuple[str, list[str]]] = []
+    actions: list[str] = []
+    cited: list[ConfigNode] = [term_node]
+
+    for child in _children(tree, term_node):
+        cited.append(child)
+        if child.text == "from":
+            for condition in _children(tree, child):
+                cited.append(condition)
+                tokens = condition.text.split()
+                if len(tokens) == 1:
+                    values = [grandchild.text for grandchild in _children(tree, condition)]
+                    cited.extend(_children(tree, condition))
+                else:
+                    values = _bracket_values(" ".join(tokens[1:]))
+                clauses.append((tokens[0], values))
+        elif child.text == "then":
+            for action in _children(tree, child):
+                cited.append(action)
+                actions.append(action.text)
+        elif child.text.startswith("then "):
+            actions.append(child.text[len("then ") :])
+        else:
+            # An unrecognised child of a term. Refused by returning a clause the
+            # keyword check rejects, rather than ignored -- a term read as less
+            # than it says is the partially-parsed ACL D75 forbids.
+            clauses.append((child.text.split()[0], []))
+
+    return clauses, actions, cited
+
+
+def _extract_junos_brace_lists(
+    tree: ConfigTree, spec: AclExtraction, source_type: SourceType
+) -> tuple[list[ACL], list[AclExtractionFailure]]:
+    """JunOS firewall filters in the brace-nested hierarchy."""
+    if not spec.brace_block:
+        return [], []
+
+    named = re.compile(spec.brace_block)
+    prefix_lists = _junos_brace_prefix_lists(tree)
+
+    out: list[ACL] = []
+    failures: list[AclExtractionFailure] = []
+
+    for node in tree.nodes.values():
+        match = named.match(node.text)
+        # `firewall` in the ancestry distinguishes a filter DEFINITION from the
+        # `filter { input NAME; }` binding that sits inside an interface.
+        if match is None or "firewall" not in node.block_path:
+            continue
+
+        name = match.group(1)
+        entries: list[ACLEntry] = []
+        defeated: ConfigNode | None = None
+
+        for term_node in _children(tree, node):
+            if not term_node.text.startswith("term "):
+                continue
+            clauses, actions, cited = _brace_term_clauses(term_node, tree)
+            built = _junos_entries(
+                clauses,
+                actions,
+                len(entries),
+                tuple(_evidence(n, tree, source_type) for n in cited),
+                prefix_lists,
+            )
+            if built is None:
+                defeated = term_node
+                break
+            entries.extend(built)
+
+        if defeated is not None:
+            failures.append(
+                AclExtractionFailure(
+                    acl_name=name,
+                    reason=(
+                        f"term {defeated.text[len('term '):]!r} uses syntax this dialect "
+                        "does not read, and a filter missing one term would let the "
+                        "analyser call a reachable term unreachable"
+                    ),
+                    entry_line=defeated.line_number,
+                    entry_text=defeated.text,
+                )
+            )
+            continue
+
+        if entries:
+            out.append(
+                ACL(
+                    acl_id=name,
+                    name=name,
+                    acl_type=spec.acl_type,
+                    entries=tuple(entries),
+                    evidence=(_evidence(node, tree, source_type),),
+                )
+            )
+    return out, failures
+
+
+def _junos_brace_prefix_lists(tree: ConfigTree) -> dict[str, list[str]]:
+    """`policy-options { prefix-list NAME { 10.0.0.0/8; } }`.
+
+    Empty on the corpus's brace file, which references no prefix list. Read
+    anyway, because the alternative is that the first configuration to use one
+    silently loses its addresses and the analyser compares against `any`.
+    """
+    out: dict[str, list[str]] = {}
+    for node in tree.nodes.values():
+        if not node.text.startswith("prefix-list ") or "policy-options" not in node.block_path:
+            continue
+        name = node.text.split(None, 1)[1].strip()
+        members = []
+        for child in _children(tree, node):
+            try:
+                ipaddress.ip_network(child.text, strict=False)
+            except ValueError:
+                continue
+            members.append(child.text)
+        if members:
+            out.setdefault(name, []).extend(members)
+    return out
+
+
+def _extract_junos_lists(
+    tree: ConfigTree, spec: AclExtraction, source_type: SourceType
+) -> tuple[list[ACL], list[AclExtractionFailure]]:
+    """One dialect, two surfaces — chosen by the tree, not by the pack.
+
+    JunOS ships the same filter language as `set` commands and as a brace
+    hierarchy, and which one a file uses is a property of how it was exported.
+    A pack declaring the surface would be wrong for the same device exported the
+    other way.
+    """
+    if tree.syntax_mode is SyntaxMode.BRACE:
+        return _extract_junos_brace_lists(tree, spec, source_type)
+    return _extract_junos_set_lists(tree, spec, source_type)
 
 
 def _junos_set_node_ids(tree: ConfigTree, spec: AclExtraction) -> set[str]:
@@ -730,6 +1046,7 @@ _LIST_READERS = {
     # reader and supplies its own entry parser through `_DIALECTS`.
     AclDialect.NXOS_CIDR: _extract_ios_lists,
     AclDialect.JUNOS_SET_FILTER: _extract_junos_set_lists,
+    AclDialect.JUNOS_FILTER: _extract_junos_lists,
 }
 """One reader per dialect. A dialect is a *shape plus a grammar*, not a vendor.
 
@@ -890,6 +1207,45 @@ def extract_acls(
     )
 
 
+_JUNOS_DIALECTS = frozenset({AclDialect.JUNOS_FILTER, AclDialect.JUNOS_SET_FILTER})
+
+
+def _junos_brace_node_ids(tree: ConfigTree, spec: AclExtraction) -> set[str]:
+    """Every node inside a filter this reader emitted whole.
+
+    The whole subtree, not just the term headers: a `from` block and its
+    conditions were all read, and leaving them in residue would ask an
+    administrator to classify lines the parser already understood — the one
+    resource the training loop spends.
+
+    A filter that was DROPPED contributes nothing here, so its lines stay in
+    front of a human. That is D75 applied to the brace surface.
+    """
+    if not spec.brace_block:
+        return set()
+
+    lists, _ = _extract_junos_brace_lists(tree, spec, SourceType.CLI)
+    kept = {acl.name for acl in lists}
+    named = re.compile(spec.brace_block)
+
+    consumed: set[str] = set()
+    for node in tree.nodes.values():
+        match = named.match(node.text)
+        if match is None or "firewall" not in node.block_path or match.group(1) not in kept:
+            continue
+        consumed.add(node.node_id)
+        consumed |= _descendants(tree, node)
+    return consumed
+
+
+def _descendants(tree: ConfigTree, node: ConfigNode) -> set[str]:
+    out: set[str] = set()
+    for child in _children(tree, node):
+        out.add(child.node_id)
+        out |= _descendants(tree, child)
+    return out
+
+
 def matched_node_ids(tree: ConfigTree, pack: VendorPack) -> set[str]:
     """Nodes consumed by structure extraction, so they leave the residue queue.
 
@@ -923,8 +1279,14 @@ def matched_node_ids(tree: ConfigTree, pack: VendorPack) -> set[str]:
                     if any(rx.match(child.text) for rx in sub):
                         consumed.add(child.node_id)
 
-    if spec_acl is not None and spec_acl.dialect is AclDialect.JUNOS_SET_FILTER:
-        consumed |= _junos_set_node_ids(tree, spec_acl)
+    if spec_acl is not None and spec_acl.dialect in _JUNOS_DIALECTS:
+        # Which surface, from the tree rather than the declaration -- the same
+        # choice `_extract_junos_lists` makes, and it has to agree with it or a
+        # line the reader consumed would stay in the training queue.
+        if tree.syntax_mode is SyntaxMode.BRACE:
+            consumed |= _junos_brace_node_ids(tree, spec_acl)
+        else:
+            consumed |= _junos_set_node_ids(tree, spec_acl)
 
     if spec_acl is not None and spec_acl.dialect in _DIALECTS:
         named = re.compile(spec_acl.named_block)

@@ -572,11 +572,23 @@ class AclExtraction(BaseModel):
         default=None,
         description="Anchored regex for a comment line inside a list. Not an entry.",
     )
+    brace_block: str | None = Constraint(
+        default=None,
+        description=(
+            "Anchored regex opening a named list in a brace-nested file; group 1 "
+            "is the name. A platform shipping one surface declares only "
+            "`named_block`; JunOS ships two and declares both."
+        ),
+    )
     examples: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def _check(self) -> AclExtraction:
-        for name, raw in (("named_block", self.named_block), ("applied", self.applied)):
+        for name, raw in (
+            ("named_block", self.named_block),
+            ("applied", self.applied),
+            ("brace_block", self.brace_block),
+        ):
             if raw is None:
                 continue
             if not raw.startswith("^"):
@@ -710,7 +722,24 @@ class VendorPack(BaseModel):
         return cap.supported if cap else None
 
     def identity_for(self, field: str) -> IdentityPattern | None:
+        """The first declared pattern for a field. See `identities_for`."""
         return next((i for i in self.identity if i.field == field), None)
+
+    def identities_for(self, field: str) -> tuple[IdentityPattern, ...]:
+        """**Every** declared pattern for a field, in declaration order.
+
+        A platform can write one identity fact more than one way. JunOS ships
+        the same configuration as `set system host-name r1` and as an indented
+        `host-name r1;` inside a `system { … }` block, and a pack covering both
+        surfaces declares both.
+
+        `identity_for` returns only the first, so a second declaration was read
+        by nothing — the shape DEF-12 is named for. It is kept because callers
+        that legitimately want "the canonical one" exist, and because removing
+        an accessor is not how that bug is prevented; `extract_identity` uses
+        this one.
+        """
+        return tuple(i for i in self.identity if i.field == field)
 
     @property
     def is_detection_only(self) -> bool:

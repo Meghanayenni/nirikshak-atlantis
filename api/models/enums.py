@@ -361,6 +361,20 @@ class AclDialect(StrEnum):
     confidently into an interval nobody meant.
     """
 
+    JUNOS_FILTER = "junos_filter"
+    """A JunOS firewall filter, in either surface JunOS ships.
+
+    `set firewall family inet filter F term T …` and
+
+        firewall { family inet { filter F { term T { … } } } }
+
+    are the same filter language written two ways, and which one a file uses is
+    a property of how it was exported rather than of the platform. So the pack
+    names the language and the reader picks the surface from the parsed tree's
+    syntax mode — a pack declaring one surface would be wrong for the same
+    device exported the other way.
+    """
+
     JUNOS_SET_FILTER = "junos_set_filter"
     """`set firewall family inet filter F term T from protocol tcp` — a firewall
     filter in JunOS **flat `set` form**, where one term spans several lines and a

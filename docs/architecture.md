@@ -254,16 +254,24 @@ still measured on synthetic data written by this team, so no detection *rate* is
 claimed; what changed is that the machinery has run on a parsed access list at
 all. See ADR 0027.
 
-**Three dialects now, across three vendors.** P17 added JunOS firewall filters
-in flat `set` form (ADR 0033), where a list has no block header and one term
-spans several top-level lines — so the dialect table dispatches on the
-extraction *shape*, not only on the entry grammar — and NX-OS prefix-length
-entries (ADR 0038). The corpus tally is **5 access lists analysed, 0 dropped**.
+**Three dialects, three vendors, and both surfaces JunOS ships.** P17 added
+JunOS firewall filters in flat `set` form (ADR 0033), where a list has no block
+header and one term spans several top-level lines — so the dialect table
+dispatches on the extraction *shape*, not only on the entry grammar — and NX-OS
+prefix-length entries (ADR 0038). P18 added the brace-nested JunOS surface
+(ADR 0043). The corpus tally is **6 access lists analysed, 0 dropped**.
 
 `MGMT-IN` on the NX-OS leaf is the **first list in the corpus bound to an
 interface**. Every earlier one carried an empty `applied_to`, because no
 development file applied one; the Cisco pack's `applied` regex had been declared
 and unexercised since ADR 0027 and said so.
+
+`PROTECT-RE` on the brace-form JunOS router is the **first shadowed result on a
+non-Cisco platform**: `term allow-anything { then accept; }` sits above two
+later terms, so a filter that reads as though it blocks telnet cannot. That file
+was unreachable end to end until P18 — detection was the smallest of four
+blockers, and `SyntaxMode.BRACE` had been deferred since P4 to "the phase whose
+corpus contains a brace-structured platform", which arrived at P15.
 
 The brace-nested form of the same JunOS filters is **not** read, and the blocker
 is upstream: vendor detection does not identify a brace-nested file at all, so
@@ -432,7 +440,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and nine numbered decisions across 42 ADRs. (D63 and D64 were never issued; the
+One hundred and thirteen numbered decisions across 43 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -479,6 +487,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0040 | P17 | The stated stack and the installed one | D105, D106, D107 |
 | 0041 | P18 | A working deliverable described as blocked | D108, D109 |
 | 0042 | P18 | A test that skips is a test that does not test | D110, D111 |
+| 0043 | P18 | The second surface JunOS ships | D112, D113, D114, D115 |
 
 ---
 

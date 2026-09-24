@@ -108,16 +108,32 @@ def extract_identity(
     citable = [line for line in lines]
 
     for name in IDENTITY_ORDER:
-        pattern = pack.identity_for(name)
-        if pattern is None:
+        patterns = pack.identities_for(name)
+        if not patterns:
             continue
-        extracted[name] = _apply(
-            pattern,
-            citable,
-            file_id=file_id,
-            file_path=file_path,
-            source_type=source_type,
-            pack=pack,
-        )
+
+        # Every declared pattern for the field, first match wins. A platform can
+        # write one fact more than one way -- JunOS writes `set system host-name`
+        # in its flat form and an indented `host-name r1;` in its brace form --
+        # and a pack covering both surfaces declares both. Consulting only the
+        # first meant the second was read by nothing.
+        #
+        # Order is the pack's declaration order, so which surface is tried first
+        # is a reviewable property of the file rather than an accident of
+        # iteration.
+        result: Field[str] | None = None
+        for pattern in patterns:
+            result = _apply(
+                pattern,
+                citable,
+                file_id=file_id,
+                file_path=file_path,
+                source_type=source_type,
+                pack=pack,
+            )
+            if result.state is FieldState.PRESENT:
+                break
+        assert result is not None  # narrowed by the emptiness check above
+        extracted[name] = result
 
     return DetectedDeviceIdentity(**extracted)

@@ -11,6 +11,8 @@ judgement into the parser.
 
 from __future__ import annotations
 
+import re
+
 from api.models.config_tree import ConfigNode, ConfigTree
 from api.models.enums import SourceType, SyntaxMode
 from api.models.pack import VendorPack
@@ -26,15 +28,40 @@ SYNTAX_MODE_BY_OS: dict[str, SyntaxMode] = {
     "nxos": SyntaxMode.INDENT,
     "junos": SyntaxMode.SET_PATH,
 }
-"""Which structural shape a platform uses.
+"""Which structural shape a platform uses **by default**.
 
 Data-driven would be better and is a natural pack field later; at P4 the corpus
-holds four platforms and this map is honest about being a stopgap rather than
-pretending otherwise."""
+held four platforms and this map was honest about being a stopgap rather than
+pretending otherwise. P18 found its real limit, below."""
+
+BRACE_OPENER = re.compile(r"^\S.*\{\s*$", re.MULTILINE)
+"""A line beginning in column zero and ending in an opening brace."""
+
+ALTERNATE_SURFACES: dict[str, SyntaxMode] = {"junos": SyntaxMode.BRACE}
+"""Platforms that ship more than one surface form, and the non-default one.
+
+**The surface is a property of the file, not of the platform.** JunOS exports
+the same configuration as `set` commands or as a brace hierarchy, and a device
+can be captured either way on the same afternoon. Keying the mode to
+`os_family` alone meant `corpus/juniper/dev/core-rtr-01.conf` — legitimate
+JunOS, registered since P15 — would have been parsed as flat `set` paths and
+read as 165 unrecognised lines even after detection identified it correctly.
+"""
 
 
-def syntax_mode_for(pack: VendorPack) -> SyntaxMode:
-    return SYNTAX_MODE_BY_OS.get(pack.os_family, SyntaxMode.INDENT)
+def syntax_mode_for(pack: VendorPack, text: str | None = None) -> SyntaxMode:
+    """The mode for this pack, narrowed by the file where the platform ships two.
+
+    The discriminator is deliberately dull: a `set`-form JunOS file contains no
+    opening brace at all — verified across all four in the corpus, which have
+    zero between them — so one at column zero is unambiguous. No counting, no
+    ratio, no threshold to tune.
+    """
+    default = SYNTAX_MODE_BY_OS.get(pack.os_family, SyntaxMode.INDENT)
+    alternate = ALTERNATE_SURFACES.get(pack.os_family)
+    if alternate is None or text is None:
+        return default
+    return alternate if BRACE_OPENER.search(text) else default
 
 
 def parse_configuration(
@@ -56,7 +83,7 @@ def parse_configuration(
         text,
         file_id=file_id,
         file_path=file_path,
-        mode=mode or syntax_mode_for(pack),
+        mode=mode or syntax_mode_for(pack, text),
         comment_prefixes=pack.comment_prefixes,
         literal_blocks=pack.literal_blocks,
     )

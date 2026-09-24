@@ -170,7 +170,7 @@ def test_property_literal_blocks_stay_lossless(source: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("mode", [SyntaxMode.BRACE, SyntaxMode.XML, SyntaxMode.JSON])
+@pytest.mark.parametrize("mode", [SyntaxMode.XML, SyntaxMode.JSON])
 def test_deferred_modes_raise_rather_than_returning_an_empty_tree(mode: SyntaxMode) -> None:
     """D8 — an empty tree would look like a cleanly parsed empty configuration.
 
@@ -183,6 +183,24 @@ def test_deferred_modes_raise_rather_than_returning_an_empty_tree(mode: SyntaxMo
     assert exc.value.mode is mode
     assert "not implemented" in str(exc.value)
     assert "empty tree" in str(exc.value)
+
+
+def test_brace_is_no_longer_deferred() -> None:
+    """BRACE was deferred "to the phase whose corpus contains a brace-structured
+    platform". `corpus/juniper/dev/core-rtr-01.conf` has been that file since
+    P15, and P18 implemented the mode (ADR 0043).
+
+    Asserted rather than simply dropped from the parametrisation above, so that
+    removing the implementation fails here instead of silently restoring a
+    refusal nobody notices.
+    """
+    from api.parse.block_parser import IMPLEMENTED_MODES
+
+    assert SyntaxMode.BRACE in IMPLEMENTED_MODES
+    source = "system {\n    host-name r1;\n}\n"
+    built = tree(source, mode=SyntaxMode.BRACE)
+
+    assert [n.text for n in built.nodes.values()] == ["system", "host-name r1"]
 
 
 def test_deferred_mode_error_names_the_phase() -> None:

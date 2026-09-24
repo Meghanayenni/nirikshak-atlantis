@@ -1,17 +1,19 @@
-"""JunOS firewall filters in flat `set` form, read from a development file.
+"""JunOS firewall filters, in both surfaces the platform ships.
 
 26 ACL lines sat in residue across three JunOS files because no pack declared
-extraction for the dialect. This module covers the 15 of them that make up
-`corpus/juniper/dev/edge-rtr-02.conf`'s one filter, plus the arithmetic that
-reads them.
+extraction for the dialect. P17 read the flat `set` form —
+`corpus/juniper/dev/edge-rtr-02.conf`, one filter over 15 lines. P18 read the
+brace-nested form (ADR 0043), which had been unreachable end to end:
+`corpus/juniper/dev/core-rtr-01.conf` scored 0.25 as `cisco/ios` and fell below
+the detection floor, and behind that sat three further blockers — the syntax
+mode was keyed to the platform rather than the file, `SyntaxMode.BRACE` raised,
+and the flat reader groups top-level lines where brace terms are subtrees.
 
-**What is deliberately not covered here**, because nothing can exercise it: the
-brace-nested form of the same filters. `corpus/juniper/dev/core-rtr-01.conf` is
-legitimate JunOS and vendor detection does not identify it — it scores 0.25 as
-`cisco/ios`, below the threshold — so a file in that form never reaches a pack
-at all. `test_the_brace_nested_form_is_still_unreachable` pins that, and is
-expected to fail when somebody fixes detection, which is when the second reader
-becomes worth writing.
+`test_the_brace_nested_form_is_still_unreachable` stood here and was written to
+fail when somebody fixed detection. It was deleted by the change that earned it.
+
+**The two surfaces are one filter language**, so the tests assert they agree:
+the same construct must not expand in one and drop the filter in the other.
 """
 
 from __future__ import annotations
@@ -22,12 +24,19 @@ import pytest
 
 from api.analyse.service import analyse_device
 from api.config import settings
+from api.ingest.device_identity import extract_identity
 from api.ingest.packs import find_pack, load_active_packs
 from api.ingest.vendor_detect import detect_vendor
-from api.models.enums import AclDialect, AclObservationKind, AddrKind
+from api.models.enums import (
+    AclAction,
+    AclDialect,
+    AclObservationKind,
+    AddrKind,
+    SyntaxMode,
+)
 from api.models.ingestion import DetectionOutcome
 from api.normalise.service import build_csm
-from api.parse.service import parse_configuration
+from api.parse.service import parse_configuration, syntax_mode_for
 
 DEV = Path("corpus/juniper/dev")
 FLAT = DEV / "edge-rtr-02.conf"
@@ -57,9 +66,9 @@ def csm(junos):
 # ---------------------------------------------------------------------------
 
 
-def test_the_pack_declares_the_set_form_dialect(junos) -> None:
+def test_the_pack_declares_the_filter_dialect(junos) -> None:
     assert junos.acl_extraction is not None
-    assert junos.acl_extraction.dialect is AclDialect.JUNOS_SET_FILTER
+    assert junos.acl_extraction.dialect is AclDialect.JUNOS_FILTER
 
 
 def test_the_pack_declares_no_binding_syntax(junos) -> None:
@@ -209,35 +218,171 @@ def test_the_interface_binding_is_still_in_residue(junos) -> None:
 
 
 # ---------------------------------------------------------------------------
-# The blocker, pinned so that fixing it fails here first
+# The brace surface, which was the blocker
 # ---------------------------------------------------------------------------
+#
+# `test_the_brace_nested_form_is_still_unreachable` stood here. It asserted that
+# no pack was selected for `core-rtr-01.conf` and was written to fail when
+# somebody added brace-form signatures. It was deleted by the change that earned
+# it (ADR 0043), and these replace it.
 
 
-def test_the_brace_nested_form_is_still_unreachable(packs) -> None:
-    """`core-rtr-01.conf` is legitimate JunOS that no pack is selected for.
+@pytest.fixture(scope="module")
+def brace_csm(junos):
+    parsed = parse_configuration(
+        BRACE.read_text(encoding="utf-8"), junos, file_id=BRACE.name, file_path=str(BRACE)
+    )
+    return build_csm(parsed, junos, device_id=BRACE.name)
 
-    ADR 0024 recorded that the juniper signatures match the flat `set` form
-    only. That is upstream of extraction: a brace-form reader could be written
-    today and nothing would ever call it, so writing one would be a declaration
-    no test could show right or wrong — the thing D73 declined to do.
 
-    **This test is expected to fail** when somebody adds brace-form detection
-    signatures. That is the moment the second reader becomes worth writing, and
-    failing here is how they find out.
+def test_the_brace_form_is_detected_by_a_margin(packs) -> None:
+    """Two surfaces, one pack, and the brace signatures discriminate.
+
+    They must not match an indent-based platform, or the `min_margin` ambiguity
+    rule fires and the file becomes unauditable a second way. Each is a
+    top-level block name no Cisco or Arista file writes at column zero.
     """
-    lines = BRACE.read_text(encoding="utf-8").splitlines()
     result = detect_vendor(
         packs,
-        lines,
+        BRACE.read_text(encoding="utf-8").splitlines(),
         filename=BRACE.name,
         min_score=settings.detection_min_score,
         min_margin=settings.detection_min_margin,
     )
 
-    assert result.outcome is not DetectionOutcome.DETECTED
-    assert all(c.vendor != "juniper" for c in result.candidates), (
-        "no juniper signature matches a brace-nested file"
+    assert result.outcome is DetectionOutcome.DETECTED
+    assert (result.vendor, result.os_family) == ("juniper", "junos")
+    assert result.margin >= settings.detection_min_margin
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        Path("corpus/cisco/dev/rtr-core-01.cfg"),
+        Path("corpus/cisco/dev/dc1-leaf-01.cfg"),
+        Path("corpus/arista/dev/sw-leaf-01.cfg"),
+    ],
+)
+def test_the_brace_signatures_claim_no_indent_based_platform(packs, path: Path) -> None:
+    """The direction that would do damage quietly.
+
+    A brace signature matching an IOS file would not fail on the JunOS file —
+    it would start pulling Cisco devices towards the JunOS pack, where every
+    pattern misses and every field reads UNKNOWN.
+    """
+    result = detect_vendor(
+        packs,
+        path.read_text(encoding="utf-8").splitlines(),
+        filename=path.name,
+        min_score=settings.detection_min_score,
+        min_margin=settings.detection_min_margin,
     )
+    junos_score = next(
+        (c.score for c in result.candidates if (c.vendor, c.os_family) == ("juniper", "junos")),
+        0.0,
+    )
+
+    assert junos_score == 0.0, f"a JunOS signature matched {path.name}"
+
+
+def test_the_surface_is_chosen_from_the_file_not_the_platform(junos) -> None:
+    """Both files are `juniper/junos`; they are not the same shape.
+
+    Keying the syntax mode to `os_family` alone meant a brace file would have
+    been parsed as flat `set` paths even once detection identified it — 165
+    lines read as unrecognised. The surface is a property of the export.
+    """
+    assert syntax_mode_for(junos, BRACE.read_text(encoding="utf-8")) is SyntaxMode.BRACE
+    assert syntax_mode_for(junos, FLAT.read_text(encoding="utf-8")) is SyntaxMode.SET_PATH
+
+
+def test_the_brace_filter_is_read_whole(brace_csm) -> None:
+    """Five terms, six entries — one term carries a two-port list."""
+    assert [acl.name for acl in brace_csm.acls] == ["PROTECT-RE"]
+    assert brace_csm.acl_failures == ()
+    assert len(brace_csm.acls[0].entries) == 6
+
+
+def test_a_bracketed_port_list_expands_into_adjacent_entries(brace_csm) -> None:
+    """`destination-port [ ssh https ]` is one term matching two ports.
+
+    `PortSpec` holds one interval, so the term becomes two entries with the
+    same action and everything else equal. They are adjacent, so nothing can
+    come between them and the ordering the analysis depends on is preserved.
+    """
+    entries = brace_csm.acls[0].entries
+    ports = [(e.dst_port.low, e.dst_port.high) for e in entries[1:3]]
+
+    assert ports == [(22, 22), (443, 443)]
+    assert entries[1].action is entries[2].action
+    assert entries[1].src.resolved_cidrs == entries[2].src.resolved_cidrs
+
+
+def test_a_brace_term_cites_every_line_that_built_it(brace_csm) -> None:
+    """Rule 2 over a nested term: the header, the `from`, its conditions, the `then`."""
+    entry = brace_csm.acls[0].entries[1]
+    cited = {e.line_start for e in entry.evidence}
+
+    assert len(cited) >= 5, f"a five-line term cited only {sorted(cited)}"
+    raw = " ".join(e.raw_line for e in entry.evidence)
+    assert "term allow-management" in raw
+    assert "source-address" in raw
+
+
+def test_the_catch_all_term_shadows_the_terms_below_it(brace_csm) -> None:
+    """The expected result, and the reason this file was worth unblocking.
+
+    `term allow-anything { then accept; }` sits above `block-remote-telnet` and
+    `default-deny`, so neither can ever take effect. A filter that reads as
+    though it blocks telnet and does not is exactly what the interval analyser
+    exists to catch, and this is the first time it has said so on a non-Cisco
+    platform.
+    """
+    observations = analyse_device(brace_csm).observations
+    shadowed = [o for o in observations if o.kind is AclObservationKind.SHADOWED]
+
+    assert [o.entry_seq for o in shadowed] == [5, 6]
+    for observation in shadowed:
+        assert 4 in observation.caused_by, "the catch-all permit is the cause"
+
+
+def test_the_catch_all_is_also_reported_overly_permissive(brace_csm) -> None:
+    observations = analyse_device(brace_csm).observations
+    permissive = [o for o in observations if o.kind is AclObservationKind.OVERLY_PERMISSIVE]
+
+    assert [o.entry_seq for o in permissive] == [4]
+
+
+def test_the_brace_terms_leave_the_training_queue(junos) -> None:
+    """A line the reader understood must not be put in front of an administrator."""
+    parsed = parse_configuration(
+        BRACE.read_text(encoding="utf-8"), junos, file_id=BRACE.name, file_path=str(BRACE)
+    )
+    remaining = {node.line_number for node in parsed.residue}
+
+    # The filter block spans lines 125-162 in the corpus file.
+    assert not remaining & set(range(127, 160)), (
+        "filter terms the reader consumed are still queued for review"
+    )
+
+
+def test_identity_is_read_from_the_brace_surface(junos) -> None:
+    """A pack may declare one field twice, once per surface.
+
+    `identity_for` returned only the first declaration, so the second was read
+    by nothing — the shape DEF-12 is named for. `extract_identity` consults
+    every declaration for a field now, first match winning.
+    """
+    identity = extract_identity(
+        junos,
+        BRACE.read_text(encoding="utf-8").splitlines(),
+        file_id=BRACE.name,
+        file_path=str(BRACE),
+    )
+
+    assert identity.hostname is not None and identity.hostname.value == "core-rtr-01"
+    assert identity.os_version is not None and identity.os_version.value == "21.4R3.15"
+    assert identity.hostname.evidence[0].raw_line.strip() == "host-name core-rtr-01;"
 
 
 # ---------------------------------------------------------------------------
@@ -298,19 +443,42 @@ def test_a_term_taking_an_action_that_decides_nothing_drops_the_filter() -> None
     assert "does not decide the packet" in failures[0].reason
 
 
-def test_a_bracketed_port_list_drops_the_filter_and_says_why() -> None:
-    """`destination-port [ ssh https ]` is two intervals in one field.
+def test_a_bracketed_port_list_expands_in_the_set_form_too() -> None:
+    """Replaces `test_a_bracketed_port_list_drops_the_filter_and_says_why`.
 
-    `PortSpec` holds one. Splitting the term into two entries would invent an
-    ordering the configuration does not state, and collapsing it to a range
-    would match ports nobody permitted.
+    That test asserted the filter was dropped, which was the behaviour until
+    P18 and too strong: a bracketed list is a disjunction over one field, not an
+    unreadable token. It was deleted by the change that earned it (D115).
+
+    Asserted on the `set` surface specifically, because the expansion was
+    written for the brace one. The two are the same filter language, and a
+    construct that expands in one and drops the filter in the other would make
+    the result depend on how the device happened to be exported.
     """
     t = junos_tree(
         _filter_line("a", "from destination-port [ ssh https ]") + _filter_line("a", "then accept")
     )
+    acls, failures = extract_acls(t, junos_pack())
+
+    assert failures == ()
+    ports = [(e.dst_port.low, e.dst_port.high) for e in acls[0].entries]
+    assert ports == [(22, 22), (443, 443)]
+    assert {e.action for e in acls[0].entries} == {AclAction.PERMIT}
+
+
+def test_several_protocols_in_one_term_are_still_refused() -> None:
+    """Expansion is for ports, and the reason says so rather than generalising.
+
+    Two protocols would need the same treatment and no configuration in this
+    corpus writes one, so it is refused rather than guessed at — the same
+    standing every unexercised branch has here.
+    """
+    t = junos_tree(
+        _filter_line("a", "from protocol [ tcp udp ]") + _filter_line("a", "then accept")
+    )
     _, failures = extract_acls(t, junos_pack())
 
-    assert "two intervals" in failures[0].reason
+    assert "several protocols" in failures[0].reason
 
 
 def test_an_unknown_match_condition_names_the_keyword() -> None:

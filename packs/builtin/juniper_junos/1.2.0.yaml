@@ -1,0 +1,100 @@
+# NIRIKSHAK vendor pack — juniper junos
+#
+# 1.1.0 adds ACL extraction for JunOS firewall filters written in the flat
+# `set` form. Packs are immutable, so this is a new version rather than an edit
+# to 1.0.0, which is deprecated and re-stamped.
+#
+# WHAT THIS PACK STILL DOES NOT READ, stated so nobody infers otherwise:
+#
+#   * (CLOSED at P18, ADR 0043 — this version reads the brace-nested form too.)
+#     JunOS ships the same filter language as `set` commands and as a brace
+#     hierarchy. Which one a file uses is a property of how it was exported, so
+#     the pack names the LANGUAGE (`dialect: junos_filter`) and declares a
+#     locator for each surface; the reader picks by the parsed tree's syntax
+#     mode.
+#   * Interfaces. `interface_extraction` is absent, so `applied` below is null:
+#     a filter's binding to an interface is read from the interface, and there
+#     are no interfaces. A binding that is absent is better than one that is
+#     guessed, and an ACL with no `applied_to` says only that.
+#   * Canonical security fields. `patterns` is still empty, so every field on
+#     every JunOS device remains UNKNOWN. This version reads structure, not
+#     facts.
+#
+# Patterns use single-quoted YAML scalars: double quotes would process
+# backslashes as escapes and mangle every regex.
+
+vendor: juniper
+os_family: junos
+pack_version: 1.2.0
+status: active
+created_by: team-atlantis
+checksum: sha256:ce6ea476025dce5780e198b47187f837e0f0e1a3740953acda620f23b33f37a8
+
+# Two surfaces, two sets of signatures. The `set` signatures never match a
+# brace file and the brace signatures never match a `set` file, so a file scores
+# on one group only and the winning margin is unaffected by the other being
+# present.
+#
+# THE BRACE SIGNATURES MUST NOT MATCH cisco/ios, arista/eos OR cisco/nxos, or
+# the min_margin ambiguity rule fires and the file becomes unauditable a second
+# way. Each is a top-level block name no indent-based platform writes at column
+# zero, and the version signature requires JunOS's `NNRN` release form and its
+# terminating semicolon -- `version 17.9` has neither.
+detect:
+  # --- flat `set` form ---
+  - { type: regex, pattern: '^set system host-name ', weight: 0.35 }
+  - { type: regex, pattern: '^set version ', weight: 0.25 }
+  - { type: regex, pattern: '^set interfaces \S+ unit \d+', weight: 0.25 }
+  - { type: regex, pattern: '^set security ', weight: 0.2 }
+  # --- brace-nested form ---
+  - { type: regex, pattern: '^system \{$', weight: 0.3 }
+  - { type: regex, pattern: '^interfaces \{$', weight: 0.25 }
+  - { type: regex, pattern: '^firewall \{$', weight: 0.2 }
+  - { type: regex, pattern: '^routing-options \{$', weight: 0.15 }
+  - { type: regex, pattern: '^version \d+\.\d+R\S*;$', weight: 0.25 }
+
+identity:
+  - field: hostname
+    match:   { type: regex, pattern: '^set system host-name (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['set system host-name srx-edge-01']
+  - field: os_version
+    match:   { type: regex, pattern: '^set version (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['set version 21.4R3']
+  # The brace form writes the same two facts as hierarchy rather than as a path.
+  # Identity runs over RAW lines (ADR 0011), so these match the indented source
+  # text and not the parsed node, which is why they carry leading whitespace.
+  - field: hostname
+    match:   { type: regex, pattern: '^\s+host-name (\S+);$' }
+    capture: { value: '$1', cast: str }
+    examples: ['    host-name core-rtr-01;']
+  - field: os_version
+    match:   { type: regex, pattern: '^version (\d+\.\d+R\S*);$' }
+    capture: { value: '$1', cast: str }
+    examples: ['version 21.4R3.15;']
+
+# A JunOS filter in `set` form has no block header: one term is several
+# top-level lines. `named_block` therefore locates the *path prefix* up to and
+# including the filter name — `family inet` is a configuration detail an
+# operator can legitimately differ on, so it belongs in data — and the
+# junos_set_filter reader parses the `term … from/then …` tail that follows.
+#
+# `applied` is null: see the note at the top of this file.
+acl_extraction:
+  dialect: junos_filter
+  acl_type: extended
+  named_block: '^set firewall family inet filter (\S+) '
+  # The brace surface's locator. `firewall` in the ancestry is what separates a
+  # filter DEFINITION from the `filter { input NAME; }` binding inside an
+  # interface, and the reader checks it.
+  brace_block: '^filter (\S+)$'
+  examples:
+    - 'filter PROTECT-RE {'
+    - 'term allow-anything {'
+    - 'set firewall family inet filter PROTECT-RE term allow-mgmt-ssh from protocol tcp'
+    - 'set firewall family inet filter PROTECT-RE term allow-mgmt-ssh from destination-port ssh'
+    - 'set firewall family inet filter PROTECT-RE term allow-mgmt-ssh then accept'
+    - 'set firewall family inet filter PROTECT-RE term log-and-deny then discard'
+
+patterns: []

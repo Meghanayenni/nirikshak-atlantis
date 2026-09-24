@@ -197,12 +197,19 @@ deliberately clean list. Every one of those files was written by this team, so
 what is demonstrated is that the interval logic runs on real parsed structure,
 not a rate at which it would find problems on a real network.
 
-**Two ACL dialects, and a third that is unreachable.** Cisco IOS wildcard lists
-and JunOS `set`-form filter terms are read. The brace-nested form of the same
-JunOS filters is not, and the blocker is vendor detection rather than
-extraction: a brace-nested file matches no JunOS signature and never reaches a
-pack. Arista and NX-OS declare no extraction at all. See
-`docs/adr/0033-junos-filter-terms-and-the-half-that-detection-blocks.md`.
+**Three ACL dialects across three vendors, and both surfaces JunOS ships.**
+Cisco IOS wildcard lists, NX-OS prefix-length lists, and JunOS filter terms in
+*both* the flat `set` form and the brace-nested hierarchy. Six access lists are
+analysed, none dropped.
+
+The brace-nested JunOS file was unreachable end to end until P18, and detection
+was the smallest of four blockers: the syntax mode was keyed to the platform
+rather than to the file, `SyntaxMode.BRACE` raised rather than parsing, and the
+flat reader groups top-level lines where brace terms are subtrees. It now yields
+the **first shadowed result on a non-Cisco platform** — a filter whose
+`term allow-anything { then accept; }` sits above the term meant to block
+telnet, so the block can never take effect. Arista declares no ACL extraction.
+See `docs/adr/0043-the-second-surface-junos-ships.md`.
 
 **Similarity scores are not confidence, and no calibrator is fitted.** Every
 suggestion carries `UNCALIBRATED_SIMILARITY`, which forces the field to UNKNOWN

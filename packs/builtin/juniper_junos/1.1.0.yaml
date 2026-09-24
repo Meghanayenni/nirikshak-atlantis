@@ -26,9 +26,9 @@
 vendor: juniper
 os_family: junos
 pack_version: 1.1.0
-status: active
+status: deprecated
 created_by: team-atlantis
-checksum: sha256:bf9ca9b25cef20801f48419645b677b6bc8b15584ba09ff8d29b677e4b36ac12
+checksum: sha256:3a6af6a5fcef85b59a5384e9fb72ec88769dba0b610c4b5112095b8ccff0461e
 
 detect:
   - { type: regex, pattern: '^set system host-name ', weight: 0.35 }
