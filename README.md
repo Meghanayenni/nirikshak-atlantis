@@ -314,6 +314,16 @@ endpoint needs the WeasyPrint/GTK stack, and where that is absent it answers 503
 naming the missing libraries rather than substituting another engine or
 returning the HTML document under a `.pdf` name.
 
+**DEF-16's guard had never detected anything, and now does.** The defect that
+actually bit this project — an administrator confirming lines from an
+evaluation-split file through the interface, contaminating the measurement — has
+a guard that scans `packs/trained/`, which is gitignored and empty on every
+checkout. It skipped every time it ran, and the contamination was found by
+tracing examples back to files by hand. It is now driven against a pack the real
+training loop writes from the actual offending line, with the clean case beside
+it. **This does not close DEF-16**: the loop still has no notion of a corpus
+split, and an administrator can do exactly what they did before.
+
 **The analyser has now corrected its own test data twice.** At P16 it declined
 to flag an entry a corpus remark called unreachable, and was right — an ACL
 evaluates top-down, so a rule below cannot shadow one above. At P18 it reported

@@ -68,8 +68,9 @@ INLINE_SKIPS: dict[str, str] = {
     "test_train_boundaries.py::test_no_trained_pack_quotes_an_evaluation_or_holdout_line": (
         "`packs/trained/` is gitignored deployment state (D45), so this scan skips "
         "on every checkout and on CI. The detection it performs is exercised by "
-        "test_the_contamination_detector_actually_fires against a constructed pack "
-        "carrying the real DEF-16 line."
+        "tests/integration/test_contamination_guard.py, which drives the real "
+        "training loop to write a pack carrying the DEF-16 line and asserts the "
+        "scan catches it, and which checks the live directory without skipping."
     ),
     "test_training_api.py::test_an_unavailable_model_is_never_an_empty_suggestion_list": (
         "Skips where the embedding model is installed. The ranked path it cannot "

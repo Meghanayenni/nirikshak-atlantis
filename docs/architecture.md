@@ -417,6 +417,14 @@ for activation, plus a `pack_versions` column that is keyed by `pack_id` rather
 than by vendor, so `cisco/ios` and `cisco/nxos` cannot collide in it — is still
 open.
 
+**DEF-16 — the detector now runs, and the defect is unchanged** (ADR 0051). Its
+guard scans `packs/trained/`, which is gitignored and empty on every checkout,
+so it had skipped every time it ever executed and the contamination was found by
+hand. It is now driven against a pack the real training loop writes from the
+actual offending line, with the negative case beside it, and the live directory
+is scanned without skipping. **The loop still has no notion of a corpus split**,
+so an administrator can do exactly what they did before.
+
 **DEF-16** — found at P15 by the corpus-policy suite, which reported that two
 admin-trained patterns in the active Cisco pack had been compiled from
 `edge-rtr-11.cfg` — a file whose entire purpose is to be a regression fixture
@@ -448,7 +456,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and twenty-seven numbered decisions across 50 ADRs. (D63 and D64 were never issued; the
+One hundred and twenty-nine numbered decisions across 51 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -503,6 +511,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0048 | P18 | Derived, or reconciled; never merely declared | D123, D124, D125 |
 | 0049 | P18 | A suite that refuses to run with a shadowed test | D126, D127 |
 | 0050 | P18 | The analyser was right again | D128, D129 |
+| 0051 | P18 | The DEF-16 guard finally runs | D130, D131 |
 
 ---
 
