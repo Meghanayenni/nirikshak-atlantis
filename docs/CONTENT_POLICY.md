@@ -83,7 +83,11 @@ unaltered, and the recorded sha256 stays true of the file on disk.
 `corpus/` holds sanitised sample device configurations.
 
 - No real credentials, keys, certificates, community strings or password
-  hashes — including hashed values, which remain crackable.
+  hashes — including hashed values, which remain crackable. A hash-shaped
+  value is written `$N$SAMPLE$…`, and the gate treats any other salt as a
+  credential. An SNMP community is `public` or `private`, and a configuration
+  line mentioning `community` in a form the gate cannot read **fails** the
+  suite rather than passing it (ADR 0055).
 - No real public IP addressing, hostnames or topology belonging to an actual
   organisation.
 - Each corpus file records its **provenance** — hand-written, adapted from

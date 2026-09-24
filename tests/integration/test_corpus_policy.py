@@ -160,16 +160,133 @@ CREDENTIAL_PATTERNS = [
     re.compile(r"secret\s+5\s+\$1\$"),
     re.compile(r"\$6\$[./A-Za-z0-9]{8,}"),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
-    re.compile(r"snmp-server community\s+(?!public\b|private\b)\S+"),
-    # The same secret, written the way JunOS writes it. D66 declared a
-    # non-default community string a credential and rewrote the two files that
-    # carried one — and missed a third, because the pattern above is IOS-shaped
-    # and JunOS nests `community NAME { … }` inside an `snmp` block.
-    #
-    # A sanitisation gate with a vendor-shaped blind spot is the worst place for
-    # one: it reports clean on exactly the files it cannot read (ADR 0050).
-    re.compile(r"^\s*community\s+(?!public\b|private\b)\S+\s*\{", re.MULTILINE),
+    # Any crypt-style value whose salt is not the corpus placeholder (ADR 0055).
+    # The two patterns above spoke Cisco type 5 and `$6$`, and the `$6$` one
+    # admitted `$6$SAMPLE$…` only because SAMPLE is six characters and the
+    # quantifier wants eight — an accident doing the work of a rule. Cisco
+    # type 8 and type 9 were not recognised at all, though the Cisco corpus
+    # writes `secret 9`, and `$9$` is also JunOS's *reversible* encoding. Every hash-shaped
+    # value in the corpus is `$N$SAMPLE$…`; that convention is now the rule.
+    re.compile(r"\$(?:1|5|6|8|9)\$(?!SAMPLE\$)[^\s\"';]{4,}"),
 ]
+"""Credential shapes found by pattern. SNMP communities are not here — see below."""
+
+
+# ---------------------------------------------------------------------------
+# SNMP communities: a gate that fails closed (ADR 0055)
+# ---------------------------------------------------------------------------
+#
+# D66 declared a non-default community string a credential. The gate that
+# enforced it was a list of vendor SHAPES: IOS `snmp-server community X`, and
+# after ADR 0050 JunOS `community X {`. A shape nobody listed — JunOS
+# `set snmp community X …`, or `community X;` with no body — matched nothing
+# and therefore PASSED. A parser that cannot read a vendor produces UNKNOWN; a
+# sanitisation check that cannot read one produced a pass.
+#
+# So the question is turned round. Every non-comment line that mentions
+# `community` must be READ by one of these forms, and a line the gate cannot
+# read fails. Teaching the gate a new vendor is then a deliberate edit here,
+# forced by a red build, rather than a gap discovered after a secret shipped.
+
+COMMUNITY_FORMS: tuple[re.Pattern[str], ...] = (
+    # IOS, IOS XE, NX-OS and EOS: `snmp-server community NAME [ro|rw|group …]`.
+    re.compile(r"\bsnmp-server\s+community\s+\"?([^\s\"]+)"),
+    # JunOS flat form: `set snmp community NAME …`.
+    re.compile(r"^\s*set\s+snmp\s+community\s+\"?([^\s\";]+)"),
+    # JunOS brace form: `community NAME {` or `community NAME;`.
+    re.compile(r"^\s*community\s+\"?([^\s\";{]+)\"?\s*[{;]"),
+)
+
+DEFAULT_COMMUNITIES = frozenset({"public", "private"})
+"""Not secrets: the defaults an audit exists to flag, kept in the corpus on purpose."""
+
+COMMENT_OPENERS = ("!", "#", "/*", "*", "//")
+"""Line openers across the corpus vendors. Prose in a comment may say "community"."""
+
+
+def community_problems(text: str, *, configuration: bool = True) -> list[str]:
+    """Every community line that is a credential, or that the gate cannot read.
+
+    A readable form anywhere — comments and label prose included — must name a
+    default: a secret in a comment is still a secret in the repository. In a
+    **configuration** file, a non-comment line mentioning `community` that no
+    form reads is a failure in its own right. Label files are YAML whose prose
+    discusses community strings in English; they are held to the first rule,
+    not the second, because a sentence is not a configuration form.
+    """
+    problems: list[str] = []
+    for number, line in enumerate(text.split("\n"), start=1):
+        if "community" not in line.lower():
+            continue
+        names = [m.group(1) for form in COMMUNITY_FORMS if (m := form.search(line))]
+        for name in names:
+            if name.strip("\"'").lower() not in DEFAULT_COMMUNITIES:
+                problems.append(f"line {number}: non-default SNMP community {name!r}")
+        if configuration and not names and not line.lstrip().startswith(COMMENT_OPENERS):
+            problems.append(
+                f"line {number}: mentions 'community' in a form this gate cannot read — "
+                f"teach COMMUNITY_FORMS the form, or it passes unread: {line.strip()!r}"
+            )
+    return problems
+
+
+@pytest.mark.parametrize("path", corpus_files(), ids=lambda p: p.name)
+def test_no_snmp_community_is_a_credential_or_unread(path: Path) -> None:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    assert community_problems(text, configuration=path.suffix in (".cfg", ".conf")) == []
+
+
+@pytest.mark.parametrize(
+    ("line", "flagged"),
+    [
+        ("snmp-server community S3cret RO", True),  # IOS
+        ("snmp-server community S3cret group network-operator", True),  # NX-OS
+        ("snmp-server community public ro", False),  # EOS, default
+        ("set snmp community S3cret authorization read-only", True),  # JunOS flat
+        ('set snmp community "public" authorization read-only', False),
+        ("    community S3cret {", True),  # JunOS brace, with a body
+        ("    community S3cret;", True),  # JunOS brace, no body — was invisible
+        ("    community public {", False),
+        ("! snmp-server community S3cret RO", True),  # commented out, still a secret
+        ("!   and community references.", False),  # prose in a comment
+        (" *   is community-based only.", False),  # prose in a JunOS comment block
+        ("snmp community-string S3cret", True),  # a shape nobody taught: unread
+        ("set policy-options community TRANSIT members 65000:100", True),  # unread, too
+    ],
+)
+def test_the_community_gate_reads_every_vendor_and_fails_closed(line: str, flagged: bool) -> None:
+    """The gate's own truth table. The last two are the point: unread is a failure.
+
+    `set policy-options community …` is a BGP community, not a credential, and
+    the gate still refuses it — because it cannot tell, and a gate that cannot
+    tell must not pass. When a corpus file needs one, the form is added here,
+    as a named not-a-credential case.
+    """
+    assert bool(community_problems(line)) is flagged
+
+
+def test_label_prose_is_checked_for_secrets_but_not_parsed_as_configuration() -> None:
+    prose = "A v1/v2c community string is configured, so SNMP is not v3-only."
+    assert community_problems(prose, configuration=False) == []
+    assert community_problems("quoted: snmp-server community S3cret RO", configuration=False)
+
+
+@pytest.mark.parametrize(
+    ("value", "flagged"),
+    [
+        ("enable secret 9 $9$SAMPLE$PlaceholderNotReal", False),
+        ("enable secret 9 $9$nhEmQVczB7dqsO$X.HsgL6x1il0RxkOSSvyQYwucySCt7qFm4v7pqCxkKM", True),
+        ("enable secret 8 $8$dsYGNam3K1SIJO$7nv/35M/qr6t.dVc7UY9zrJDWRVqncHub1PE9UlMQFs", True),
+        ('encrypted-password "$6$SAMPLE$PlaceholderRootHash";', False),
+        ('encrypted-password "$6$abcdefgh$realLookingHashValue";', True),
+        ('authentication-key "$9$dkflsjfDFLKSJ3kd";', True),  # JunOS reversible
+        ("username admin secret 5 $5$SAMPLE$Placeholder", False),
+    ],
+)
+def test_the_hash_gate_speaks_every_crypt_form(value: str, flagged: bool) -> None:
+    hit = any(p.search(value) for p in CREDENTIAL_PATTERNS)
+    assert hit is flagged
+
 
 RESERVED_PREFIXES = ("192.0.2.", "198.51.100.", "203.0.113.", "10.", "172.16.", "192.168.")
 IPV4 = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
@@ -216,9 +333,7 @@ def test_hostnames_use_reserved_domains(path: Path) -> None:
     text = path.read_text(encoding="utf-8", errors="replace")
     domains = re.findall(r"domain[- ]name[> ]+([A-Za-z0-9.-]+)", text)
     for domain in domains:
-        assert domain.endswith(RESERVED_DOMAINS), (
-            f"{path.name} uses non-reserved domain {domain}"
-        )
+        assert domain.endswith(RESERVED_DOMAINS), f"{path.name} uses non-reserved domain {domain}"
 
 
 # ---------------------------------------------------------------------------
