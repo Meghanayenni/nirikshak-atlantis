@@ -4,7 +4,7 @@ NIRIKSHAK — EVALUATION REPORT (P9–P10)
 
 Accuracy is reported as a measurement, not a claim.
 
-Generated      : 2026-09-24T03:19:36.983947+00:00
+Generated      : 2026-09-24T04:11:47.026770+00:00
 Rulepack       : 1.0.0
 Vendor packs   : arista/eos 1.1.0, cisco/ios 1.3.0, juniper/junos 1.2.0
 Files scored   : 5 (evaluation split only)
@@ -64,8 +64,11 @@ patterns. Correlated error between parser and ground truth is therefore not
 visible in the Cisco numbers: a field misunderstood while writing the pattern
 would be misunderstood the same way while writing the label.
 
-Arista and Juniper carry no such conflict — no parsing pattern has ever been
-written for either platform.
+Arista and Juniper carry no such conflict, because no CANONICAL-FIELD
+pattern has ever been written for either platform — which is also why both
+score recall 0 below. Juniper does read access lists and device identity,
+and neither feeds a scored field, so the conflict this paragraph is about
+cannot arise there.
 
 3. VENDOR DETECTION
 ==============================================================================

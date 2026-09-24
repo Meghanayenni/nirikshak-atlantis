@@ -135,7 +135,7 @@ persist), `prioritise` cannot import `comply` (a ranking layer that could see
 verdict logic could start disagreeing with it), and `analyse` may import
 `api.models` and nothing else.
 
-Fifteen further architecture test files guard the same properties from other
+Seventeen further architecture test files guard the same properties from other
 angles: no ML library outside `learn`, no network capability, no vendor literal
 in a vendor-neutral layer, no raw configuration line in the training queue, and
 no path from the evaluation harness into any pipeline package.
@@ -448,7 +448,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and eighteen numbered decisions across 46 ADRs. (D63 and D64 were never issued; the
+One hundred and twenty numbered decisions across 47 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -499,6 +499,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0044 | P18 | A serial is not a parsing gap | D116, D117 |
 | 0045 | P18 | `OFFICIAL` is narrower, not dead | D118 |
 | 0046 | P18 | A register that cannot drift from its guard | D119, D120 |
+| 0047 | P18 | A claims sweep, and a guard against the next one | D121, D122 |
 
 ---
 

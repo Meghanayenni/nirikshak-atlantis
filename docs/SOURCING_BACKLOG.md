@@ -226,9 +226,18 @@ asserted by a test written to fail when the first mapping appears.
 name a control **and its source document**. `FrameworkRef` already carries
 `version`, `citation` and `mapping_provenance` for exactly this.
 
-**What must not happen.** Writing `CIS-1.2.3` or `AC-17(2)` from memory. Using
-`project_asserted` provenance to make the product appear to have coverage is
-specifically excluded (D16). Until a source exists, **no document, report or
+**What must not happen.** Writing a control identifier from memory — for an
+unsourced framework or a sourced one. A plausible identifier is
+indistinguishable in a report from a checked one, which is the whole reason this
+entry exists.
+
+*(This paragraph used to print a specimen identifier to illustrate the point. It
+no longer does: a realistic-looking fabrication sitting in a document is exactly
+the thing somebody copies, and `tests/architecture/test_framework_claims.py`
+now refuses one anywhere in this repository's prose.)*
+
+Using `project_asserted` provenance to make the product appear to have coverage
+is specifically excluded (D16). Until a source exists, **no document, report or
 presentation may claim coverage against any of the four frameworks.**
 
 ---
@@ -240,7 +249,9 @@ narrowest.
 
 **Now measured.** Arista and Juniper score **recall 0** in the P9 report — three
 and four fields respectively that a human reads off the page and the system
-cannot, because neither platform has a parsing pattern. Reported per vendor and
+cannot, because neither platform has a **canonical-field** pattern. Both read
+other things: Juniper reads access lists and identity, Arista reads identity.
+None of it is scored, and recall 0 is the correct figure. Reported per vendor and
 never pooled (decision D34), so the gap is visible rather than averaged into a
 fleet figure.
 
@@ -250,8 +261,11 @@ UNKNOWN all arise from real data. It is **not** enough to validate a *rule*: a
 check that passes on two devices from one vendor has been tested against a sample
 too small to say anything about the check.
 
-Arista and Juniper packs remain detection-only, so their devices produce a valid
-canonical model with zero fields and full residue.
+Arista remains detection-only. Juniper is no longer: it reads firewall filters
+in both surfaces and four identity fields (ADR 0033, ADR 0043). **Neither reads
+a canonical security field**, which is what recall 0 measures — so both still
+produce a canonical model with zero scored fields, and Juniper's residue is no
+longer the whole file.
 
 **What would close it.** More Cisco devices with genuine variation rather than
 near-copies; at least one further vendor with a real parsing pack; and devices
@@ -432,8 +446,8 @@ synthetic corpus of four labelled evaluation files:
   labeller read;
 - Cisco compliance verdicts — FAIL precision 100% (3/3), **FAIL recall 50%
   (3/6)**;
-- Arista and Juniper recall **0** — no parsing pattern exists for either, which
-  this measures honestly rather than averaging away.
+- Arista and Juniper recall **0** — no canonical-field pattern exists for
+  either, which this measures honestly rather than averaging away.
 
 Every one of those gaps traces to an entry on this list. The harness turned the
 backlog from an argument into an arithmetic.

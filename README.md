@@ -35,9 +35,27 @@ each device against its peers (P12), and the React interface an operator
 actually uses (P13) are in place.
 
 The pipeline runs end to end: a configuration file goes in, and an
-evidence-linked HTML report comes out, citing the exact lines it rests on. And
-the accuracy of that pipeline is a measurement rather than a claim —
+evidence-linked HTML or PDF report comes out, citing the exact lines it rests
+on. And the accuracy of that pipeline is a measurement rather than a claim —
 `make evaluate`, with the numbers in `eval/reports/evaluation.txt`.
+
+### What it does today, in numbers
+
+| | |
+| --- | --- |
+| Platforms with a vendor pack | **4** — Cisco IOS, Cisco NX-OS, Juniper Junos, Arista EOS |
+| Platforms reading canonical security fields | **2** — IOS (eight fields), NX-OS (seven) |
+| Access lists analysed, across 3 packs | **6**, none dropped |
+| ACL observations on real corpus files | 5 shadowed, 4 redundant, 3 overly permissive |
+| Frameworks with a sourced catalog | **1 of 4** — NIST SP 800-53 Rev 5, edition 5.2.0, pinned by sha256 |
+| Vetted remediation snippets | **20**, across 3 platforms — every one with a rollback and preconditions |
+| Report formats | HTML and PDF, both from the same persisted run |
+
+Each of those is the subject of a test, and each is bounded elsewhere on this
+page by what it does **not** mean. Juniper and Arista read structure and
+identity and no canonical field, so every compliance check on them abstains.
+The framework mappings are `project_asserted`. The corpus is synthetic. Six
+access lists is not a detection rate.
 
 The similarity layer clusters unrecognised lines and ranks up to three candidate
 mappings. **It proposes; it never decides.** Every suggestion is uncalibrated, so
@@ -77,8 +95,10 @@ cannot express, or an honest UNKNOWN — and builds the canonical model the
 compliance engine will consume.
 
 The Cisco IOS pack reads eight canonical fields and the Cisco NX-OS pack seven.
-Arista and Juniper read device identity and, for Juniper, firewall filters, but
-no canonical security field — an honest state rather than a placeholder: the
+Juniper reads firewall filters in both surfaces and four identity fields; Arista
+reads three identity fields. **Neither reads a canonical security field**, so
+every compliance check on those platforms abstains with `no_match` and both
+score recall 0 in the harness — an honest state rather than a placeholder: the
 platform is recognised, and every field no pack can read says UNKNOWN.
 
 **Four platforms are now detected and three parse access lists.**
@@ -251,7 +271,18 @@ synthetic sample and **are not real-world accuracy.**
 Cisco labels were written by the author of the Cisco parsing patterns — so
 correlated error between parser and ground truth is not visible in the Cisco
 figures. The label files declare this, and the report prints it. Arista and
-Juniper carry no such conflict, because no parsing pattern exists for either.
+Juniper carry no such conflict, because no *canonical-field* pattern exists for
+either — Juniper does read access lists and device identity, and neither feeds a
+scored field.
+
+**Remediation is ordered for lockout risk, not just listed.**
+`GET /compliance/audits/{id}/remediation` returns a plan in application order,
+and three of the twenty snippets carry `lockout_risk: high` — a change that
+could strand the operator outside the device they are fixing. Those sort last,
+and a high-risk snippet that does not explain itself in `notes` is refused at
+load. Every snippet carries its rollback and its preconditions, and the report
+shows a command with both or not at all. Nothing is ever applied: the system
+recommends and a human types.
 
 **No remediation *coverage* is claimed.** Twenty vetted snippets ship across
 Cisco IOS, Juniper Junos and Arista EOS, each naming the person who checked it
@@ -517,8 +548,11 @@ These come from `DEVELOPER_GUIDE.md` and are enforced by tests in
    field is routed to training. Never a guessed PASS or FAIL. Trust is created by
    an administrator's confirmation, never by a score.
 4. **Remediation is never AI-generated.** Commands come only from the vetted
-   snippet library, keyed by vendor, OS family and rule ID. That library is
-   currently empty, so no command is offered for anything.
+   snippet library, keyed by vendor, OS family and rule ID. Twenty snippets ship
+   across Cisco IOS, Juniper Junos and Arista EOS, each naming the person who
+   checked it and the vendor document they checked it against. A platform or
+   rule with no vetted entry resolves to *"No vetted remediation is available"*,
+   which is the correct output rather than a gap.
 5. **Rules and vendor packs are data.** Adding a vendor, framework or OS version
    is a data change.
 6. **Offline-first.** Local CPU inference, secrets scrubbed before any model

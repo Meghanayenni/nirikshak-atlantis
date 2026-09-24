@@ -136,8 +136,11 @@ def render(run: ScoreRun) -> str:
             "visible in the Cisco numbers: a field misunderstood while writing the pattern",
             "would be misunderstood the same way while writing the label.",
             "",
-            "Arista and Juniper carry no such conflict — no parsing pattern has ever been",
-            "written for either platform.",
+            "Arista and Juniper carry no such conflict, because no CANONICAL-FIELD",
+            "pattern has ever been written for either platform — which is also why both",
+            "score recall 0 below. Juniper does read access lists and device identity,",
+            "and neither feeds a scored field, so the conflict this paragraph is about",
+            "cannot arise there.",
         ]
 
     # -------------------------------------------------------------- detection

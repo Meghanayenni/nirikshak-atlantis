@@ -743,13 +743,39 @@ class VendorPack(BaseModel):
 
     @property
     def is_detection_only(self) -> bool:
-        """True when this pack can recognise the platform but not parse it.
+        """True when this pack recognises the platform and reads nothing from it.
 
         A legitimate state at P3, and the honest description of a vendor we know
         of but cannot yet audit: detection works, every canonical field is
         UNKNOWN, and the whole file becomes residue for the training queue.
+
+        **Structure counts as parsing.** This tested only `patterns` until P18,
+        by which point `juniper/junos` read access lists and four identity
+        fields and still reported itself detection-only — a pack describing its
+        own capability inaccurately, which is the same class of error as a
+        document doing it. A pack that extracts an ACL has parsed something,
+        whether or not it has produced a canonical security field.
+
+        `reads_no_canonical_field` is the narrower question, and the one the
+        evaluation harness cares about: a pack can read structure and identity
+        and still have every compliance check abstain.
         """
-        return bool(self.detect) and not self.patterns
+        return bool(self.detect) and self.reads_no_canonical_field and not self.reads_structure
+
+    @property
+    def reads_no_canonical_field(self) -> bool:
+        """True when no canonical security field can come from this pack.
+
+        Every rule abstains with `no_match` on such a platform, and the P9
+        harness reports recall 0 for it — correctly, and for a reason that is
+        about coverage rather than about accuracy.
+        """
+        return not self.patterns
+
+    @property
+    def reads_structure(self) -> bool:
+        """True when this pack extracts access lists or interfaces."""
+        return self.acl_extraction is not None or self.interface_extraction is not None
 
     def validate_patterns(self) -> dict[str, list[str]]:
         """Run every pattern against its own examples. Empty dict means clean."""
