@@ -129,7 +129,9 @@ describe('generating the report', () => {
     const call = fetchMock.mock.calls.find(([url]) => String(url).includes('report.html'));
     expect(call, 'the report was never requested').toBeDefined();
 
-    const headers = (call![1] as RequestInit).headers as Record<string, string>;
+    // The mock declares one parameter; the app calls fetch(url, init).
+    const init = (call as unknown as [unknown, RequestInit])[1];
+    const headers = init.headers as Record<string, string>;
     // `text/html` is true of the response and is exactly what made the proxy
     // answer this request with the application shell. These endpoints do not
     // content-negotiate, so claiming it buys nothing and costs a blank screen.
@@ -176,7 +178,9 @@ describe('downloading the PDF', () => {
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(([url]) => String(url).includes('report.pdf'));
       expect(call, 'the PDF was never requested').toBeDefined();
-      const headers = (call![1] as RequestInit).headers as Record<string, string>;
+      // The mock declares one parameter; the app calls fetch(url, init).
+      const init = (call as unknown as [unknown, RequestInit])[1];
+      const headers = init.headers as Record<string, string>;
       expect(headers.Authorization).toMatch(/^Basic /);
     });
 

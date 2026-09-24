@@ -150,7 +150,9 @@ describe('confirming a boolean mapping', () => {
     const compile = fetchMock.mock.calls.find(([url]) => String(url).includes('/training/compile'));
     expect(compile, `compile was never called; calls: ${calls.join(', ')}`).toBeDefined();
 
-    const body = JSON.parse(String((compile![1] as RequestInit).body));
+    // The mock declares one parameter; the app calls fetch(url, init).
+    const init = (compile as unknown as [unknown, RequestInit])[1];
+    const body = JSON.parse(String(init.body));
     expect(body.literal_value).toBe('false');
     // The two are exclusive: a decision naming both would declare two sources
     // for one value, and the compiler would have to choose between them.
