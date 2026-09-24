@@ -314,6 +314,14 @@ endpoint needs the WeasyPrint/GTK stack, and where that is absent it answers 503
 naming the missing libraries rather than substituting another engine or
 returning the HTML document under a `.pdf` name.
 
+**The suite refuses to run if a test is shadowed.** Two functions with one name
+in one module is not an error in Python — the second replaces the first, and the
+first stops existing before pytest sees it. It happened here, and the suite
+reported green. A collection-time check reads each module's source (the only
+place both definitions still exist) and aborts with exit 4. In a project whose
+argument rests on its tests, a test that silently stops running is the one
+defect the suite cannot report on itself.
+
 **Every self-description is derived from what it describes, or reconciled
 against it.** `/health` reported `phase: "P12"` from P12 until P18 — the
 endpoint declared it, the interface displayed it, and a test asserted it, so the
