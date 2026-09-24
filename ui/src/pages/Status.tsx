@@ -132,7 +132,6 @@ export function StatusPage() {
               {h.version}
             </Field>
             <Field label="Airgap">{h.airgap ? 'enabled' : 'disabled'}</Field>
-            <Field label="Phase">{h.phase}</Field>
             {Object.entries(h.schema_versions).map(([name, version]) => (
               <Field key={name} label={`${name} schema`}>
                 <span className="num">v{version}</span>

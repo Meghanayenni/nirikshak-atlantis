@@ -11,6 +11,7 @@ operator can tell a missing capability from a broken one.
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from importlib import metadata
 
 from fastapi import FastAPI
 
@@ -57,6 +58,21 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+def package_version() -> str:
+    """This build's version, read from the installed distribution.
+
+    `pyproject.toml` is the single place the number is written. Restating it in
+    a response body creates a second source that can disagree with the first,
+    and a health endpoint that reports the wrong version is worse than one that
+    reports none — it is the field somebody checks when they suspect they are
+    running something else.
+    """
+    try:
+        return metadata.version("nirikshak")
+    except metadata.PackageNotFoundError:  # pragma: no cover - editable install expected
+        return "unknown"
+
+
 app = FastAPI(
     lifespan=lifespan,
     title="NIRIKSHAK",
@@ -64,7 +80,7 @@ app = FastAPI(
         "Self-learning, vendor-agnostic network security compliance auditor. "
         "Operates on offline configuration exports only."
     ),
-    version="0.1.0",
+    version=package_version(),
 )
 
 app.include_router(audit_router.router)
@@ -93,8 +109,10 @@ def health() -> dict[str, object]:
 
     return {
         "status": "ok",
-        "version": "0.1.0",
-        "phase": "P12",
+        # DERIVED from installed package metadata, not restated here. The literal
+        # that stood in its place was a second copy of pyproject's version with
+        # nothing keeping the two in step.
+        "version": package_version(),
         "schema_version": versions["audit"],
         "schema_versions": versions,
         "airgap": settings.airgap,

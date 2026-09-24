@@ -624,7 +624,6 @@ export interface ActivationResult {
 export interface Health {
   status: string;
   version: string;
-  phase: string;
   schema_version: number;
   schema_versions: Record<string, number>;
   airgap: boolean;

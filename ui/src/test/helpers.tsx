@@ -281,7 +281,6 @@ export const FIXTURES = {
   health: {
     status: 'ok',
     version: '0.1.0',
-    phase: 'P12',
     schema_version: 1,
     schema_versions: { operational: 3, audit: 1 },
     airgap: false,

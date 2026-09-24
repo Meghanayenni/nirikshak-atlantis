@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib import metadata
 from pathlib import Path
 
 import pytest
@@ -33,7 +34,16 @@ def test_health_returns_ok(client: TestClient) -> None:
 
     body = response.json()
     assert body["status"] == "ok"
-    assert body["phase"] == "P12"
+
+    # `phase` was here, pinned at "P12", from P12 until P18. The endpoint
+    # declared it, the UI displayed it, and this line defended it — a test
+    # enforcing a claim that had been false for six phases. It is gone rather
+    # than corrected: a phase label has no runtime source to derive it from, so
+    # serving one guarantees it goes stale again (ADR 0048).
+    assert "phase" not in body
+    assert body["version"] == metadata.version("nirikshak"), (
+        "the reported version must come from the installed distribution, not a literal"
+    )
 
     # Rule 3 — the abstention threshold must be present and be a real
     # probability, not a placeholder.

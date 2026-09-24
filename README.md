@@ -314,6 +314,17 @@ endpoint needs the WeasyPrint/GTK stack, and where that is absent it answers 503
 naming the missing libraries rather than substituting another engine or
 returning the HTML document under a `.pdf` name.
 
+**Every self-description is derived from what it describes, or reconciled
+against it.** `/health` reported `phase: "P12"` from P12 until P18 — the
+endpoint declared it, the interface displayed it, and a test asserted it, so the
+suite was actively defending a claim that had been false for six phases. It is
+removed rather than corrected: a phase label has no runtime source, so the next
+correct value would have the same lifespan as the last. Three declarations that
+could not be derived are now reconciled instead — a pack's version against its
+own filename, the engine version against `pyproject.toml`, and the rulepack
+version against a digest of the rules it contains, so editing a rule fails the
+build until somebody decides whether the version moved.
+
 **Every skip guard is paired or registered.** A test that skips is a test that
 does not test: four PDF tests skipped wherever the runtime worked, so the
 endpoint was exercised by nothing for ten phases. An audit of all fourteen
