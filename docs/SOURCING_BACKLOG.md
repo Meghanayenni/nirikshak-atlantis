@@ -4,6 +4,12 @@
 the Concept Report promises, each needs material obtained from outside this
 repository, and none may be closed by inventing data.
 
+**Plus one entry that is not a sourcing gap at all**, filed here because it is
+where somebody looks for the missing capability: **6b**, a second input type.
+It is ordinary engineering nobody is prevented from doing, and it is numbered
+apart so counting the headings on this page does not overstate what is blocked
+on material. Eight are blocked on sourcing; 6b is not.
+
 P11 changed the *shape* of gap 7 without closing it: the loop that would generate
 the missing labels now exists and is tested end to end, so the gap is waiting on
 operators rather than on engineering. Every other gap on this page is exactly
