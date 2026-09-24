@@ -110,8 +110,41 @@ export function useMutation<TArgs extends unknown[], TResult>(
     [action],
   );
 
+  /**
+   * Like `run`, but hands the failure back to the caller directly.
+   *
+   * `error` and `cause` are React state, so a handler that awaits `run` and then
+   * reads them sees the values from the render it closed over — `null`. The
+   * device workspace did exactly that, so every audit refusal and every audit
+   * failure was silent from P13 until ADR 0058: the button simply reset. A
+   * caller that needs to act on the outcome in the same handler uses this.
+   */
+  const attempt = useCallback(
+    async (
+      ...args: TArgs
+    ): Promise<
+      { ok: true; value: TResult } | { ok: false; error: string; cause: unknown }
+    > => {
+      setPending(true);
+      setError(null);
+      setCause(null);
+      try {
+        return { ok: true, value: await action(...args) };
+      } catch (thrown) {
+        const message = describeError(thrown);
+        setError(message);
+        setCause(thrown);
+        return { ok: false, error: message, cause: thrown };
+      } finally {
+        setPending(false);
+      }
+    },
+    [action],
+  );
+
   return {
     run,
+    attempt,
     pending,
     error,
     cause,

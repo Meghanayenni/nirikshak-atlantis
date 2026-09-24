@@ -29,6 +29,7 @@ from api.audit.chain import AuditChain
 from api.comply.engine import evaluate_device, new_audit_id
 from api.comply.frameworks import (
     UnsourcedFrameworkError,
+    device_framework_options,
     indexes,
     resolve_selection,
     run_framework_view,
@@ -192,6 +193,46 @@ def list_frameworks() -> dict[str, Any]:
             "Mappings from NIRIKSHAK checks to these controls are asserted by this "
             "project, not taken from a published crosswalk. A catalog publishes "
             "controls; it does not publish mappings."
+        ),
+    }
+
+
+@router.get("/frameworks/device/{file_id}")
+def frameworks_for_device(conn: Conn, user: CurrentUser, file_id: str) -> dict[str, Any]:
+    """What a selector may offer for one device (ADR 0058).
+
+    Every sourced framework, and whether its edition describes this device —
+    with the reason when it does not. An unsourced framework is absent, as on
+    the unscoped list. The interface renders this; it decides nothing. The audit
+    route still refuses a non-describing selection with 409 on its own, so a
+    client that ignored this answer would be refused, not misled.
+    """
+    row = conn.execute(
+        """
+        SELECT cf.detected_vendor, cf.detected_os_family,
+               (SELECT owner_id FROM ingestion WHERE file_id = cf.file_id
+                 ORDER BY received_at LIMIT 1) AS owner_id
+        FROM config_file cf WHERE cf.file_id = ?
+        """,
+        (file_id,),
+    ).fetchone()
+    require_access(user, exists=row is not None, owner_id=row["owner_id"] if row else None)
+    assert row is not None
+
+    os_version = _os_version(conn, file_id)
+    return {
+        "file_id": file_id,
+        "platform": {
+            "vendor": row["detected_vendor"],
+            "os_family": row["detected_os_family"],
+            "os_version": os_version,
+        },
+        "frameworks": device_framework_options(
+            row["detected_vendor"], row["detected_os_family"], os_version
+        ),
+        "note": (
+            "Mappings from NIRIKSHAK checks to these controls are asserted by this "
+            "project, not taken from a published crosswalk."
         ),
     }
 

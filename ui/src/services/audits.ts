@@ -11,6 +11,7 @@ import type {
   AuditList,
   AuditResult,
   AuditRun,
+  DeviceFrameworks,
   FindingList,
   RemediationPlan,
   Severity,
@@ -27,11 +28,23 @@ export function getAudit(auditId: string): Promise<AuditRun> {
   return request<AuditRun>(`/compliance/audits/${auditId}`);
 }
 
-export function runAudit(fileId: string): Promise<AuditResult> {
+/**
+ * Run an audit, optionally scoped to selected benchmarks.
+ *
+ * The selection is passed through untouched. The backend decides whether each
+ * benchmark describes the device and refuses with 409 when none does; the
+ * interface shows that refusal and never pre-empts it (ADR 0058).
+ */
+export function runAudit(fileId: string, frameworks: string[] = []): Promise<AuditResult> {
   return request<AuditResult>('/compliance/audits', {
     method: 'POST',
-    query: { file_id: fileId },
+    query: { file_id: fileId, framework: frameworks },
   });
+}
+
+/** Every sourced framework, and whether the API says it describes this device. */
+export function getFrameworkOptions(fileId: string): Promise<DeviceFrameworks> {
+  return request<DeviceFrameworks>(`/compliance/audits/frameworks/device/${fileId}`);
 }
 
 export function getFindings(

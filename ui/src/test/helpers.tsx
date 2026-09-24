@@ -42,8 +42,37 @@ export interface Route {
   text?: string;
 }
 
+/**
+ * The benchmark options every device workspace requests (ADR 0058).
+ *
+ * Supplied by default, ahead of the suites' catch-all `/compliance/audits`
+ * routes — which would otherwise answer this URL with an audit list, a shape
+ * the selector cannot read. A suite that stubs the endpoint itself wins.
+ */
+const DEFAULT_FRAMEWORK_OPTIONS: Route = {
+  match: '/compliance/audits/frameworks/device/',
+  body: {
+    file_id: 'file-1',
+    platform: { vendor: 'cisco', os_family: 'ios', os_version: '17.9' },
+    frameworks: [
+      {
+        framework: 'nist',
+        document: 'NIST SP 800-53 Rev 5 — OSCAL catalog',
+        edition: '5.2.0',
+        describes_device: true,
+        reason: null,
+      },
+    ],
+    note: 'Mappings from NIRIKSHAK checks to these controls are asserted by this project.',
+  },
+};
+
 export function mockApi(routes: Route[]) {
   const calls: string[] = [];
+  const stubsOptions = routes.some(
+    (r) => typeof r.match === 'string' && r.match.includes('/frameworks/device/'),
+  );
+  if (!stubsOptions) routes = [DEFAULT_FRAMEWORK_OPTIONS, ...routes];
 
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = typeof input === 'string' ? input : input.toString();

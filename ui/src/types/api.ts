@@ -176,6 +176,8 @@ export interface AuditRun {
   rules_evaluated: number;
   verdicts: VerdictCounts;
   evaluated_at: string | null;
+  /** Null when the run was not scoped to a benchmark. */
+  framework_selection?: string[] | null;
 }
 
 export interface AuditList {
@@ -226,11 +228,31 @@ export interface AclNotAnalysed {
   summary: string;
 }
 
+/** One option in the benchmark selector, as the API decided it (ADR 0058). */
+export interface FrameworkOption {
+  framework: string;
+  document: string;
+  edition: string;
+  describes_device: boolean;
+  /** Why the edition does not describe this device; null when it does. */
+  reason: string | null;
+}
+
+export interface DeviceFrameworks {
+  file_id: string;
+  platform: { vendor: string | null; os_family: string | null; os_version: string | null };
+  frameworks: FrameworkOption[];
+  note: string;
+}
+
 export interface AuditResult {
   audit_id: string;
   device_id: string;
   verdicts: VerdictCounts;
   rules_evaluated: number;
+  framework_selection?: string[] | null;
+  frameworks_not_describing_device?: Record<string, string>;
+  not_assessed?: { rule_id: string; reason: string }[];
   residue_lines: number;
   acl_analysis: AclAnalysis;
   prioritisation: Prioritisation;

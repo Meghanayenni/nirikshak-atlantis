@@ -190,6 +190,44 @@ function FindingDetail({ finding, view }: { finding: Finding; view: FrameworkVie
   );
 }
 
+/**
+ * What this run was scoped to, and what that scope left out (ADR 0058).
+ *
+ * Not findings and not abstentions — "this benchmark does not ask for this" is a
+ * fact about the benchmark — so it sits above the list in neutral type, never
+ * with a verdict chip. Every sentence is the API's.
+ */
+function RunScope({ view }: { view: FrameworkView | undefined }) {
+  if (!view?.selection || view.selection.length === 0) return null;
+  const notApplied = Object.entries(view.not_applied);
+  return (
+    <section aria-label="Run scope" className="border-b border-border bg-surface px-4 py-3">
+      <p className="text-ink-2">
+        Scoped to <span className="font-medium">{view.selection.map((f) => f.toUpperCase()).join(', ')}</span>{' '}
+        — only checks mapped to {view.selection.length === 1 ? 'it' : 'them'} were evaluated.
+      </p>
+      {notApplied.map(([framework, why]) => (
+        <p key={framework} className="mt-1 text-xs text-muted">
+          <span className="uppercase">{framework}</span> selected and not applied — {why}
+        </p>
+      ))}
+      {view.not_assessed.length > 0 && (
+        <div className="mt-2">
+          <p className="label mb-1">Not assessed under this scope</p>
+          <ul className="space-y-1 text-ink-2" aria-label="Not assessed">
+            {view.not_assessed.map((item) => (
+              <li key={item.rule_id}>
+                <span className="mono mr-2">{item.rule_id}</span>
+                {item.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function FindingsPanel({ workspace }: { workspace: DeviceWorkspace }) {
   const { findings, latest } = workspace;
   const [filter, setFilter] = useState<'' | Verdict>('');
@@ -218,6 +256,7 @@ export function FindingsPanel({ workspace }: { workspace: DeviceWorkspace }) {
 
   return (
     <>
+      <RunScope view={findings.data?.framework_view} />
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
         {FILTERS.map((option) => {
           const active = option.id === filter;

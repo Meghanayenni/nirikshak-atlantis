@@ -209,8 +209,15 @@ reason — CIS constrains the server and never requires it off. That input is
 constructed in a test: no corpus file is both in the benchmarks' scope and
 enables the server. A selected framework whose edition does not describe the
 device is named as *not applied*, with why; if none of the selection describes
-it, the audit is refused with 409 rather than run and reported clean. Selection
-is an API capability: **the interface offers no framework selector.**
+it, the audit is refused with 409 rather than run and reported clean.
+
+**The interface offers the selector** (ADR 0058). Each device's workspace lists
+the sourced frameworks the API returns for that device — ISO does not appear —
+and a benchmark whose edition does not describe the device says so in the API's
+words. A refused audit shows the API's 409 sentence beside the selector rather
+than an empty result, and a scoped run's findings open with what the scope left
+out and why. The STIG-versus-CIS contrast above was exercised end to end in
+headless Chrome through the real interface.
 
 **DISA STIG and CIS are mapped narrowly, and on one platform.** Both editions
 describe Cisco IOS XE, so their identifiers appear only on `cisco/ios` devices

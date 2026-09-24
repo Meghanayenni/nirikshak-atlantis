@@ -129,7 +129,8 @@ export interface RequestOptions {
   method?: 'GET' | 'POST';
   body?: unknown;
   formData?: FormData;
-  query?: Record<string, string | number | boolean | undefined | null>;
+  /** An array repeats the key — `framework=stig&framework=nist` — as FastAPI expects. */
+  query?: Record<string, string | number | boolean | string[] | undefined | null>;
   /** Credentials for a request made before a session exists (login). */
   token?: string;
   /** Return the raw text body instead of parsing JSON (the HTML report). */
@@ -149,7 +150,9 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   if (!query) return path;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== null && value !== '') {
+    if (Array.isArray(value)) {
+      for (const item of value) params.append(key, item);
+    } else if (value !== undefined && value !== null && value !== '') {
       params.append(key, String(value));
     }
   }

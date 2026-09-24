@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/useToast';
 import { ApiError } from '@/services/api';
 import { deviceLabel, formatTimestamp, platformLabel, shortId } from '@/utils/format';
 
+import { BenchmarkScope } from './BenchmarkScope';
 import { FindingsPanel } from './Findings';
 import { RemediationTab } from './Remediation';
 import { ReportPanel } from './Report';
@@ -28,6 +29,8 @@ export function DeviceWorkspace({ deviceId }: { deviceId: string }) {
   const workspace = useDeviceWorkspace(deviceId);
   const { push } = useToast();
   const [tab, setTab] = useState<TabId>('overview');
+  const [scope, setScope] = useState<string[]>([]);
+  const [refusal, setRefusal] = useState<string | null>(null);
 
   const {
     device,
@@ -53,8 +56,12 @@ export function DeviceWorkspace({ deviceId }: { deviceId: string }) {
    * message asks for.
    */
   async function onAudit() {
-    const result = await workspace.audit.run(deviceId);
-    if (result) {
+    setRefusal(null);
+    // `attempt`, not `run`: the outcome is read here, in the same handler, and
+    // the hook's state would still hold the previous render's values (ADR 0058).
+    const outcome = await workspace.audit.attempt(deviceId, scope);
+    if (outcome.ok) {
+      const result = outcome.value;
       // An access list recognised and then dropped is not the same as a device
       // with no access lists, and both look like silence. If the backend names
       // one, the operator hears about it here rather than discovering an empty
@@ -77,13 +84,17 @@ export function DeviceWorkspace({ deviceId }: { deviceId: string }) {
       workspace.reloadAll();
       return;
     }
-    if (!workspace.audit.error) return;
-
-    const refused = workspace.audit.cause instanceof ApiError && workspace.audit.cause.isRefusal;
-    if (refused) {
-      push('info', 'Nothing to audit', workspace.audit.error);
+    const refused = outcome.cause instanceof ApiError && outcome.cause.isRefusal;
+    if (refused && scope.length > 0) {
+      // A selected benchmark that does not describe this device (ADR 0058).
+      // Kept on screen beside the selector rather than in a toast that fades:
+      // this is the reason the operator's audit did not happen, and reading it
+      // as "no findings" is the mistake the 409 exists to prevent.
+      setRefusal(outcome.error);
+    } else if (refused) {
+      push('info', 'Nothing to audit', outcome.error);
     } else {
-      push('error', 'Audit failed', workspace.audit.error);
+      push('error', 'Audit failed', outcome.error);
     }
   }
 
@@ -124,6 +135,16 @@ export function DeviceWorkspace({ deviceId }: { deviceId: string }) {
           {workspace.audit.pending ? 'Auditing…' : latest ? 'Re-run audit' : 'Run audit'}
         </Button>
       </div>
+
+      <BenchmarkScope
+        deviceId={deviceId}
+        selected={scope}
+        onChange={(next) => {
+          setScope(next);
+          setRefusal(null);
+        }}
+        refusal={refusal}
+      />
 
       <div className="border-b border-border" role="tablist">
         <div className="flex gap-1 overflow-x-auto px-2">

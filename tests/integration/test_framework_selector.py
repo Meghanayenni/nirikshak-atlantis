@@ -495,3 +495,23 @@ def test_the_findings_view_carries_the_selections_scope(client: TestClient) -> N
 
     assert view["selection"] == ["cis"]
     assert [n["rule_id"] for n in view["not_assessed"]] == ["NRK-HTTP-001"]
+
+
+@pytest.mark.parametrize(
+    ("path", "describes"),
+    [
+        (IOS_XE_17, {"nist": True, "stig": True, "cis": True}),
+        (JUNOS, {"nist": True, "stig": False, "cis": False}),
+        (CISCO, {"nist": True, "stig": False, "cis": False}),
+    ],
+)
+def test_the_selector_options_are_decided_by_the_api(
+    client: TestClient, path: Path, describes: dict
+) -> None:
+    file_id = _upload(client, path)
+    body = client.get(f"/compliance/audits/frameworks/device/{file_id}", auth=ALICE).json()
+
+    assert {f["framework"]: f["describes_device"] for f in body["frameworks"]} == describes
+    for option in body["frameworks"]:
+        assert (option["reason"] is None) is option["describes_device"]
+    assert "iso" not in {f["framework"] for f in body["frameworks"]}

@@ -98,7 +98,9 @@ class PlatformScope:
     basis: str
 
     def describe(self) -> str:
-        return f"{self.vendor}/{self.os_family} with a release matching {self.os_version.pattern!r}"
+        # The pattern as written, not its repr: repr quoted it and doubled the
+        # backslash, and the interface showed operators '^17\\.' (ADR 0058).
+        return f"{self.vendor}/{self.os_family} with a release matching {self.os_version.pattern}"
 
 
 class CatalogIndex:
@@ -429,6 +431,33 @@ def run_framework_view(
         absent,
         scope,
     )
+
+
+def device_framework_options(
+    vendor: str | None, os_family: str | None, os_version: str | None
+) -> list[dict]:
+    """Every sourced framework, and whether its edition describes this device.
+
+    What a selector offers. Decided here, not in the interface: an unsourced
+    framework is absent from the list entirely (ADR 0036), and a sourced one
+    that does not describe the device is listed with the reason, so the
+    interface can say so plainly without deciding scope itself (ADR 0058).
+    """
+    out = []
+    for framework, index in sorted(indexes().items(), key=lambda kv: kv[0].value):
+        state = index.coverage(vendor, os_family, os_version)
+        out.append(
+            {
+                "framework": framework.value,
+                "document": index.document,
+                "edition": index.edition,
+                "describes_device": state is Coverage.COVERED,
+                "reason": None
+                if state is Coverage.COVERED
+                else index.explain_coverage(vendor, os_family, os_version),
+            }
+        )
+    return out
 
 
 def mappings_for_device(
