@@ -128,6 +128,10 @@ files:
   # cisco/ios pack already recognised at P4, plus `ip http server`, which the pack
   # deliberately does NOT parse — that line is here precisely so the evaluation
   # can record a miss rather than pretend the field was covered.
+  #
+  # P18 (ADR 0053): cisco/ios 1.4.0 reads `ip http server`, authored from the
+  # DEVELOPMENT file edge-rtr-01.cfg:47, not from this one. The miss recorded
+  # here at P9 is now a hit; the file itself is unchanged.
   - path: cisco/eval/sw-dist-11.cfg
     split: eval
     vendor: cisco

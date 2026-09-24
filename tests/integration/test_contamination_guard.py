@@ -80,7 +80,7 @@ def trained_pack_from(line: str, field: str, token: int, trained_root: Path) -> 
     produce that — the pattern id, the retained example, the provenance and the
     version bump are all its doing.
     """
-    base = load_pack(PACKS_ROOT / "cisco_ios" / "1.3.0.yaml")
+    base = load_pack(PACKS_ROOT / "cisco_ios" / "1.4.0.yaml")
     pattern = compile_pattern(
         confirmation(line, field), CompileRequest(value_token=token, cast=CastType.LIST)
     )

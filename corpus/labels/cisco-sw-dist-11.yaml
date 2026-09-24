@@ -8,6 +8,9 @@
 # line is plainly readable, and the shipped pack has no pattern for the
 # affirmative form, so this is expected to score as a MISS rather than a
 # correct abstention. That is the point of labelling it.
+#
+# P18 (ADR 0053): the pack now has that pattern, written from a development
+# file, and this label scores as a hit. The label itself did not change.
 
 corpus_path: cisco/eval/sw-dist-11.cfg
 split: eval

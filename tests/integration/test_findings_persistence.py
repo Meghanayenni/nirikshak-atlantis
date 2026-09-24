@@ -176,7 +176,7 @@ def test_provenance_survives(rig) -> None:
     finding = finding_store.read_findings(conn, "audit-1")[0]
 
     assert finding.provenance.rulepack_version == load_rulepack().version
-    assert finding.provenance.pack_versions == {"cisco/ios": "1.3.0"}
+    assert finding.provenance.pack_versions == {"cisco/ios": "1.4.0"}
     assert finding.provenance.engine_version
 
 

@@ -159,12 +159,14 @@ def test_cisco_field_extraction(run) -> None:
     cisco = field_metrics(by_vendor(run.fields)["cisco"], "cisco")
 
     assert cisco.total == 39
-    assert cisco.correct == 18
+    # 18 correct and 8 missed until ADR 0053: cisco/ios 1.4.0 reads the
+    # affirmative `ip http server`, and two labelled evaluation lines scored.
+    assert cisco.correct == 20
     assert cisco.wrong_confident == 0
-    assert cisco.miss == 8
+    assert cisco.miss == 6
     assert cisco.correct_abstention == 13
     assert cisco.precision == 1.0
-    assert cisco.recall == pytest.approx(18 / 26)
+    assert cisco.recall == pytest.approx(20 / 26)
 
 
 def test_the_wrong_confident_rate_is_zero_across_every_vendor(run) -> None:
@@ -191,8 +193,8 @@ def test_evidence_integrity_is_perfect_where_it_could_be_checked(run) -> None:
     """Every value Cisco asserted cited the line the labeller read."""
     cisco = field_metrics(by_vendor(run.fields)["cisco"], "cisco")
 
-    assert cisco.evidence_scored == 18
-    assert cisco.evidence_correct == 18
+    assert cisco.evidence_scored == 20
+    assert cisco.evidence_correct == 20
     assert cisco.evidence_wrong_line == 0
     assert cisco.evidence_missing == 0
     assert cisco.evidence_integrity == 1.0
@@ -219,7 +221,9 @@ def test_the_fail_class_is_now_exercised(run) -> None:
     assert cisco.exercised(Verdict.FAIL)
     assert cisco.expected_total(Verdict.FAIL) == 9
     assert cisco.precision(Verdict.FAIL) == 1.0
-    assert cisco.recall(Verdict.FAIL) == pytest.approx(5 / 9)
+    # 5/9 until ADR 0053. The two gained are NRK-HTTP-001 on edge-rtr-11 and
+    # sw-dist-11, which reported UNKNOWN for a line plainly in the file.
+    assert cisco.recall(Verdict.FAIL) == pytest.approx(7 / 9)
 
 
 def test_missed_failures_are_counted_as_unknown_not_as_passes(run) -> None:
@@ -346,7 +350,7 @@ def test_the_report_qualifies_the_zero_wrong_confident_rate(report: str) -> None
 
 def test_the_report_prints_denominators_with_its_rates(report: str) -> None:
     """A rate without its sample size invites the reader to assume a big one."""
-    assert "100.0% / 18" in report
+    assert "100.0% / 20" in report
     assert "Rates print as percentage / denominator" in report
 
 

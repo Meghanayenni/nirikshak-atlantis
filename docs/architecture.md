@@ -456,7 +456,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and thirty-three numbered decisions across 52 ADRs. (D63 and D64 were never issued; the
+One hundred and thirty-four numbered decisions across 53 ADRs. (D63 and D64 were never issued; the
 count is of decisions recorded, not of the highest number reached.)
 
 | ADR | Phase | Subject | Decisions |
@@ -513,6 +513,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0050 | P18 | The analyser was right again | D128, D129 |
 | 0051 | P18 | The DEF-16 guard finally runs | D130, D131 |
 | 0052 | P18 | Two benchmarks, one held and one referenced | D132, D133, D134, D135 |
+| 0053 | P18 | A refusal that outlived its reason | D136 |
 
 ---
 

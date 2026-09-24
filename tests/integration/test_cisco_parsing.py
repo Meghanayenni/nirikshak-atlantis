@@ -30,7 +30,7 @@ def cisco():
         for p in load_active_packs(use_cache=False)
         if (p.vendor, p.os_family) == ("cisco", "ios")
     )
-    assert pack.pack_version == "1.3.0", "the active Cisco pack should be the parsing pack"
+    assert pack.pack_version == "1.4.0", "the active Cisco pack should be the parsing pack"
     return pack
 
 
@@ -65,10 +65,25 @@ def sw(cisco):
 
 def test_cisco_pack_is_no_longer_detection_only(cisco) -> None:
     assert not cisco.is_detection_only
-    # 9, not 12: three patterns were removed at review because no line in the
-    # development corpus could verify them. See ADR 0011.
-    assert len(cisco.patterns) == 9
-    assert cisco.parent_version == "1.1.0"
+    # 9 at P4, not 12: three patterns were removed at review because no line in
+    # the development corpus could verify them (ADR 0011). One of the three —
+    # the affirmative `ip http server` — has had its verifying line since P15
+    # (edge-rtr-01.cfg:47) and returned in 1.4.0 (ADR 0053).
+    assert len(cisco.patterns) == 10
+    assert cisco.parent_version == "1.3.0"
+
+
+def test_the_affirmative_http_server_line_is_read_where_it_was_authored(cisco) -> None:
+    """The line the pattern was written from produces TRUE, citing that line.
+
+    Until 1.4.0 this device reported UNKNOWN for a directive sitting plainly in
+    its configuration, on a reason that had stopped being true.
+    """
+    result, _ = parse("edge-rtr-01.cfg", cisco)
+    field = result.fields["http_server_enabled"]
+    assert field.value is True
+    assert [e.line_start for e in field.evidence] == [47]
+    assert field.evidence[0].raw_line.strip() == "ip http server"
 
 
 def test_all_patterns_self_check(cisco) -> None:
@@ -248,7 +263,7 @@ def test_provenance_records_the_pack_version(rtr) -> None:
 
     assert provenance is not None
     assert provenance.pack_id == "cisco/ios"
-    assert provenance.pack_version == "1.3.0"
+    assert provenance.pack_version == "1.4.0"
     assert provenance.pattern_id == "p-ssh-version-001"
 
 

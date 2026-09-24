@@ -38,7 +38,7 @@ def cisco():
         for p in load_active_packs(use_cache=False)
         if (p.vendor, p.os_family) == ("cisco", "ios")
     )
-    assert pack.pack_version == "1.3.0"
+    assert pack.pack_version == "1.4.0"
     return pack
 
 
@@ -76,7 +76,7 @@ def test_the_csm_records_the_pack_version_that_actually_applied(rtr) -> None:
     """Not whichever pack is active when a report is generated later."""
     parsed, csm = rtr
 
-    assert csm.source.pack_versions == {"cisco/ios": "1.3.0"}
+    assert csm.source.pack_versions == {"cisco/ios": "1.4.0"}
     assert csm.source.pack_versions["cisco/ios"] == parsed.pack_version
 
 
