@@ -476,15 +476,18 @@ source .venv/bin/activate     # Linux / macOS
 # 3. Install the core and development dependencies
 pip install -e ".[dev]"
 
-# 3b. For PDF reports: WeasyPrint. Also needs the GTK3 runtime (see Requirements);
-#     without either, report.pdf answers 503 and HTML reports still work.
+# 3b. WeasyPrint, for PDF reports. Install it always: the test suite expects it.
+#     What is optional is the GTK3 runtime below. Without GTK, report.pdf answers
+#     503 naming what is missing, HTML reports work, and the suite still passes.
 pip install -e ".[report]"
 
 # 3c. For AI mapping suggestions (optional): the [ai] extra, then the model once.
 pip install -e ".[ai]"
 python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
 
-# 4. Verify
+# 4. Verify — expect 0 failed. The number skipped depends on whether GTK3 and
+#    the model are present, because each capability is tested in the state this
+#    machine is actually in.
 pytest
 ruff check .
 ```
@@ -499,7 +502,11 @@ administrator can still map an unknown line by hand, but no ranked candidates
 are offered, and `/health` says the model is unavailable. On the verifying
 machine the `[ai]` stack occupies about 0.7 GB installed (torch alone 531 MB)
 and the model weights 92 MB in the Hugging Face cache; the download is smaller
-than the installed size, and needs network access once (ADR 0018).
+than the installed size, and needs network access once (ADR 0018). One case
+still shows test failures: skipping 3c on a machine that already holds the
+`all-MiniLM-L6-v2` weights from another project. Two model-refusal tests then
+expect a message about missing weights and get one about the missing package
+(ADR 0060); installing 3c, or removing the cached model, clears it.
 
 Dependency groups are installed as the phases need them:
 
@@ -507,8 +514,8 @@ Dependency groups are installed as the phases need them:
 | ---------- | ------------ | ----------------------------------------------- |
 | *(core)*   | P0           | FastAPI, parsing, YAML, schema validation       |
 | `[dev]`    | P0           | pytest, ruff                                    |
-| `[report]` | P8, optional | WeasyPrint (plus the system GTK3 runtime)       |
-| `[ai]`     | P10, optional| sentence-transformers, torch (CPU), FAISS       |
+| `[report]` | P8, always   | WeasyPrint; the system GTK3 runtime is optional |
+| `[ai]`     | P10, optional| sentence-transformers, torch (CPU), FAISS — installed, not yet imported: retrieval is exact cosine similarity (`api/learn/suggest.py`) |
 
 The machine-learning stack is deliberately deferred so the first nine phases
 install quickly and stay within the 8 GB target hardware budget.
@@ -517,8 +524,9 @@ install quickly and stay within the 8 GB target hardware budget.
 
 ## Running
 
-Create the first administrator out-of-band — it prompts for the password, and
-there is no self-registration:
+Create the first administrator out-of-band, from the repository root with the
+virtual environment active. It prompts twice for a password of at least 12
+characters; there is no self-registration:
 
 ```bash
 python scripts/create_admin.py --username alice
@@ -546,8 +554,13 @@ from the server rather than from anything the login form offers.
 no pack recognised has been decided in *Needs review* (13 on
 `corpus/cisco/dev/rtr-core-01.cfg`; "not security relevant" counts) and every
 vetted command has been marked reviewed — a careless confirmation enters a
-vendor pack permanently, so the interface makes the operator look first. The gate
-is the interface's; `report.html` and `report.pdf` on the API are not gated.
+vendor pack permanently, so the interface makes the operator look first. In the
+device's *Needs review* tab, choose each line and either map it to a field or
+press **Not security relevant**; in *Remediation*, press **Mark reviewed** on each
+command. The gate is the interface's; `report.html` and `report.pdf` on the API
+are not gated.
+
+To verify the interface build:
 
 ```bash
 cd ui

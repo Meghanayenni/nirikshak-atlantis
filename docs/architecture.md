@@ -92,9 +92,9 @@ contract, not by intention.
 | **1. AI never issues a compliance verdict** | 75 forbidden import edges in `tests/architecture/test_import_rules.py`, of which `comply -> learn`, `comply -> train`, `normalise -> learn`, `normalise -> train` and `report -> learn` carry the weight. Plus: `Suggestion` has no `value` field; `assert_never_confidence()` raises at the package boundary; the audit database has `CHECK (actor_type <> 'model' OR action = 'ai_suggested')` below Python. |
 | **2. Evidence is mandatory** | `Field` construction. A PRESENT field without evidence cannot be built. Comment prefixes and literal blocks never become parse nodes, so a commented-out directive cannot produce a PRESENT field. |
 | **3. Low confidence abstains** | The `ConfidenceMethod` split. Populations are floored separately: `deterministic` and `admin_confirmed` are exactly 1.0 or nothing; `platform_default` has its own floor and is always marked INFERRED; only `calibrated_similarity` is compared against `confidence_threshold`. `UNCALIBRATED_SIMILARITY` forces UNKNOWN whatever the score. |
-| **4. Remediation is never AI-generated** | `remediate -> learn`, `remediate -> train` and `prioritise -> remediate` are forbidden edges. Commands are read from `snippets/` and never synthesised. `RemediationSnippet` requires `vetted_by` and `reference`, and a content-policy test refuses a vetter whose name looks automated. |
+| **4. Remediation is never AI-generated** | `remediate -> learn` and `prioritise -> remediate` are forbidden edges in `test_import_rules.py`; `remediate -> train` is closed by the whitelist in `test_remediate_boundaries.py`, which permits `api/remediate/` to import only `api.models` and itself. Commands are read from `snippets/` and never synthesised. `RemediationSnippet` requires `vetted_by` and `reference`, and a content-policy test refuses a vetter whose name looks automated. |
 | **5. Rules and vendor packs are data** | `packs/` and `rules/` are YAML. A new pack version is written at runtime by `api/train/` and activated without a restart — `clear_pack_cache()` makes the next parse use it in the same process. |
-| **6. Offline-first** | No device library may be imported (`tests/architecture/test_no_device_libraries.py`). No network client in `ingest`, `parse`, `learn`, `train` or `prioritise`. Secrets are scrubbed before any text reaches an embedding model. `settings.airgap` makes the model loader fail closed rather than fetch. |
+| **6. Offline-first** | No device library may be imported (`tests/architecture/test_no_device_libraries.py`). No network client in ten packages — `analyse`, `comply`, `ingest`, `learn`, `normalise`, `parse`, `prioritise`, `remediate`, `report`, `train` — each asserted by that package's `test_*_boundaries.py` (the `parse` test lives in `test_ingest_boundaries.py`). Secrets are scrubbed before any text reaches an embedding model. `settings.airgap` makes the model loader fail closed rather than fetch. **Not enforced, because not built: encryption at rest** (DEF-21). |
 
 ---
 
@@ -213,6 +213,19 @@ the links alone cannot.
 modification, deletion, reordering, broken links and accidental corruption. It
 does *not* detect an attacker with unrestricted database write access who
 recomputes the complete unkeyed chain (ADR 0008).
+
+**Neither store is encrypted, and neither is the blob store** (DEF-21). Rule 6
+requires encryption at rest; the operational database holds every uploaded line
+and `uploads/` holds the files verbatim, both as plain files. The separation
+above is what would let the operational side be encrypted without touching the
+chain's verifiability (ADR 0009, D4) — a property of the layout, not a feature
+that exists.
+
+**The chain does not record AI suggestions** (DEF-20). `ai_suggested` is the
+one action the database permits a model actor, and nothing appends it. Each
+administrator decision is chained with the number of suggestions shown and
+whether the chosen field was among them; the suggestions are stored in
+`training_example.suggestions_json`, outside the chain.
 
 Evidence is stored as **pointers**, not copies: `(file_id, line_number)` resolves
 through `config_line` and `line_cache` to the exact stored text, so a report
@@ -380,7 +393,7 @@ can be run once, and it has not been spent.
 
 ## 9. Defect register
 
-Nineteen numbered defects. **Four are open.**
+21 numbered defects. **Six are open.**
 
 | # | Description | Status |
 | --- | --- | --- |
@@ -403,6 +416,8 @@ Nineteen numbered defects. **Four are open.**
 | DEF-17 | Two patterns asserting different values for one field collapsed to UNKNOWN, so a device whose weakest vty line enables telnet reported no FAIL | Fixed (ADR 0026) |
 | **DEF-18** | **Deleting a trained pack orphans every stored finding that cites it — two audit runs on this deployment can no longer name the pack that read them** | **OPEN** — evidence secured (ADR 0031) |
 | **DEF-19** | **A second account that uploads a file another account uploaded first is shown the device and refused its audit — `POST /compliance/audits` answers 404, because a file's owner is its first uploader** | **OPEN** — deferred past submission |
+| **DEF-20** | **DEVELOPER_GUIDE.md §9 requires a hash-chained record of AI suggestions; `AuditAction.AI_SUGGESTED` is defined and permitted for a model actor, and nothing appends one** | **OPEN** — recorded at the submission pass |
+| **DEF-21** | **DEVELOPER_GUIDE.md Rule 6 requires encryption at rest; the operational database and the blob store are plain files, and decision R11, which would encrypt them, was never taken** | **OPEN** — recorded at the submission pass |
 
 ### Why the remaining defects are open
 
@@ -449,6 +464,31 @@ account, never meets it. The fix is to the ownership rule in the audit and
 report routes — authorisation code — and changing that two days before
 submission was judged riskier than the defect; it is recorded rather than
 patched.
+
+**DEF-21** — the most serious open item for a security tool, and stated
+without softening. `nirikshak.db` holds every uploaded configuration line
+(`config_line`, `line_cache`) and `uploads/` holds every uploaded file verbatim,
+secrets included — scrubbing happens before *inference*, deliberately not before
+storage, so that evidence can quote the operator's own line
+(`api/ingest/blobs.py`, `api/security/scrub.py`). None of it is encrypted.
+`api/config.py` and `api/ingest/blobs.py` describe the blob store as what
+"decision R11 would encrypt"; R11 was deferred at P2 together with chain keying,
+because both are key management (ADR 0008), and was never taken. Until it is,
+the host protects those files — full-disk encryption and file permissions — and
+this is a deployment requirement, not a feature the system provides.
+
+**DEF-20** — `AuditAction.AI_SUGGESTED` exists (`api/models/enums.py`), and the
+audit database's `CHECK (actor_type <> 'model' OR action = 'ai_suggested')`
+permits a model actor that action alone, but no code path appends it. What is
+chained instead: `confirm` (`api/train/service.py`) appends `ADMIN_CONFIRMED`
+or `ADMIN_CORRECTED` with `suggestions_shown` (a count) and `top3_hit` (whether
+the chosen field was among them). The suggestions themselves go to
+`training_example.suggestions_json` in the operational store. So the chain can
+show that a human decided and whether the model had proposed the answer; it
+cannot show what the model proposed for a cluster nobody decided. The count is
+of the suggestions the queue holds for that cluster when `/training/confirm` is
+called (`api/routers/training.py`), which is recomputed server-side rather than
+taken from the client.
 
 **DEF-16 — the detector now runs, and the defect is unchanged** (ADR 0051). Its
 guard scans `packs/trained/`, which is gitignored and empty on every checkout,

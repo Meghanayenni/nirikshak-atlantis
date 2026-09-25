@@ -117,3 +117,24 @@ The evaluation report is generated, so that line had been printed into every
 regeneration since the extractor landed. **A refusal has to be accurate about
 what it is refusing**, or it stops being an honest abstention and becomes
 another stale claim that happens to point the safe way.
+
+---
+
+## Note appended at the submission pass — FAISS was the same mistake
+
+**Appended, not rewritten.** The Ollama paragraph above justifies its removal
+with *"the similarity layer is sentence-transformers plus FAISS"*. Half of that
+was the error this ADR exists to correct. `faiss-cpu` is installed by the `[ai]`
+extra (`pyproject.toml`) and **no module imports it**: ranking is an exact
+cosine comparison over every labelled example, written out in
+`api/learn/suggest.py` (`cosine`, `rank_candidates`) so it is testable with the
+extra uninstalled.
+
+`DEVELOPER_GUIDE.md` §11 and Rule 6 now say so, and keep one sentence on where FAISS
+would come in: an approximate index is the step if the labelled index grows
+large enough for an exact scan to matter.
+
+The package stays in `[ai]` for now. Removing it is a dependency change and the
+code is frozen for submission; D105's reasoning — an installed package nobody
+imports is supply-chain surface bought for a comment — applies to it unchanged,
+and it is the obvious first item for whoever next touches `pyproject.toml`.

@@ -334,6 +334,11 @@ integrity mechanism.
 A `MODEL` actor may perform `ai_suggested` and nothing else. The audit trail is
 where the distinction between a proposal and a decision is made permanent.
 
+*As of `28ab52b` the contract permits that record and nothing appends it*
+(DEF-20, `docs/architecture.md` §9). The distinction is made permanent from the
+human side only: each `admin_confirmed` / `admin_corrected` record carries the
+number of suggestions shown and whether the chosen field was among them.
+
 ---
 
 ## 12. The parsing layer — P4

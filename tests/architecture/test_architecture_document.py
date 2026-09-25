@@ -146,7 +146,7 @@ def test_every_adr_on_disk_appears_in_the_index(text: str) -> None:
 # The defect register — the claim most costly to get wrong
 # ---------------------------------------------------------------------------
 
-OPEN_DEFECTS = {"DEF-3", "DEF-16", "DEF-18", "DEF-19"}
+OPEN_DEFECTS = {"DEF-3", "DEF-16", "DEF-18", "DEF-19", "DEF-20", "DEF-21"}
 """The defects that are genuinely open at this commit.
 
 Kept as an explicit constant rather than parsed from the document: a test whose

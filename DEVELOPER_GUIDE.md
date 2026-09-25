@@ -52,10 +52,19 @@ vetted snippet library, keyed by vendor, OS family and rule ID.
 framework or OS version must not require application code changes wherever the
 architecture permits.
 
-**Rule 6 — Offline-first.** CPU embeddings, FAISS, local LLM via Ollama where an
-LLM is needed. Secrets scrubbed before inference, encryption at rest, complete
-audit trail. Configuration data never needs to leave the operator network.
-Target hardware: a standard 8 GB laptop, no GPU.
+**Rule 6 — Offline-first.** CPU embeddings with local similarity search, local
+LLM via Ollama where an LLM is needed. Secrets scrubbed before inference,
+encryption at rest, complete audit trail. Configuration data never needs to
+leave the operator network. Target hardware: a standard 8 GB laptop, no GPU.
+
+*The rule stands; the fact as of `28ab52b`:* **encryption at rest is not
+implemented.** The operational database (`nirikshak.db`), which holds every
+uploaded line, and the blob store (`uploads/`), which holds the files verbatim,
+are plain files on disk. `api/config.py` and `api/ingest/blobs.py` name the
+blob store as what decision R11 *would* encrypt; R11 was never taken.
+Registered as DEF-21 in `docs/architecture.md` §9. Until it closes, protecting
+those files is the host's job — disk encryption and file permissions — and no
+document may describe this system as encrypting stored configurations.
 
 ---
 
@@ -170,6 +179,17 @@ Configuration files are sensitive data. Scrub secrets and credential-adjacent
 strings before any external inference. Maintain a hash-chained audit trail of AI
 suggestions, administrator corrections, vendor pack changes and audit results.
 
+*The rule stands; the fact as of `28ab52b`:* **the per-suggestion record is not
+implemented.** `AuditAction.AI_SUGGESTED` is defined, and the audit database
+permits a model actor that action and no other, but nothing appends one. What
+the chain records instead is each administrator decision (`ADMIN_CONFIRMED` or
+`ADMIN_CORRECTED`, from `confirm` in `api/train/service.py`) carrying the number
+of suggestions the queue held for that cluster and whether the chosen field was
+among them; the suggestions themselves are stored in
+`training_example.suggestions_json` in the operational database, outside the
+chain. Pack changes and audit runs are chained as the rule requires. Registered
+as DEF-20 in `docs/architecture.md` §9.
+
 ---
 
 ## 10. Interface Principles
@@ -250,8 +270,18 @@ principles.
 
 Backend: Python 3.11, FastAPI, SQLite.
 Parsing: NIRIKSHAK's own hierarchical block parser; lxml for XML/JSON exports.
-AI: sentence-transformers (`all-MiniLM-L6-v2`), FAISS.
+AI: sentence-transformers (`all-MiniLM-L6-v2`); ranking is exact cosine
+similarity over every labelled example (`cosine`, `rank_candidates` in
+`api/learn/suggest.py`).
 Rules: YAML. Frontend: React, Tailwind. Reporting: Jinja2, WeasyPrint.
+
+**FAISS** was listed here until the submission pass and is not used: the `[ai]`
+extra installs `faiss-cpu` (`pyproject.toml`) and no module imports it. At the
+labelled index's current size an exact scan is correct and cheap. An
+approximate nearest-neighbour index such as FAISS is the step to take if the
+index grows large enough for the scan to matter — that is when to import it, and
+the change belongs in `api/learn/`, the only package permitted a machine-learning
+library.
 
 Three entries were removed from this list at P17, after a reviewer would have
 found the mismatch by comparing it to `pyproject.toml`:
@@ -263,8 +293,8 @@ found the mismatch by comparing it to `pyproject.toml`:
   type: the pack engine refuses it by name and says why, which is the shape a
   deferred capability takes here.
 - **Ollama** — never a dependency and never imported. No local LLM is used or
-  needed: the similarity layer is sentence-transformers plus FAISS, it proposes
-  and never decides, and Rule 1 leaves nothing for a generative model to do.
+  needed: the similarity layer is sentence-transformers and a cosine ranking, it
+  proposes and never decides, and Rule 1 leaves nothing for a generative model to do.
   Listing it described an intention as a component.
 
 Do not introduce a new major technology without explaining why it is necessary

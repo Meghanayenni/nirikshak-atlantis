@@ -218,3 +218,19 @@ under a `.pdf` name; `render_pdf` returns bytes or raises and an AST test
 enforces the single `return`. The 503 path is still the correct behaviour where
 the runtime is absent, still names the missing libraries, and is still tested —
 on a machine without GTK, which this one is not.
+
+---
+
+## Note on the title — appended at the submission pass
+
+The title still reads *"WeasyPrint requires a GTK runtime that this machine
+lacks"*, and the P17 resolution above records that the machine no longer lacks
+it. **The title is left as written.** It was an accurate description of the
+machine probed at P0 and again at P8, and the reasoning built on it — probe
+live, never cache, answer 503 naming what is missing, never substitute an engine
+— was right for that machine and is still in force.
+
+Read the title as dated: *"this machine"* means the development machine as it
+stood on 2026-08-26 and 2026-08-27. The current state is not in this ADR at all;
+it is whatever `api/report/pdf.py` reports on the machine you are using, on
+every request, and `/health` carries it under `pdf_reporting`.
