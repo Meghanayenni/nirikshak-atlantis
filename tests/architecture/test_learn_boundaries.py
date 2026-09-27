@@ -28,7 +28,7 @@ API_ROOT = REPO_ROOT / "api"
 LEARN = API_ROOT / "learn"
 
 ML_MODULES = ["sentence_transformers", "torch", "faiss", "sklearn", "transformers", "numpy"]
-NETWORK_MODULES = ["netmiko", "napalm", "paramiko", "requests", "socket", "telnetlib"]
+NETWORK_MODULES = ["netmiko", "napalm", "paramiko", "requests", "httpx", "socket", "telnetlib"]
 
 
 def _sources(root: Path) -> list[Path]:

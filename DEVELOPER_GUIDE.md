@@ -52,8 +52,9 @@ vetted snippet library, keyed by vendor, OS family and rule ID.
 framework or OS version must not require application code changes wherever the
 architecture permits.
 
-**Rule 6 — Offline-first.** CPU embeddings with local similarity search, local
-LLM via Ollama where an LLM is needed. Secrets scrubbed before inference,
+**Rule 6 — Offline-first.** CPU embeddings with local similarity search; any
+model runs locally, never as a hosted service. The embedding model is the only
+model used — no LLM is used or needed (§11). Secrets scrubbed before inference,
 encryption at rest, complete audit trail. Configuration data never needs to
 leave the operator network. Target hardware: a standard 8 GB laptop, no GPU.
 
@@ -269,7 +270,12 @@ principles.
 ## 11. Technology Stack
 
 Backend: Python 3.11, FastAPI, SQLite.
-Parsing: NIRIKSHAK's own hierarchical block parser; lxml for XML/JSON exports.
+Parsing: NIRIKSHAK's own hierarchical block parser, for indented, brace-nested
+and flat `set` text. lxml confirms that a file which begins as XML really parses
+as XML (`detect`, `api/ingest/format_detect.py`); JSON is confirmed with the
+standard library's `json`. Neither format is parsed into a tree: the XML and
+JSON syntax modes are declared and not implemented, and `build_tree` raises
+`UnsupportedSyntaxModeError` for them (`api/parse/block_parser.py`).
 AI: sentence-transformers (`all-MiniLM-L6-v2`); ranking is exact cosine
 similarity over every labelled example (`cosine`, `rank_candidates` in
 `api/learn/suggest.py`).

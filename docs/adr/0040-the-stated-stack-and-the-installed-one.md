@@ -138,3 +138,14 @@ The package stays in `[ai]` for now. Removing it is a dependency change and the
 code is frozen for submission; D105's reasoning — an installed package nobody
 imports is supply-chain surface bought for a comment — applies to it unchanged,
 and it is the obvious first item for whoever next touches `pyproject.toml`.
+
+**Two more of the same kind, found in the same pass.** §11 said *"lxml for
+XML/JSON exports"*: lxml only confirms that a file beginning with `<` parses as
+XML (`detect`, `api/ingest/format_detect.py`), JSON is confirmed with the
+standard library, and neither format is parsed into a tree — both syntax modes
+raise `UnsupportedSyntaxModeError`. And Rule 6 still named *"local LLM via
+Ollama where an LLM is needed"* after §11 recorded that no LLM is used or
+needed. Both now say what is true; Rule 6 keeps its constraint — any model runs
+locally — without naming a component that does not exist. The comment above
+`lxml` in `pyproject.toml` repeats the first claim and is left for the next
+change to that file, which is frozen for submission.

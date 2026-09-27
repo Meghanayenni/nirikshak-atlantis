@@ -405,7 +405,10 @@ not tamper-proof: an attacker with unrestricted write access could recompute the
 <p>2,566 tests are collected: 1,207 unit (<code>tests/unit/</code>), 515 integration
 (<code>tests/integration/</code>), 838 architecture (<code>tests/architecture/</code>) and 6 in
 <code>tests/test_health.py</code>. From a fresh clone with every optional group installed:
-2,553 passed, 0 failed, 13 skipped. The interface has 54 tests in 9 files
+2,553 passed, 0 failed, 13 skipped. The documentation commits after <code>28ab52b</code> add one
+architecture test — <code>api/learn/</code> now bans <code>httpx</code> as every other package does
+(<code>test_learn_boundaries.py</code>) — so the suite there collects 2,567, 839 of them
+architecture, and gives 2,554 passed, 0 failed, 13 skipped. The interface has 54 tests in 9 files
 (<code>ui/src/test/</code>). The evaluation harness (<code>eval/</code>, output in
 <code>eval/reports/evaluation.txt</code>) scores the evaluation split against hand-written
 labels: Cisco field precision 100% over 20 assertions, recall 76.9%, FAIL precision 100% (7 of
@@ -481,10 +484,13 @@ and stateless, scale out rather than up.</p>
 
 <h3>Viability</h3>
 <p>Adding a platform is a YAML file, not a vendor release cycle: detection signatures, identity
-patterns and field patterns in one pack. A new platform needs an administrator working the
-<i>Needs review</i> queue, not a developer: each confirmation compiles into a readable,
-anchored pattern that is reviewed before activation. The same holds for frameworks (an index
-file) and rules (a YAML check).</p>
+patterns and field patterns in one pack. That first pack is written by hand: a file whose
+platform detection cannot place answers 409 at audit and never reaches the training queue
+(<code>run_audit_endpoint</code>), and <code>compile_confirmation</code> extends an existing pack
+but cannot create one. From then on the platform grows through an administrator working the
+<i>Needs review</i> queue, not a developer: each confirmation compiles into a readable, anchored
+pattern that is reviewed before activation. The same holds for frameworks (an index file) and
+rules (a YAML check).</p>
 
 <h3>Impact</h3>
 <p>Misconfiguration is among the leading causes of network security incidents, and the
@@ -515,7 +521,10 @@ audit database permits a model actor that action and no other, but nothing appen
 chain records each administrator decision instead (<code>ADMIN_CONFIRMED</code> /
 <code>ADMIN_CORRECTED</code>, <code>confirm</code> in <code>api/train/service.py</code>) with the
 number of suggestions shown and whether the chosen field was among them; the suggestions
-themselves are stored in <code>training_example.suggestions_json</code>, outside the chain.</li>
+themselves are stored in <code>training_example.suggestions_json</code>, outside the chain. That
+count is recomputed from the training queue when <code>/training/confirm</code> is called
+(<code>api/routers/training.py</code>), not recorded from what the screen displayed, so it
+attests what the server held for that cluster at the moment of the decision.</li>
 <li><b>DEF-21</b> — <b>encryption at rest is not implemented.</b> DEVELOPER_GUIDE.md Rule 6 requires it.
 The operational database holds every uploaded line and <code>uploads/</code> holds every file
 verbatim, secrets included — scrubbing happens before inference, not before storage, so evidence
@@ -544,7 +553,13 @@ here is a field-accuracy claim.</li>
 
 <h3>Partial requirements (<code>docs/PS26155_COMPLIANCE.md</code>)</h3>
 <ul>
-<li>R2 — suggestions need the optional <code>[ai]</code> extra and are never calibrated.</li>
+<li>R2 — the training interface extends a platform that already has a pack; it cannot teach
+an unseen vendor, which the official statement asks for. Suggestions need the optional
+<code>[ai]</code> extra and are never calibrated.</li>
+<li>A1 — the statement asks an AI-based engine to normalise and to analyse deviation; here both
+are deterministic, by design (Rule 1).</li>
+<li>Hardening examples — strong cryptographic suites and logging of administrative access are
+not checked; <code>weak_ciphers</code> is in the model and read by no pack.</li>
 <li>R3 — three of four frameworks; ISO absent.</li>
 <li>R4 — no serial numbers (not in a configuration export; ADR 0044); hardware model on EOS
 only; no NX-OS remediation.</li>
