@@ -242,7 +242,7 @@ is real; the output is an honest refusal.
 | Not claimed | Why |
 | --- | --- |
 | **Coverage against any framework, or anything for ISO/IEC 27001** | NIST SP 800-53 (ADR 0035), the DISA Cisco IOS XE Router NDM STIG and the CIS Cisco IOS XE 17.x Benchmark (ADR 0052) are sourced; ISO/IEC 27001 is a purchased standard and is **absent** from the selector, never present and empty. Four of 42 STIG requirements and six of 84 CIS recommendations carry a mapping — evidence about seven checks, not coverage. Both platform benchmarks describe Cisco IOS XE only and are scoped to releases matching 17.x, so on every other device their identifiers are not shown, the report says why, and selecting them is refused with 409 rather than answered with zero findings (ADR 0054). The interface offers a per-device benchmark selector whose options, reasons and refusals all come from the API (ADR 0058). Four rules are looser than the STIG control proposed for them and are recorded as declining it. The STIG XCCDF is held in the repository; the CIS Benchmark is referenced by digest and never held. |
-| **An *official* mapping to any framework** | Seven rules carry NIST control identifiers validated against the Rev 5 OSCAL catalog (ADR 0035), three carry four STIG IDs and six carry CIS recommendation numbers (ADR 0052), and every one is `project_asserted`. A catalog publishes *controls*; it does not publish *mappings*. `OFFICIAL` is reachable only from a published **crosswalk** — CIS's Benchmark-to-800-53 mappings, NIST's 800-53-to-27001 material — and this project has obtained none (ADR 0045). The value is kept because it is the one route to CIS coverage without buying the CIS Benchmark, not because anything uses it. |
+| **An *official* mapping to any framework** | Nine rules carry NIST control identifiers validated against the Rev 5 OSCAL catalog (ADR 0035), three carry four STIG IDs and six carry CIS recommendation numbers (ADR 0052), and every one is `project_asserted`. A catalog publishes *controls*; it does not publish *mappings*. `OFFICIAL` is reachable only from a published **crosswalk** — CIS's Benchmark-to-800-53 mappings, NIST's 800-53-to-27001 material — and this project has obtained none (ADR 0045). The value is kept because it is the one route to CIS coverage without buying the CIS Benchmark, not because anything uses it. |
 | **Absence-aware evaluation accuracy** | No platform default and no capability claim ships, so the `EVALUATE` branch has never fired on real data. |
 | **Exposure scores or a priority ranking** | Interfaces and access lists are read, and `interface_roles` now exists for a pack to declare which names are management-plane (ADR 0034) — but **no pack declares one**, because no vendor documentation has been sourced. Exposure stays indeterminate. Severity alone must not determine remediation order, so no severity-sorted list is offered in its place. |
 | **Held-out generalisation** | Blocked: the metric is defined over the held-out vendor's commands, reading them needs an XML parser, and that parser waits on a sample independent of the holdout. |
@@ -306,8 +306,9 @@ than annotated at length — ADR 0059 records it.)*
 
 **Peer-baseline outliers.** Until P15 every cohort held fewer than the five
 devices a baseline needs, so none was established. Registering the P15 corpus
-took the Cisco IOS cohort to nine and **eight baselines are now computed**, with
-zero deviations. That zero is a result rather than an abstention, and the fleet
+took the Cisco IOS cohort to nine and **eight baselines were computed**, with
+zero deviations; the two SSH algorithm fields of ADR 0062 make it ten, still with
+none. That zero is a result rather than an abstention, and the fleet
 response distinguishes them: a cohort below the floor carries an explanation and
 an outcome that is not `compared`, while these were compared and agreed.
 
@@ -595,6 +596,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0059 | P18 | Prose that cannot quietly expire | D147, D148 |
 | 0060 | P18 | A check is only as real as where it ran | D149, D150 |
 | 0061 | P18 | A probe is not a screen | D151 |
+| 0062 | P18 | The algorithms a server offers, and who calls them weak | D152, D153, D154 |
 
 ---
 

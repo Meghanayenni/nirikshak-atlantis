@@ -44,7 +44,7 @@ on. And the accuracy of that pipeline is a measurement rather than a claim —
 | | |
 | --- | --- |
 | Platforms with a vendor pack | **4** — Cisco IOS, Cisco NX-OS, Juniper Junos, Arista EOS |
-| Platforms reading canonical security fields | **2** — IOS (eight fields), NX-OS (seven) |
+| Platforms reading canonical security fields | **2** — IOS (ten fields), NX-OS (seven) |
 | Access lists analysed, across 3 packs | **6**, none dropped |
 | ACL observations on real corpus files | 5 shadowed, 4 redundant, 3 overly permissive |
 | Frameworks with a sourced catalog | **3 of 4** — NIST SP 800-53 Rev 5 (5.2.0); DISA Cisco IOS XE Router NDM STIG (V3R7); CIS Cisco IOS XE 17.x Benchmark (v2.2.1). Each pinned by sha256; ISO/IEC 27001 not sourced |
@@ -94,7 +94,7 @@ directive means — the platform's documented default, a control the platform
 cannot express, or an honest UNKNOWN — and builds the canonical model the
 compliance engine will consume.
 
-The Cisco IOS pack reads eight canonical fields and the Cisco NX-OS pack seven.
+The Cisco IOS pack reads ten canonical fields and the Cisco NX-OS pack seven.
 Juniper reads firewall filters in both surfaces and four identity fields; Arista
 reads three identity fields. **Neither reads a canonical security field**, so
 every compliance check on those platforms abstains with `no_match` and both
@@ -182,7 +182,7 @@ rather than becoming *not management* (DEF-2). The path is proven end to end on
 a constructed pack, so an abstention here is a refusal rather than a breakage.
 
 **Three frameworks of four are mapped, and no mapping claims to be official.**
-All seven rules carry NIST SP 800-53 Rev 5 control identifiers, each validated
+All nine rules carry NIST SP 800-53 Rev 5 control identifiers, each validated
 against the official OSCAL catalog — edition 5.2.0, pinned by the catalog's own
 sha256, with withdrawn controls listed so a plausible-but-retired identifier
 cannot ship. Three rules carry four DISA STIG IDs and six carry CIS recommendation

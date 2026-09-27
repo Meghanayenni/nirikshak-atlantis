@@ -58,6 +58,15 @@ def test_an_empty_library_yields_the_mandated_sentence() -> None:
     assert not result.has_commands
 
 
+UNVETTED_CISCO_RULES = frozenset({"NRK-CIPHER-001", "NRK-CIPHER-002"})
+"""Cisco rules no person has vetted a snippet for yet (ADR 0062).
+
+A snippet names who checked its commands against which document; nobody has for
+these, so none ships and the resolver must say so. This set only shrinks: when a
+snippet lands, the test below fails until the rule is taken off it.
+"""
+
+
 def test_the_shipped_library_resolves_every_cisco_rule() -> None:
     """Stated over the real rulepack rather than a fixture, because it is the claim.
 
@@ -78,6 +87,10 @@ def test_the_shipped_library_resolves_every_cisco_rule() -> None:
         result = resolve(
             library, rule_id=rule.rule_id, vendor="cisco", os_family="ios", actionable=True
         )
+        if rule.rule_id in UNVETTED_CISCO_RULES:
+            assert result.outcome is ResolutionOutcome.NO_SNIPPET, rule.rule_id
+            assert result.snippet is None
+            continue
         assert result.outcome is ResolutionOutcome.RESOLVED, rule.rule_id
         assert result.snippet is not None
         assert result.snippet.key == ("cisco", "ios", rule.rule_id)

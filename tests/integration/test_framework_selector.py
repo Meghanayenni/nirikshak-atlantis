@@ -135,7 +135,7 @@ def test_auditing_against_a_sourced_framework_scopes_and_records_it(
     body = client.post(f"/compliance/audits?file_id={file_id}&framework=nist", auth=ALICE).json()
 
     assert body["framework_selection"] == ["nist"]
-    assert body["rules_evaluated"] == 7, "every rule maps to NIST, so nothing is excluded"
+    assert body["rules_evaluated"] == 9, "every rule maps to NIST, so nothing is excluded"
 
 
 def test_auditing_without_a_framework_records_no_selection(client: TestClient) -> None:
@@ -285,7 +285,9 @@ def test_the_same_device_fails_under_stig_and_is_not_assessed_under_cis(
     assert "NRK-HTTP-001" in html
 
 
-def test_the_stig_leaves_out_the_four_rules_it_is_stricter_than(client: TestClient) -> None:
+def test_the_stig_leaves_out_every_rule_that_declines_it(client: TestClient) -> None:
+    """Four rules the STIG is stricter than (ADR 0052), and the two cipher checks,
+    which differ from their STIG controls in both directions (ADR 0062)."""
     file_id = _upload_bytes(client, *_ios_xe_17_with_http_server())
     body = client.post(f"/compliance/audits?file_id={file_id}&framework=stig", auth=ALICE).json()
 
@@ -294,6 +296,8 @@ def test_the_stig_leaves_out_the_four_rules_it_is_stricter_than(client: TestClie
         "NRK-LOGGING-001",
         "NRK-NTP-001",
         "NRK-BANNER-001",
+        "NRK-CIPHER-001",
+        "NRK-CIPHER-002",
     }
     assert body["rules_evaluated"] == 3
 
@@ -331,7 +335,7 @@ def test_a_mixed_selection_applies_what_it_can_and_names_what_it_cannot(
 
     assert body["framework_selection"] == ["nist", "stig"]
     assert list(body["frameworks_not_describing_device"]) == ["stig"]
-    assert body["rules_evaluated"] == 7
+    assert body["rules_evaluated"] == 9
 
     html = client.get(f"/compliance/audits/{body['audit_id']}/report.html", auth=ALICE).text
     assert "STIG</span> selected and not applied" in html
@@ -348,7 +352,11 @@ def test_iso_is_still_absent_from_the_selector_and_refused(client: TestClient) -
 
 
 def test_the_three_selections_on_one_configuration(client: TestClient) -> None:
-    """The table in ADR 0054, asserted rather than written down."""
+    """The table in ADR 0054, asserted rather than written down.
+
+    Its unscoped count was 7 when written; the two cipher checks of ADR 0062
+    map to neither platform benchmark, so only that column moved.
+    """
     file_id = _upload_bytes(client, *_ios_xe_17_with_http_server())
 
     def run(query: str) -> dict:
@@ -357,9 +365,13 @@ def test_the_three_selections_on_one_configuration(client: TestClient) -> None:
         return response.json()
 
     none, stig, cis = run(""), run("&framework=stig"), run("&framework=cis")
-    assert (none["rules_evaluated"], stig["rules_evaluated"], cis["rules_evaluated"]) == (7, 3, 6)
+    assert (none["rules_evaluated"], stig["rules_evaluated"], cis["rules_evaluated"]) == (9, 3, 6)
     assert none["not_assessed"] == []
-    assert [n["rule_id"] for n in cis["not_assessed"]] == ["NRK-HTTP-001"]
+    assert [n["rule_id"] for n in cis["not_assessed"]] == [
+        "NRK-CIPHER-001",
+        "NRK-CIPHER-002",
+        "NRK-HTTP-001",
+    ]
 
     [unfiltered] = _http(client, none["audit_id"])
     assert unfiltered["status"] == "fail"
@@ -494,7 +506,13 @@ def test_the_findings_view_carries_the_selections_scope(client: TestClient) -> N
     view = _findings(client, audit_id)["framework_view"]
 
     assert view["selection"] == ["cis"]
-    assert [n["rule_id"] for n in view["not_assessed"]] == ["NRK-HTTP-001"]
+    # The two cipher checks were written without the CIS Benchmark and say so
+    # rather than claiming a recommendation or its absence (ADR 0062).
+    assert [n["rule_id"] for n in view["not_assessed"]] == [
+        "NRK-CIPHER-001",
+        "NRK-CIPHER-002",
+        "NRK-HTTP-001",
+    ]
 
 
 @pytest.mark.parametrize(

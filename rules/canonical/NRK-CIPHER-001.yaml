@@ -1,0 +1,52 @@
+rule_id: NRK-CIPHER-001
+title: SSH server offers no CBC-mode encryption
+severity: medium
+rationale: >-
+  The CBC-mode encryption methods of the original SSH transport, 3DES and AES
+  alike, are vulnerable to chosen-plaintext privacy attacks; counter-mode methods
+  were specified as their secure replacement (RFC 4344, section 6.2). A server
+  that still offers a CBC method lets a client negotiate it. Which methods count
+  as unacceptable is NIRIKSHAK's own position, anchored on that RFC and on the
+  DISA STIG check naming aes256-ctr, aes192-ctr and aes128-ctr as the compliant
+  list; it is data, and an operator with a different policy edits the list.
+  Severity is medium rather than high because exploiting the weakness needs an
+  attacker who can both observe and inject on the session path. A device that
+  configures no encryption list is not judged here: its offered set is whatever
+  the platform's default is for its release, and no default is declared.
+check:
+  field: ssh_ciphers
+  condition:
+    op: contains_none
+    value: [3des-cbc, aes128-cbc, aes192-cbc, aes256-cbc]
+references:
+  - "RFC 4344, The Secure Shell (SSH) Transport Layer Encryption Modes, section 6.2 Encryption Method Considerations — https://www.rfc-editor.org/rfc/rfc4344"
+  - "DISA Cisco IOS XE Router NDM STIG V3R7, CISC-ND-001210, check and fix text — docs/sources/disa/U_Cisco_IOS-XE_Router_NDM_STIG_V3R7_Manual-xccdf.xml"
+  - "Cisco IOS Security Command Reference: Commands D to L, ip ssh server algorithm encryption (syntax, and the default list including the CBC methods) — https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/security/d1/sec-d1-cr-book/sec-cr-i3.html"
+frameworks:
+  - framework: nist
+    control_id: "SC-08(01)"
+    version: "5.2.0"
+    citation: "NIST SP 800-53 Rev 5 — OSCAL catalog, edition 5.2.0, control SC-08(01)"
+    # Our judgement that this check evidences this control, not a
+    # published crosswalk. No catalog maps NIRIKSHAK's own rules.
+    mapping_provenance: project_asserted
+  - framework: nist
+    control_id: "AC-17(02)"
+    version: "5.2.0"
+    citation: "NIST SP 800-53 Rev 5 — OSCAL catalog, edition 5.2.0, control AC-17(02)"
+    # Our judgement that this check evidences this control, not a
+    # published crosswalk. No catalog maps NIRIKSHAK's own rules.
+    mapping_provenance: project_asserted
+not_mapped:
+  - framework: stig
+    reason: >-
+      CISC-ND-001210 asks for FIPS 140-2 approved algorithms. This rule differs in
+      both directions: AES-CBC is FIPS-approved and fails here, and a non-CBC
+      method outside FIPS would pass here. Mapping it would print the STIG
+      identifier beside verdicts the STIG does not make (ADR 0062).
+  - framework: cis
+    reason: >-
+      Not assessed against CIS. The CIS Cisco IOS XE 17.x Benchmark is referenced
+      and never held, and it was not read when this rule was written, so whether
+      a recommendation asks for this is unanswered rather than answered no
+      (ADR 0062). Mapping it needs someone to read the Benchmark.

@@ -105,3 +105,7 @@ refused with 400, as before.
   admitted (ADR 0052, D134).
 - **An IOS XE 16.x device** is refused as not described. That is the
   conservative side of a scope no source in hand extends to 16.x.
+
+**Note, appended 2026-09-27.** The table's unscoped row counts 7 rules. ADR 0062
+added NRK-CIPHER-001 and -002, which map to NIST only, so an unscoped run now
+evaluates 9; the STIG and CIS columns are unchanged at 3 and 6.

@@ -1,0 +1,286 @@
+# NIRIKSHAK vendor pack — cisco ios
+#
+# 1.5.0 (ADR 0062): reads the SSH server's offered encryption and MAC
+# algorithms into `ssh_ciphers` and `ssh_macs`, one token per algorithm.
+# Authored from corpus/cisco/dev/edge-rtr-01.cfg lines 44-45 (weak lists),
+# branch-rtr-07.cfg lines 54-55 (strong lists) and dist-sw-03.cfg line 55
+# (encryption only, no MAC line). The pack reads what is offered; which
+# algorithms are acceptable is decided by NRK-CIPHER-001 and -002, never here.
+# Nothing else changes.
+#
+# 1.4.0 (P18, ADR 0053): reads the affirmative `ip http server`. Every earlier
+# version declined to, on the stated ground that the line appeared in no
+# development file. That was true at P4 and stopped being true at P15, when
+# corpus/cisco/dev/edge-rtr-01.cfg (line 47) was registered carrying it. The
+# reason expired and the refusal outlived it. Nothing else changes.
+#
+# P4: the first real PARSING pack. Detection and identity are carried forward
+# from 1.0.0 unchanged; `patterns` now populates eight canonical security fields.
+#
+# AUTHORING PROVENANCE (decision R9)
+# Every pattern was authored from corpus/cisco/dev/ only:
+#     rtr-core-01.cfg   42 lines
+#     sw-access-02.cfg  20 lines
+# corpus/cisco/eval/rtr-edge-09.cfg was not opened; the PAN-OS holdout was not
+# touched. A canonical field with no occurrence in those two files has no
+# pattern here — an unverifiable pattern that silently never matches is worse
+# than an absent one, because the field looks supported while producing UNKNOWN
+# forever.
+#
+# Patterns match node.text (trimmed), never raw_line: indentation is structure,
+# already carried by depth and block_path.
+#
+# Scopes are ANCHORED full block headers (decision D9). '^line vty \d+ \d+$' is
+# deliberate numeric generalisation, written out rather than assumed, and it
+# excludes 'line con 0' — which is the whole point, since a console timeout is
+# not a management idle timeout.
+#
+# Single-quoted YAML scalars throughout: double quotes would treat backslashes
+# as escapes and mangle every regex.
+
+vendor: cisco
+os_family: ios
+pack_version: 1.5.0
+parent_version: 1.4.0
+status: active
+created_by: team-atlantis
+checksum: sha256:4289d4ff692f876aa5fc2267e26c1d0587bcc9d3e4fb81163b35b7e64ccfd156
+
+comment_prefixes: ['!']
+
+literal_blocks:
+  # The body of a banner is prose, not configuration. Left as nodes it would
+  # flood the training queue and — far worse — be reachable by pattern matching,
+  # so a banner reading 'ip ssh version 1 is prohibited' would produce a fact
+  # that is not in effect. The opener stays a node so banner_present can cite it.
+  - name: banner
+    open: '^banner \S+ (\S+)$'
+    terminator_group: 1
+
+detect:
+  - { type: regex, pattern: '^version \d+\.\d+', weight: 0.25 }
+  - { type: regex, pattern: '^service timestamps ', weight: 0.25 }
+  - { type: regex, pattern: '^line vty \d+', weight: 0.2 }
+  - { type: regex, pattern: '^interface (GigabitEthernet|FastEthernet)\d', weight: 0.2 }
+  - { type: regex, pattern: '^ip ssh version ', weight: 0.15 }
+
+identity:
+  - field: hostname
+    match:   { type: regex, pattern: '^hostname (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['hostname rtr-core-01']
+  - field: os_version
+    match:   { type: regex, pattern: '^version (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['version 17.9']
+  # NO `model` PATTERN. 1.2.0 and earlier read `^! model (\S+)`, whose only
+  # evidence anywhere is one line in one corpus file. Cisco's
+  # `show running-config` does not emit the hardware model -- it is in
+  # `show version` and `show inventory` -- so that pattern matched an
+  # annotation a corpus author wrote, and reported it as observed device
+  # identity with a citation. Removed rather than kept behind a flag: a field
+  # that resolves on exactly one synthetic file and no real one looks supported
+  # while being UNKNOWN everywhere that matters.
+  #
+  # This narrows ADR 0011's asymmetry in practice without reversing it. Platform
+  # metadata really does live in comments -- `arista/eos` reads its model from
+  # the `! device:` header EOS itself writes. The distinction is whether the
+  # PLATFORM emits the line, and nothing here can check that; it needs vendor
+  # documentation (SOURCING_BACKLOG gap 2).
+  #
+  # NO `serial` PATTERN either, for the reason given in the arista pack: no
+  # running-config in this corpus carries one, on any platform.
+
+
+# ---------------------------------------------------------------------------
+# Structure extraction (P16, ADR 0027)
+#
+# The regexes locate STRUCTURE -- where an interface opens, where a list opens,
+# where a list is bound. They do not describe entry grammar: turning
+# `0.0.0.255` into `/24` is arithmetic on a wildcard mask, not matching, so the
+# entries are read by the named dialect in api/parse/structures.py.
+#
+# Every example below appears verbatim in a DEVELOPMENT configuration.
+# `applied` carries no example: no Cisco development file binds a list to an
+# interface, so the regex is declared and unexercised, and it says so here
+# rather than in a commit message.
+# ---------------------------------------------------------------------------
+interface_extraction:
+  block: '^interface (\S+)$'
+  description: '^description (.+)$'
+  ip_address: '^ip address (\S+) (\S+)$'
+  shutdown: '^shutdown$'
+  no_shutdown: '^no shutdown$'
+  examples:
+    - 'interface GigabitEthernet0/0'
+    - 'description WAN-UPLINK-TO-ISP'
+    - 'ip address 203.0.113.2 255.255.255.252'
+    - 'no shutdown'
+
+acl_extraction:
+  dialect: ios_wildcard
+  acl_type: extended
+  named_block: '^ip access-list extended (\S+)$'
+  applied: '^ip access-group (\S+) (in|out)$'
+  remark: '^remark (.*)$'
+  examples:
+    - 'ip access-list extended EDGE-IN'
+    - 'permit tcp any any established'
+    - 'permit tcp 198.51.100.0 0.0.0.255 any eq 22'
+    - 'deny   ip any any log'
+
+patterns:
+
+  # --- ssh_version --------------------------------------------------------
+  # rtr-core-01 line 12. Absent from sw-access-02, which is the abstention case.
+  - id: p-ssh-version-001
+    field: ssh_version
+    scope: { block: null }
+    match:   { type: regex, pattern: '^ip ssh version (\d+)$' }
+    capture: { value: '$1', cast: int }
+    examples: ['ip ssh version 2']
+    negative_examples: ['ip ssh version', 'no ip ssh version 2', 'ip ssh version 2 extra']
+
+  # --- telnet_enabled -----------------------------------------------------
+  # The sharpest pair in the corpus: rtr-core-01 line 38 'transport input ssh'
+  # against sw-access-02 line 17 'transport input telnet ssh'. A pattern with
+  # the sense backwards fails immediately rather than passing on uniform data.
+  #
+  # 'transport input all' and 'transport input none' are real IOS forms but
+  # appear in neither development file, so no pattern claims them. Such a line
+  # becomes residue — visible in the training queue — rather than a fact.
+  - id: p-telnet-enabled-001
+    field: telnet_enabled
+    scope: { block: ['^line vty \d+ \d+$'] }
+    match:   { type: regex, pattern: '^transport input (?=.*\btelnet\b).*$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['transport input telnet ssh']
+    negative_examples: ['transport input ssh', 'transport input none']
+
+  - id: p-telnet-enabled-002
+    field: telnet_enabled
+    scope: { block: ['^line vty \d+ \d+$'] }
+    match:   { type: regex, pattern: '^transport input (?:ssh|none)$' }
+    capture: { value: 'false', cast: bool }
+    examples: ['transport input ssh']
+    negative_examples: ['transport input telnet ssh', 'transport input all']
+
+  # --- http_server_enabled -------------------------------------------------
+  # rtr-core-01 line 13 and sw-access-02 line 7. Negation form: nothing to
+  # capture, so the pattern declares the literal value.
+  #
+  #
+  # Until 1.4.0 there was deliberately no '^ip http server$' pattern, because
+  # the affirmative form appeared in no development file. edge-rtr-01.cfg
+  # line 47 has carried it since P15, so it is now authored from that line
+  # (ADR 0053). Top level only, exact line: `ip http secure-server` is a
+  # different listener and a different field.
+  - id: p-http-server-001
+    field: http_server_enabled
+    scope: { block: null }
+    match:   { type: regex, pattern: '^no ip http server$' }
+    capture: { value: 'false', cast: bool }
+    examples: ['no ip http server']
+    negative_examples: ['ip http server', 'no ip http secure-server']
+
+  - id: p-http-server-002
+    field: http_server_enabled
+    scope: { block: null }
+    match:   { type: regex, pattern: '^ip http server$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['ip http server']
+    negative_examples: ['no ip http server', 'ip http secure-server', 'ip http server extra']
+
+  # --- https_server_enabled ------------------------------------------------
+  # rtr-core-01 line 14. Absent from sw-access-02, which abstains.
+  #
+  # No '^no ip http secure-server$' pattern for the same reason as above:
+  # the negated form has no occurrence in the development corpus.
+  - id: p-https-server-001
+    field: https_server_enabled
+    scope: { block: null }
+    match:   { type: regex, pattern: '^ip http secure-server$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['ip http secure-server']
+    negative_examples: ['no ip http secure-server', 'ip http server']
+
+  # --- idle_timeout_seconds ------------------------------------------------
+  # rtr-core-01 line 39 (vty, 10 0 -> 600) and sw-access-02 line 18 (30 0 ->
+  # 1800). The scope is what keeps rtr-core-01 line 36 'exec-timeout 0 0' under
+  # 'line con 0' from being read as a management idle timeout.
+  - id: p-idle-timeout-001
+    field: idle_timeout_seconds
+    scope: { block: ['^line vty \d+ \d+$'] }
+    match:   { type: regex, pattern: '^exec-timeout (\d+) (\d+)$' }
+    capture: { value: '$1 $2', cast: duration }
+    examples: ['exec-timeout 10 0', 'exec-timeout 30 0']
+    negative_examples: ['exec-timeout', 'exec-timeout ten zero']
+
+  # --- logging_hosts -------------------------------------------------------
+  # Multi-valued: repetition accumulates rather than conflicts.
+  - id: p-logging-host-001
+    field: logging_hosts
+    scope: { block: null }
+    match:   { type: regex, pattern: '^logging host (\S+)$' }
+    capture: { value: '$1', cast: list }
+    examples: ['logging host 192.0.2.10']
+    negative_examples: ['logging trap informational', 'logging host']
+
+  # --- ntp_servers ---------------------------------------------------------
+  # rtr-core-01 lines 19-20 carry two, which is what exercises accumulation.
+  - id: p-ntp-server-001
+    field: ntp_servers
+    scope: { block: null }
+    match:   { type: regex, pattern: '^ntp server (\S+)$' }
+    capture: { value: '$1', cast: list }
+    examples: ['ntp server 192.0.2.20', 'ntp server 192.0.2.21']
+    negative_examples: ['ntp server', 'ntp authenticate']
+
+  # --- banner_present ------------------------------------------------------
+  # rtr-core-01 line 22. Matches the opener only; the body is a literal block
+  # and never reaches the pattern engine at all.
+  - id: p-banner-present-001
+    field: banner_present
+    scope: { block: null }
+    match:   { type: regex, pattern: '^banner motd (\S+)$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['banner motd ^C']
+    negative_examples: ['banner motd', 'no banner motd']
+
+  # --- ssh_ciphers / ssh_macs (ADR 0062) ------------------------------------
+  # One directive names several algorithms, so the capture is `tokens`: every
+  # space-separated name becomes one element, in the order the line gives.
+  # The two lists are separate fields because each can be absent on its own —
+  # dist-sw-03 sets encryption and leaves MACs at the platform default — and a
+  # verdict on one list says nothing about the other.
+  #
+  # Top level only, server side only: `ip ssh client algorithm ...` configures
+  # what this device offers when IT connects out, a different surface.
+  - id: p-ssh-ciphers-001
+    field: ssh_ciphers
+    scope: { block: null }
+    match:   { type: regex, pattern: '^ip ssh server algorithm encryption (.+)$' }
+    capture: { value: '$1', cast: tokens }
+    examples:
+      - 'ip ssh server algorithm encryption 3des-cbc aes128-cbc'
+      - 'ip ssh server algorithm encryption aes256-ctr aes192-ctr aes128-ctr'
+      - 'ip ssh server algorithm encryption aes128-cbc 3des-cbc'
+    negative_examples:
+      - 'ip ssh server algorithm mac hmac-sha2-256'
+      - 'ip ssh server algorithm encryption'
+      - 'no ip ssh server algorithm encryption aes128-cbc'
+      - 'ip ssh client algorithm encryption aes128-cbc'
+
+  - id: p-ssh-macs-001
+    field: ssh_macs
+    scope: { block: null }
+    match:   { type: regex, pattern: '^ip ssh server algorithm mac (.+)$' }
+    capture: { value: '$1', cast: tokens }
+    examples:
+      - 'ip ssh server algorithm mac hmac-md5 hmac-sha1'
+      - 'ip ssh server algorithm mac hmac-sha2-256'
+    negative_examples:
+      - 'ip ssh server algorithm encryption aes256-ctr'
+      - 'ip ssh server algorithm mac'
+      - 'no ip ssh server algorithm mac hmac-sha1'
+      - 'ip ssh client algorithm mac hmac-sha1'

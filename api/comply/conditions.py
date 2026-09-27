@@ -1,6 +1,6 @@
 """Evaluating one condition against one canonical value.
 
-Twelve operators, a closed set. Not an expression language, and deliberately so:
+Thirteen operators, a closed set. Not an expression language, and deliberately so:
 an expression language is where vendor logic and model calls reappear inside a
 layer that is supposed to have neither.
 
@@ -131,6 +131,18 @@ def _contains(value: Any, operand: Any) -> Outcome:
     return None
 
 
+def _contains_none(value: Any, operand: Any) -> Outcome:
+    """Does the collection field share no element with the operand? (ADR 0062)
+
+    Both sides must be collections. A scalar field is not a set of offerings,
+    and a scalar operand is a single value `contains` already asks about —
+    either shape is a rule defect, so it abstains rather than answering.
+    """
+    if not isinstance(value, COLLECTION_TYPES) or not isinstance(operand, COLLECTION_TYPES):
+        return None
+    return not any(item in value for item in operand)
+
+
 # -- unary ------------------------------------------------------------------
 
 
@@ -178,6 +190,7 @@ _HANDLERS = {
     ConditionOp.IS_TRUE: _is_true,
     ConditionOp.IS_FALSE: _is_false,
     ConditionOp.NON_EMPTY: _non_empty,
+    ConditionOp.CONTAINS_NONE: _contains_none,
 }
 
 
@@ -217,6 +230,8 @@ def describe(condition: Condition) -> str:
         return "disabled"
     if condition.op is ConditionOp.NON_EMPTY:
         return "at least one value configured"
+    if condition.op is ConditionOp.CONTAINS_NONE:
+        return "none of " + ", ".join(str(v) for v in condition.value)
     return f"{condition.op.value.replace('_', ' ')} {condition.value!r}"
 
 

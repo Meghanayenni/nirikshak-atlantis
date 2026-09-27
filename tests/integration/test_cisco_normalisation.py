@@ -38,7 +38,7 @@ def cisco():
         for p in load_active_packs(use_cache=False)
         if (p.vendor, p.os_family) == ("cisco", "ios")
     )
-    assert pack.pack_version == "1.4.0"
+    assert pack.pack_version == "1.5.0"
     return pack
 
 
@@ -76,7 +76,7 @@ def test_the_csm_records_the_pack_version_that_actually_applied(rtr) -> None:
     """Not whichever pack is active when a report is generated later."""
     parsed, csm = rtr
 
-    assert csm.source.pack_versions == {"cisco/ios": "1.4.0"}
+    assert csm.source.pack_versions == {"cisco/ios": "1.5.0"}
     assert csm.source.pack_versions["cisco/ios"] == parsed.pack_version
 
 
@@ -148,12 +148,15 @@ def test_a_determined_field_is_the_same_object_it_was_in_the_parse(rtr) -> None:
             assert csm.fields[name] is field
 
 
-def test_all_eight_fields_are_present_on_rtr_core(rtr) -> None:
+def test_every_field_rtr_core_configures_is_present(rtr) -> None:
+    """Ten declared, eight determined: rtr-core-01 writes no SSH algorithm line,
+    and those two fields abstain rather than assume a default (ADR 0062)."""
     _, csm = rtr
 
-    assert len(csm.fields) == 8
+    assert len(csm.fields) == 10
     assert len(csm.determinable_fields()) == 8
-    assert csm.coverage() == 1.0
+    assert set(csm.abstained_fields()) == {"ssh_ciphers", "ssh_macs"}
+    assert csm.coverage() == pytest.approx(8 / 10)
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +201,8 @@ def test_sw_access_determined_fields_are_unchanged(sw) -> None:
     assert [e.line_start for e in csm.fields["telnet_enabled"].evidence] == [17]
     assert csm.fields["idle_timeout_seconds"].value == 1800
     assert len(csm.determinable_fields()) == 5
-    assert len(csm.abstained_fields()) == 3
+    # Three since P5, and the two SSH algorithm lists sw-access-02 never sets.
+    assert len(csm.abstained_fields()) == 5
 
 
 # ---------------------------------------------------------------------------

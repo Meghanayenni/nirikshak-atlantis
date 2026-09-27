@@ -4,9 +4,9 @@ NIRIKSHAK — EVALUATION REPORT (P9–P10)
 
 Accuracy is reported as a measurement, not a claim.
 
-Generated      : 2026-09-24T10:39:38.324760+00:00
-Rulepack       : 1.1.0
-Vendor packs   : arista/eos 1.1.0, cisco/ios 1.4.0, juniper/junos 1.2.0
+Generated      : 2026-09-27T12:51:34.865945+00:00
+Rulepack       : 1.2.0
+Vendor packs   : arista/eos 1.1.0, cisco/ios 1.5.0, juniper/junos 1.2.0
 Files scored   : 5 (evaluation split only)
 Held-out vendor: paloalto — NOT READ (blocked; see section 10)
 
@@ -202,7 +202,7 @@ and an accuracy figure over it would be measuring a constant.
 
 field state                   count
 ------------------------------------------------------------------------------
-unknown                           4
+unknown                           8
 
 absent_default             0  — the AbsenceAction.EVALUATE branch has never
                                 fired on real data. It cannot until vendor

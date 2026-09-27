@@ -135,7 +135,8 @@ def test_baselines_are_established_now_that_a_cohort_clears_the_floor(
     # that simply produced nothing, and zero is a result rather than an absence.
     assert body["skipped_files"] == 0
     assert body["minimum_cohort_size"] == MIN_COHORT_SIZE
-    assert body["comparable_baselines"] == 8
+    # Eight until ADR 0062 added ssh_ciphers and ssh_macs to the IOS pack.
+    assert body["comparable_baselines"] == 10
     assert body["outliers"] == []
     assert "baseline(s) established" in body["summary"]
 
@@ -320,7 +321,7 @@ def test_the_device_baseline_is_admin_only(client: TestClient) -> None:
 def test_a_device_in_a_compared_cohort_names_every_field_and_invents_no_deviation(
     client: TestClient,
 ) -> None:
-    """Cisco IOS: nine devices, eight baselines, and the backend's own outliers."""
+    """Cisco IOS: nine devices, ten baselines, and the backend's own outliers."""
     _upload_fleet(client)
     body = client.get(
         f"/fleet/baseline/device/{_file_id('cisco/dev/sw-access-02.cfg')}", auth=ROOT

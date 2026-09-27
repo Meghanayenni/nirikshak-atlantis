@@ -41,9 +41,17 @@ CANONICAL_FIELD_NAMES: frozenset[str] = frozenset(
         "banner_present",
         "aaa_enabled",
         "weak_ciphers",
+        "ssh_ciphers",
+        "ssh_macs",
     }
 )
-"""The fields shipped at P1.
+"""The fields shipped at P1, and the two SSH algorithm lists added by ADR 0062.
+
+`weak_ciphers` is verdict-shaped — its name states a conclusion — so no pack can
+fill it without deciding weakness itself, which is a rule's job. ADR 0062 reads
+the offered algorithms into `ssh_ciphers` and `ssh_macs` and leaves the judgement
+to NRK-CIPHER-001 and -002. `weak_ciphers` is kept because evaluation labels
+name it; retiring it is a separate decision.
 
 Reference, not enforcement: the mapping accepts any key, because constraining it
 would make adding a canonical field a code change.

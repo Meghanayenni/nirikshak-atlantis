@@ -133,7 +133,14 @@ def build_field(
         # Repetition is accumulation: two `ntp server` lines are two servers.
         # Order follows the source, and duplicates are kept rather than folded —
         # a configuration listing the same server twice really does say that.
-        values = [m.value for m in matches]
+        # A `tokens` capture is already a list: one line offering several
+        # values. Its tokens join the field in the order the line gives them.
+        values: list[Any] = []
+        for m in matches:
+            if isinstance(m.value, list):
+                values.extend(m.value)
+            else:
+                values.append(m.value)
         return Field[Any](
             value=values,
             state=FieldState.PRESENT,

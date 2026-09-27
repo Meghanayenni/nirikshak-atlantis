@@ -108,14 +108,32 @@ _SCALAR_CASTS = {
 }
 
 
+def cast_tokens(raw: str) -> list[str]:
+    """Split one captured value on whitespace, keeping the line's order.
+
+    Nothing is interpreted: `3des-cbc` stays `3des-cbc`. Deciding which of the
+    tokens is acceptable is a rule's job, never a cast's. An empty capture is
+    not an empty list — a directive that names nothing is malformed, and an
+    empty list would read as "offers nothing", which is a claim.
+    """
+    tokens = raw.split()
+    if not tokens:
+        raise CastError(raw, "tokens", "no tokens captured")
+    return tokens
+
+
 def cast_value(raw: str, cast: CastType) -> Any:
     """Convert one captured string. `LIST` casts its element as a string.
 
     A list-typed field accumulates across matches rather than parsing a
     delimited value, so at the level of a single capture it behaves as `str`.
+    `TOKENS` returns every token the capture names; the field builder flattens
+    them in source order.
     """
     if cast is CastType.LIST:
         return cast_str(raw)
+    if cast is CastType.TOKENS:
+        return cast_tokens(raw)
     handler = _SCALAR_CASTS.get(cast)
     if handler is None:  # pragma: no cover - CastType is closed
         raise CastError(raw, str(cast), "no handler for this cast type")
@@ -129,4 +147,4 @@ def is_multi_valued(cast: CastType) -> bool:
     with different numbers is a contradiction. The cast is what distinguishes
     them, so the pack author states it once rather than the engine guessing.
     """
-    return cast is CastType.LIST
+    return cast in (CastType.LIST, CastType.TOKENS)

@@ -1,4 +1,4 @@
-"""The twelve condition operators, and what they refuse to answer (D18).
+"""The thirteen condition operators, and what they refuse to answer (D18).
 
 Two properties carry the whole module.
 
@@ -41,6 +41,7 @@ MATCHES = [
     (ConditionOp.IS_TRUE, True, None),
     (ConditionOp.IS_FALSE, False, None),
     (ConditionOp.NON_EMPTY, ["a"], None),
+    (ConditionOp.CONTAINS_NONE, ["aes256-ctr", "aes128-ctr"], ["3des-cbc", "aes128-cbc"]),
 ]
 
 NON_MATCHES = [
@@ -56,6 +57,7 @@ NON_MATCHES = [
     (ConditionOp.IS_TRUE, False, None),
     (ConditionOp.IS_FALSE, True, None),
     (ConditionOp.NON_EMPTY, [], None),
+    (ConditionOp.CONTAINS_NONE, ["aes256-ctr", "3des-cbc"], ["3des-cbc", "aes128-cbc"]),
 ]
 
 
@@ -97,6 +99,26 @@ def test_non_empty_on_an_empty_string() -> None:
     assert evaluate(cond(ConditionOp.NON_EMPTY), "") is False
 
 
+def test_contains_none_is_exact_membership_not_substring() -> None:
+    """`hmac-sha1` must not be found inside `hmac-sha1-96` or vice versa.
+
+    Two different algorithms: a policy naming one says nothing about the other,
+    so a substring reading would fail a device for an algorithm nobody listed.
+    """
+    assert evaluate(cond(ConditionOp.CONTAINS_NONE, ["hmac-sha1"]), ["hmac-sha1-96"]) is True
+
+
+def test_contains_none_requires_a_collection_operand() -> None:
+    with pytest.raises(ValueError, match="requires a collection"):
+        cond(ConditionOp.CONTAINS_NONE, "3des-cbc")
+
+
+def test_contains_none_describes_every_excluded_value() -> None:
+    assert describe(cond(ConditionOp.CONTAINS_NONE, ["3des-cbc", "hmac-md5"])) == (
+        "none of 3des-cbc, hmac-md5"
+    )
+
+
 def test_contains_works_on_a_string_as_substring() -> None:
     assert evaluate(cond(ConditionOp.CONTAINS, "ssh"), "transport input ssh") is True
 
@@ -117,6 +139,7 @@ MISMATCHES = [
     ("contains on a boolean", ConditionOp.CONTAINS, True, "x"),
     ("contains on a number", ConditionOp.CONTAINS, 5, 5),
     ("in with a list-valued field", ConditionOp.IN, ["a"], ["a", "b"]),
+    ("contains_none on a scalar field", ConditionOp.CONTAINS_NONE, "3des-cbc", ["3des-cbc"]),
 ]
 
 

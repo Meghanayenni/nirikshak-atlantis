@@ -52,9 +52,11 @@ class Condition(BaseModel):
         elif self.value is None:
             raise ValueError(f"operator {self.op} requires a value to compare against")
 
-        if self.op in (ConditionOp.IN, ConditionOp.NOT_IN) and not isinstance(
-            self.value, list | tuple | set
-        ):
+        if self.op in (
+            ConditionOp.IN,
+            ConditionOp.NOT_IN,
+            ConditionOp.CONTAINS_NONE,
+        ) and not isinstance(self.value, list | tuple | set):
             raise ValueError(f"operator {self.op} requires a collection")
         return self
 

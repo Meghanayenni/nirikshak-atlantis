@@ -44,6 +44,8 @@ const SECURITY_FIELDS = [
   'banner_present',
   'aaa_enabled',
   'weak_ciphers',
+  'ssh_ciphers',
+  'ssh_macs',
 ];
 
 const VALUE_TYPES = ['str', 'int', 'bool', 'list', 'cidr', 'duration'];

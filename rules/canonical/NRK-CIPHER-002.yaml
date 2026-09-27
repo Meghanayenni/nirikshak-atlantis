@@ -1,0 +1,50 @@
+rule_id: NRK-CIPHER-002
+title: SSH server offers no MD5 or SHA-1 MACs
+severity: medium
+rationale: >-
+  A MAC protects the integrity of the management session. MD5 is not among the
+  hash algorithms FIPS 180-4 approves, and the DISA STIG check for SSH integrity
+  states that SHA-1 is considered compromised and should not be used for remote
+  access sessions, giving hmac-sha2-256 as the compliant form. RFC 6151 is more
+  measured about HMAC-MD5 in existing protocols — it finds no practical attack on
+  the construction and says removal may not be urgent — so this rule is
+  NIRIKSHAK's own position rather than a report of a broken algorithm: a server
+  should offer only SHA-2 MACs, and an operator with a different policy edits the
+  list. A device that configures no MAC list is not judged here.
+check:
+  field: ssh_macs
+  condition:
+    op: contains_none
+    value: [hmac-md5, hmac-md5-96, hmac-sha1, hmac-sha1-96]
+references:
+  - "DISA Cisco IOS XE Router NDM STIG V3R7, CISC-ND-001200, check text (the note on SHA-1) — docs/sources/disa/U_Cisco_IOS-XE_Router_NDM_STIG_V3R7_Manual-xccdf.xml"
+  - "FIPS PUB 180-4, Secure Hash Standard, announcement section 3 Explanation (the approved hash algorithms) — https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf"
+  - "RFC 6151, Updated Security Considerations for the MD5 Message-Digest and the HMAC-MD5 Algorithms, section 2.3 HMAC — https://www.rfc-editor.org/rfc/rfc6151"
+frameworks:
+  - framework: nist
+    control_id: "SC-08(01)"
+    version: "5.2.0"
+    citation: "NIST SP 800-53 Rev 5 — OSCAL catalog, edition 5.2.0, control SC-08(01)"
+    # Our judgement that this check evidences this control, not a
+    # published crosswalk. No catalog maps NIRIKSHAK's own rules.
+    mapping_provenance: project_asserted
+  - framework: nist
+    control_id: "AC-17(02)"
+    version: "5.2.0"
+    citation: "NIST SP 800-53 Rev 5 — OSCAL catalog, edition 5.2.0, control AC-17(02)"
+    # Our judgement that this check evidences this control, not a
+    # published crosswalk. No catalog maps NIRIKSHAK's own rules.
+    mapping_provenance: project_asserted
+not_mapped:
+  - framework: stig
+    reason: >-
+      CISC-ND-001200 asks for FIPS-validated HMAC. This rule refuses MD5 and SHA-1
+      by name and passes anything else, so a MAC outside FIPS that is not on the
+      list would pass here and be a finding there. A rule looser than its control
+      does not carry the control's identifier (ADR 0052, ADR 0062).
+  - framework: cis
+    reason: >-
+      Not assessed against CIS. The CIS Cisco IOS XE 17.x Benchmark is referenced
+      and never held, and it was not read when this rule was written, so whether
+      a recommendation asks for this is unanswered rather than answered no
+      (ADR 0062). Mapping it needs someone to read the Benchmark.

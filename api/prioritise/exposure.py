@@ -47,6 +47,8 @@ EXPOSURE_RELEVANT_FIELDS: frozenset[str] = frozenset(
         "http_server_enabled",
         "https_server_enabled",
         "weak_ciphers",
+        "ssh_ciphers",
+        "ssh_macs",
         "snmp_v3_only",
         "idle_timeout_seconds",
         "min_password_length",

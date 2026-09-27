@@ -62,6 +62,8 @@ def pack(*patterns: PatternDef) -> VendorPack:
         ("10 0", CastType.DURATION, 600),
         ("30 0", CastType.DURATION, 1800),
         ("0 45", CastType.DURATION, 45),
+        ("3des-cbc aes128-cbc", CastType.TOKENS, ["3des-cbc", "aes128-cbc"]),
+        ("hmac-sha2-256", CastType.TOKENS, ["hmac-sha2-256"]),
     ],
 )
 def test_casts(raw: str, cast: CastType, expected: object) -> None:
@@ -77,6 +79,7 @@ def test_casts(raw: str, cast: CastType, expected: object) -> None:
         ("ten zero", CastType.DURATION),
         ("1 2 3", CastType.DURATION),
         ("-5", CastType.DURATION),
+        ("   ", CastType.TOKENS),
     ],
 )
 def test_malformed_values_raise_rather_than_coercing(raw: str, cast: CastType) -> None:
@@ -85,9 +88,10 @@ def test_malformed_values_raise_rather_than_coercing(raw: str, cast: CastType) -
         cast_value(raw, cast)
 
 
-def test_only_list_is_multi_valued() -> None:
+def test_only_list_and_tokens_are_multi_valued() -> None:
     assert is_multi_valued(CastType.LIST)
-    assert not is_multi_valued(CastType.INT)
+    assert is_multi_valued(CastType.TOKENS)
+    assert {c for c in CastType if is_multi_valued(c)} == {CastType.LIST, CastType.TOKENS}
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +252,30 @@ def test_multi_valued_field_accumulates() -> None:
     assert field.state is FieldState.PRESENT
     assert field.value == ["192.0.2.20", "192.0.2.21"]
     assert len(field.evidence) == 2
+
+
+def test_tokens_from_several_lines_flatten_in_source_order() -> None:
+    """ADR 0062: two directives, three tokens, one list, both lines cited."""
+    t = tree(
+        "ip ssh server algorithm encryption 3des-cbc aes128-cbc\n"
+        "ip ssh server algorithm encryption aes256-ctr\n"
+    )
+    p = pack(
+        PatternDef(
+            id="p-enc",
+            field="ssh_ciphers",
+            match=MatchSpec(
+                type=MatchType.REGEX, pattern=r"^ip ssh server algorithm encryption (.+)$"
+            ),
+            capture=CaptureSpec(value="$1", cast=CastType.TOKENS),
+        )
+    )
+    by_field, _ = apply_pack(p, t)
+    field = build_field("ssh_ciphers", by_field["ssh_ciphers"], p)
+
+    assert field.state is FieldState.PRESENT
+    assert field.value == ["3des-cbc", "aes128-cbc", "aes256-ctr"]
+    assert [e.line_start for e in field.evidence] == [1, 2]
 
 
 def test_declared_but_unmatched_fields_are_still_reported() -> None:

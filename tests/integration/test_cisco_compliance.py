@@ -78,14 +78,26 @@ def by_rule(findings):
 # ---------------------------------------------------------------------------
 
 
-def test_rtr_core_passes_every_rule(rtr) -> None:
-    assert summarise(rtr) == {"pass": 7, "fail": 0, "unknown": 0, "not_applicable": 0}
+def test_rtr_core_passes_every_rule_it_configures(rtr) -> None:
+    """Seven passes, and two abstentions that are not failures (ADR 0062).
+
+    rtr-core-01 writes no `ip ssh server algorithm` line, so what it offers is
+    its release's default list, and no default is declared. The cipher checks
+    abstain on that rather than passing a device whose offer nobody read.
+    """
+    assert summarise(rtr) == {"pass": 7, "fail": 0, "unknown": 2, "not_applicable": 0}
+    unknown = {f.rule_id: f.unknown_reason for f in rtr if f.status is Verdict.UNKNOWN}
+    assert unknown == {
+        "NRK-CIPHER-001": UnknownReason.CAPABILITY_UNKNOWN,
+        "NRK-CIPHER-002": UnknownReason.CAPABILITY_UNKNOWN,
+    }
 
 
 def test_every_pass_cites_a_real_line(rtr) -> None:
     """Rule 2 at the top of the stack, resting on P4's lossless guarantee."""
-    for finding in rtr:
-        assert finding.status is Verdict.PASS
+    passes = [f for f in rtr if f.status is Verdict.PASS]
+    assert len(passes) == 7
+    for finding in passes:
         assert finding.evidence, f"{finding.rule_id} passed with nothing behind it"
         assert all(e.line_start >= 1 for e in finding.evidence)
 
@@ -105,7 +117,8 @@ def test_the_boundary_case_passes(rtr) -> None:
 
 
 def test_sw_access_verdict_distribution(sw) -> None:
-    assert summarise(sw) == {"pass": 3, "fail": 2, "unknown": 2, "not_applicable": 0}
+    # Two more abstentions since ADR 0062: no SSH algorithm lines.
+    assert summarise(sw) == {"pass": 3, "fail": 2, "unknown": 4, "not_applicable": 0}
 
 
 def test_telnet_enabled_fails_with_its_citation(sw) -> None:
@@ -161,7 +174,7 @@ def test_no_absence_produces_a_pass(sw) -> None:
 
 def test_findings_record_the_pack_that_read_the_line(rtr) -> None:
     for finding in rtr:
-        assert finding.provenance.pack_versions == {"cisco/ios": "1.4.0"}
+        assert finding.provenance.pack_versions == {"cisco/ios": "1.5.0"}
         assert finding.provenance.rulepack_version == load_rulepack().version
         assert finding.provenance.engine_version
 
@@ -223,7 +236,7 @@ def test_a_run_appends_exactly_one_audit_record(tmp_path, cisco, rulepack) -> No
     assert stored is not None
     assert stored.record.action is AuditAction.AUDIT_RUN
     assert stored.record.subject.id == run_id, "the chain and the findings share one id"
-    assert len(findings) == 7
+    assert len(findings) == 9
     conn.close()
 
 
@@ -277,8 +290,8 @@ def test_the_audit_payload_is_counts_and_identifiers(cisco, rulepack) -> None:
     findings = evaluate_device(csm, rulepack, audit_id="a1")
     payload = audit_payload(csm, rulepack, findings)
 
-    assert payload["verdicts"] == {"pass": 3, "fail": 2, "unknown": 2, "not_applicable": 0}
-    assert payload["rules_evaluated"] == 7
+    assert payload["verdicts"] == {"pass": 3, "fail": 2, "unknown": 4, "not_applicable": 0}
+    assert payload["rules_evaluated"] == 9
     assert set(payload) == {
         "device_id",
         "engine_version",

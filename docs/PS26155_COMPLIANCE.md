@@ -78,8 +78,8 @@ frameworks, including CIS Benchmarks, NIST SP 800-53, DISA STIGs, and ISO/IEC
 27001."*
 
 Three are sourced and selectable, each pinned by its source's sha256
-(`rules/frameworks/*.index.yaml`): NIST SP 800-53 Rev 5 edition 5.2.0 (8
-controls mapped, from all 7 rules); DISA Cisco IOS XE Router NDM STIG V3R7 (4 of
+(`rules/frameworks/*.index.yaml`): NIST SP 800-53 Rev 5 edition 5.2.0 (9
+controls mapped, from all 9 rules); DISA Cisco IOS XE Router NDM STIG V3R7 (4 of
 42 requirements, from 3 rules); CIS Cisco IOS XE 17.x Benchmark v2.2.1 (6 of 84
 recommendations, from 6 rules). Every mapping is `project_asserted`
 (`rules/canonical/*.yaml`, enforced by `tests/unit/test_framework_mappings.py`).
@@ -99,7 +99,7 @@ uses these four as its examples of what the frameworks require.
 | Example | Status | Evidence |
 | --- | --- | --- |
 | Disable Telnet / HTTP | DELIVERED on Cisco IOS and NX-OS | `NRK-TELNET-001`, `NRK-HTTP-001` (`rules/canonical/`); both packs read `telnet_enabled` and `http_server_enabled`. JunOS and EOS read no canonical field, so both rules abstain there. |
-| Strong cryptographic suites | ABSENT | `weak_ciphers` is in the canonical model (`CANONICAL_FIELD_NAMES`, `api/models/csm.py`), but no pack reads it and no rule checks it. |
+| Strong cryptographic suites | PARTIAL | Cisco IOS only. The pack reads the SSH server's offered encryption and MAC lists into `ssh_ciphers` and `ssh_macs`; `NRK-CIPHER-001` fails any CBC cipher and `NRK-CIPHER-002` any MD5 or SHA-1 MAC, each citing its sources (ADR 0062). A device with no algorithm line abstains, because its offered set is a release default nobody has declared. TLS suites, key exchange and host-key algorithms are not read; no other platform reads either list. `weak_ciphers` stays in the model unread — its name is a verdict a pack would have to make. |
 | Granular ACLs | PARTIAL | Access lists are read and analysed by interval logic for shadowed, redundant and overly permissive entries (`api/analyse/`). These are observations, not compliance verdicts, and no rule requires an ACL on a management interface. |
 | Logging all administrative access | ABSENT | `NRK-LOGGING-001` checks that a remote logging host is configured (`logging_hosts`, `non_empty`). Accounting of administrative sessions is not read and not checked. |
 
@@ -111,7 +111,7 @@ SOURCING (vendor documentation) for the other platforms.
 *"A 'secure password' setting in a Cisco IOS switch is syntactically distinct
 from the same setting in a Juniper SRX firewall."*
 
-Vendor syntax is mapped into one vendor-neutral model — 13 canonical fields
+Vendor syntax is mapped into one vendor-neutral model — 15 canonical fields
 (`CANONICAL_FIELD_NAMES`, `api/models/csm.py`) — and the rule engine reads only
 that model (`api/comply/engine.py`; `comply` may not import `parse`,
 `tests/architecture/test_import_rules.py`). The block parser implements three
@@ -121,7 +121,7 @@ all four platforms (`identity` in each pack; `api/ingest/device_identity.py`).
 
 **Gap.** The statement's own example is not demonstrable: `min_password_length`
 is read by no pack, and the JunOS pack — which reads the three SRX files — reads
-no canonical field at all. Coverage is uneven: IOS reads 8 fields, NX-OS 7,
+no canonical field at all. Coverage is uneven: IOS reads 10 fields, NX-OS 7,
 JunOS and EOS none (`declared_fields`, `api/parse/fields.py`). XML and JSON modes
 raise `UnsupportedSyntaxModeError` rather than returning an empty tree.
 *Blocked on:* SOURCING (vendor documentation for JunOS/EOS field patterns; an
@@ -362,8 +362,8 @@ Compared with the assessment made from the team's restatement:
 2. **A1 — the AI-based engine performs Normalization and Deviation Analysis.**
    Not in the restatement. Recorded as a deliberate deviation with its reason.
 3. **H — the four hardening examples.** Not in the restatement. Telnet/HTTP is
-   delivered on Cisco; strong ciphers and logging of administrative access are
-   not checked.
+   delivered on Cisco; strong SSH ciphers and MACs are checked on Cisco IOS only
+   (ADR 0062); logging of administrative access is not checked.
 4. **C1 — the statement's own example** (a password setting on Cisco IOS versus
    Juniper SRX) is not demonstrable: no pack reads `min_password_length`.
 5. **C2 — "indigenous hardware".** The earlier version listed it as a named

@@ -47,7 +47,8 @@
           "list",
           "cidr",
           "duration",
-          "duration_minutes"
+          "duration_minutes",
+          "tokens"
         ],
         "title": "CastType",
         "type": "string"

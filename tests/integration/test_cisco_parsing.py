@@ -30,7 +30,7 @@ def cisco():
         for p in load_active_packs(use_cache=False)
         if (p.vendor, p.os_family) == ("cisco", "ios")
     )
-    assert pack.pack_version == "1.4.0", "the active Cisco pack should be the parsing pack"
+    assert pack.pack_version == "1.5.0", "the active Cisco pack should be the parsing pack"
     return pack
 
 
@@ -68,9 +68,10 @@ def test_cisco_pack_is_no_longer_detection_only(cisco) -> None:
     # 9 at P4, not 12: three patterns were removed at review because no line in
     # the development corpus could verify them (ADR 0011). One of the three —
     # the affirmative `ip http server` — has had its verifying line since P15
-    # (edge-rtr-01.cfg:47) and returned in 1.4.0 (ADR 0053).
-    assert len(cisco.patterns) == 10
-    assert cisco.parent_version == "1.3.0"
+    # (edge-rtr-01.cfg:47) and returned in 1.4.0 (ADR 0053). 1.5.0 adds the two
+    # SSH algorithm patterns (ADR 0062).
+    assert len(cisco.patterns) == 12
+    assert cisco.parent_version == "1.4.0"
 
 
 def test_the_affirmative_http_server_line_is_read_where_it_was_authored(cisco) -> None:
@@ -90,7 +91,7 @@ def test_all_patterns_self_check(cisco) -> None:
     assert cisco.validate_patterns() == {}
 
 
-def test_eight_declared_fields(cisco) -> None:
+def test_ten_declared_fields(cisco) -> None:
     from api.parse.fields import declared_fields
 
     assert declared_fields(cisco) == [
@@ -102,6 +103,8 @@ def test_eight_declared_fields(cisco) -> None:
         "logging_hosts",
         "ntp_servers",
         "banner_present",
+        "ssh_ciphers",
+        "ssh_macs",
     ]
 
 
@@ -132,10 +135,11 @@ def test_rtr_core_fields(rtr, field_name: str, value: object, lines: list[int]) 
     assert [e.line_start for e in field.evidence] == lines
 
 
-def test_rtr_core_determines_every_field(rtr) -> None:
+def test_rtr_core_determines_every_field_it_configures(rtr) -> None:
     result, _ = rtr
     assert len(result.determinable) == 8
-    assert result.abstained == {}
+    # No `ip ssh server algorithm` line: parsing sees nothing to read (ADR 0062).
+    assert set(result.abstained) == {"ssh_ciphers", "ssh_macs"}
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +267,7 @@ def test_provenance_records_the_pack_version(rtr) -> None:
 
     assert provenance is not None
     assert provenance.pack_id == "cisco/ios"
-    assert provenance.pack_version == "1.4.0"
+    assert provenance.pack_version == "1.5.0"
     assert provenance.pattern_id == "p-ssh-version-001"
 
 
@@ -277,6 +281,6 @@ def test_residue_holds_only_unmatched_commands(rtr) -> None:
 
 
 def test_result_summary(rtr, sw) -> None:
-    assert rtr[0].coverage() == 1.0
-    assert sw[0].coverage() == pytest.approx(5 / 8)
-    assert "8/8" in rtr[0].summary()
+    assert rtr[0].coverage() == pytest.approx(8 / 10)
+    assert sw[0].coverage() == pytest.approx(5 / 10)
+    assert "8/10" in rtr[0].summary()

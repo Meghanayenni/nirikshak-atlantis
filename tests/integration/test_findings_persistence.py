@@ -119,8 +119,8 @@ def test_a_run_is_readable_without_rerunning_anything(rig) -> None:
 
     assert run is not None
     assert run["device_id"] == file_id
-    assert run["rules_evaluated"] == 7
-    assert run["verdicts"] == {"pass": 3, "fail": 2, "unknown": 2, "not_applicable": 0}
+    assert run["rules_evaluated"] == 9
+    assert run["verdicts"] == {"pass": 3, "fail": 2, "unknown": 4, "not_applicable": 0}
 
 
 def test_findings_round_trip_unchanged(rig) -> None:
@@ -167,7 +167,7 @@ def test_abstentions_keep_their_reason(rig) -> None:
         f for f in finding_store.read_findings(conn, "audit-1") if f.status is Verdict.UNKNOWN
     ]
 
-    assert len(unknowns) == 2
+    assert len(unknowns) == 4
     assert all(f.unknown_reason is UnknownReason.CAPABILITY_UNKNOWN for f in unknowns)
 
 
@@ -176,7 +176,7 @@ def test_provenance_survives(rig) -> None:
     finding = finding_store.read_findings(conn, "audit-1")[0]
 
     assert finding.provenance.rulepack_version == load_rulepack().version
-    assert finding.provenance.pack_versions == {"cisco/ios": "1.4.0"}
+    assert finding.provenance.pack_versions == {"cisco/ios": "1.5.0"}
     assert finding.provenance.engine_version
 
 

@@ -187,6 +187,14 @@ class ConditionOp(StrEnum):
     IS_TRUE = "is_true"
     IS_FALSE = "is_false"
     NON_EMPTY = "non_empty"
+    CONTAINS_NONE = "contains_none"
+    """A collection field shares no element with the operand (ADR 0062).
+
+    `contains` asks about one value; this asks about a set of them, which is the
+    shape of a policy that names what must not be offered. Without it a rule
+    listing eight disallowed algorithms would need eight negated conditions, and
+    the closed set has no negation to build them from.
+    """
 
 
 class AbsenceAction(StrEnum):
@@ -458,6 +466,13 @@ class CastType(StrEnum):
     CIDR = "cidr"
     DURATION = "duration"
     DURATION_MINUTES = "duration_minutes"
+    TOKENS = "tokens"
+    """One line naming several values, space-separated (ADR 0062).
+
+    `ip ssh server algorithm encryption aes256-ctr aes192-ctr` is one directive
+    offering two algorithms. `LIST` accumulates one value per matching line;
+    this accumulates every token the line names. Multi-valued, like `LIST`.
+    """
 
 
 # ---------------------------------------------------------------------------

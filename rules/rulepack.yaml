@@ -10,10 +10,15 @@
 # checksum that repeats under a different version.
 
 rulepack_id: canonical
-version: 1.1.0
-checksum: sha256:6a8259060bee541b44016d1b9e4036353cd2932115b0d31be49896b7cdde1202
+version: 1.2.0
+checksum: sha256:52f3c3bbb5379be2a870ad59593732149318c1a6c9936ada17b4b977d2290210
 
 history:
+  - version: 1.1.0
+    checksum: sha256:6a8259060bee541b44016d1b9e4036353cd2932115b0d31be49896b7cdde1202
+    note: >-
+      Seven rules. Superseded by 1.2.0, which adds NRK-CIPHER-001 and
+      NRK-CIPHER-002 (ADR 0062).
   - version: 1.0.0
     checksum: null
     note: >-
