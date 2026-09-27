@@ -124,7 +124,6 @@ describe('no invented data', () => {
       { match: '/compliance/audits', body: FIXTURES.audits },
       { match: '/training/queue', body: { size: 0, confirmable: 0, entries: [] }, status: 403 },
       { match: '/training/examples', body: { count: 0, examples: [] }, status: 403 },
-      { match: '/health', body: FIXTURES.health },
     ]);
     renderApp('/devices');
     const user = userEvent.setup();
@@ -182,7 +181,6 @@ describe('no invented data', () => {
       { match: '/compliance/audits', body: FIXTURES.audits },
       { match: '/training/queue', body: {}, status: 403 },
       { match: '/training/examples', body: {}, status: 403 },
-      { match: '/health', body: FIXTURES.health },
     ]);
 
     renderApp('/devices');
@@ -206,7 +204,6 @@ describe('DEF-3 — a content hash is not a device identity', () => {
       { match: '/compliance/audits', body: FIXTURES.audits },
       { match: '/training/queue', body: {}, status: 403 },
       { match: '/training/examples', body: {}, status: 403 },
-      { match: '/health', body: FIXTURES.health },
     ]);
 
     renderApp('/devices');
@@ -225,7 +222,6 @@ describe('DEF-3 — a content hash is not a device identity', () => {
       { match: '/compliance/audits', body: FIXTURES.audits },
       { match: '/training/queue', body: {}, status: 403 },
       { match: '/training/examples', body: {}, status: 403 },
-      { match: '/health', body: FIXTURES.health },
     ]);
 
     renderApp('/devices');

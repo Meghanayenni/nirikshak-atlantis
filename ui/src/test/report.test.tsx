@@ -84,7 +84,6 @@ function stubOpenGate(extra: Parameters<typeof mockApi>[0] = []) {
       },
     },
     { match: '/training/examples', body: { count: 0, examples: [] } },
-    { match: '/health', body: FIXTURES.health },
   ]);
 }
 

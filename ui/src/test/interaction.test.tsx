@@ -29,7 +29,6 @@ function stubDevices(overrides: { queueStatus?: number; queue?: unknown } = {}) 
       body: overrides.queue ?? { detail: 'admin role required' },
     },
     { match: '/training/examples', body: { count: 0, examples: [] } },
-    { match: '/health', body: FIXTURES.health },
   ]);
 }
 
@@ -43,7 +42,6 @@ describe('API failures reach the screen', () => {
         body: { detail: 'the operational database is not initialised' },
       },
       { match: '/compliance/audits', body: FIXTURES.audits },
-      { match: '/health', body: FIXTURES.health },
     ]);
 
     renderApp('/devices');
@@ -106,7 +104,6 @@ describe('the report gate', () => {
         },
       },
       { match: '/training/examples', body: { count: 0, examples: [] } },
-      { match: '/health', body: FIXTURES.health },
     ]);
 
     renderApp('/devices');
@@ -138,7 +135,6 @@ describe('the report gate', () => {
         },
       },
       { match: '/training/examples', body: { count: 0, examples: [] } },
-      { match: '/health', body: FIXTURES.health },
     ]);
 
     renderApp('/devices');
@@ -156,7 +152,6 @@ describe('local review marks', () => {
     mockApi([
       { match: '/audit/verify', body: { ok: true, checked: 3, algo: 'sha256' } },
       { match: '/audit/records', body: { verifiable: false, reason: 'filtered', count: 0, records: [] } },
-      { match: '/health', body: FIXTURES.health },
     ]);
 
     renderApp('/activity');

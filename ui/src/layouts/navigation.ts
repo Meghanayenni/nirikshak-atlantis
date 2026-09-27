@@ -7,10 +7,10 @@
  * useful it is.
  *
  * **Beyond the pipeline** is everything built on top of that base: how the
- * platform descriptions are maintained, what has been recorded, and which
- * optional capabilities this deployment actually has. They are capabilities in
- * their own right rather than steps in a run, which is why they are named as a
- * separate group instead of appended to the first.
+ * platform descriptions are maintained, how devices compare with their peers,
+ * and what has been recorded. They are capabilities in their own right rather
+ * than steps in a run, which is why they are named as a separate group instead
+ * of appended to the first.
  *
  * This list is not a security boundary. The backend enforces every rule
  * independently: admin endpoints answer 403 to a non-admin, and a resource
@@ -22,7 +22,6 @@ import {
   Boxes,
   FileText,
   HardDrive,
-  ScrollText,
   ShieldCheck,
   Users,
   Wrench,
@@ -66,7 +65,6 @@ export const SUPPORT_NAV: NavItem[] = [
     adminOnly: true,
   },
   { to: '/activity', label: 'Activity log', stage: 'Every recorded action', icon: Activity },
-  { to: '/status', label: 'Status', stage: 'Installed capabilities', icon: ScrollText },
 ];
 
 export const ALL_NAV: NavItem[] = [...PIPELINE_NAV, ...SUPPORT_NAV];

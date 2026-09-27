@@ -341,32 +341,6 @@ export const FIXTURES = {
     is_verdict: false,
     note: 'A deviation from a peer group is an observation about the fleet, not a compliance verdict.',
   },
-  health: {
-    status: 'ok',
-    version: '0.1.0',
-    schema_version: 1,
-    schema_versions: { operational: 3, audit: 1 },
-    airgap: false,
-    confidence_threshold: 0.85,
-    platform_default_min_confidence: 0.9,
-    platform_default_confidence: 0.95,
-    similarity_model: {
-      available: false,
-      model: 'sentence-transformers/all-MiniLM-L6-v2',
-      package_installed: false,
-      weights_present: false,
-      summary: 'The embedding model is unavailable: sentence-transformers is not installed.',
-      calibrated: false,
-      note: 'No calibrator is fitted (D42). Every suggestion is UNCALIBRATED_SIMILARITY.',
-    },
-    pdf_reporting: {
-      available: false,
-      weasyprint_installed: false,
-      missing_libraries: ['libcairo-2'],
-      detail: 'PDF rendering is unavailable: the weasyprint package is not installed.',
-    },
-    remediation_library: {},
-  },
   users: {
     count: 2,
     users: [

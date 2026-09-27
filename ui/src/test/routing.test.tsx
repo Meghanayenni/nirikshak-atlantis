@@ -54,7 +54,6 @@ describe('the navigation drawer', () => {
       { match: '/compliance/audits', body: FIXTURES.audits },
       { match: '/training/queue', body: {}, status: 403 },
       { match: '/training/examples', body: {}, status: 403 },
-      { match: '/health', body: FIXTURES.health },
     ]);
   }
 
@@ -89,6 +88,19 @@ describe('the navigation drawer', () => {
     }
   });
 
+  it('offers no capability-status screen, in the drawer or by address', async () => {
+    // ADR 0061: probe results are for whoever operates the deployment, and
+    // `GET /health` still answers them. Nothing in the interface calls it.
+    signIn(ADMIN_SESSION);
+    stub();
+    renderApp('/status');
+
+    expect(await screen.findByText('Page not found')).toBeInTheDocument();
+    const drawer = document.querySelector('nav[aria-label="Main"]') as HTMLElement;
+    expect(drawer.querySelector('a[href="/status"]')).toBeNull();
+    expect(drawer.textContent).not.toMatch(/Installed capabilities/);
+  });
+
   it('closes again once a destination is chosen', async () => {
     signIn(ADMIN_SESSION);
     stub();
@@ -115,7 +127,6 @@ describe('the device workspace', () => {
       { match: '/compliance/audits', body: FIXTURES.audits },
       { match: '/training/queue', body: {}, status: 403 },
       { match: '/training/examples', body: {}, status: 403 },
-      { match: '/health', body: FIXTURES.health },
     ]);
 
     renderApp('/devices');

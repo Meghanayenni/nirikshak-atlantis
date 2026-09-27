@@ -59,7 +59,6 @@ function stub(extra: Parameters<typeof mockApi>[0] = []) {
     { match: '/compliance/audits', body: FIXTURES.audits },
     { match: '/training/queue', body: { size: 0, confirmable: 0, entries: [] }, status: 403 },
     { match: '/training/examples', body: { count: 0, examples: [] }, status: 403 },
-    { match: '/health', body: FIXTURES.health },
   ]);
 }
 

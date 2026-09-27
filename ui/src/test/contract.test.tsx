@@ -44,7 +44,6 @@ function stubWorkspace() {
     { match: '/training/examples', body: { count: 0, examples: [] } },
     { match: '/audit/verify', body: { ok: true, records_checked: 7, algo: 'sha256', tamper_evident_not_tamper_proof: true, first_failure_seq: null, failures: [] } },
     { match: '/audit/records', body: { verifiable: false, reason: 'filtered', count: 0, records: [] } },
-    { match: '/health', body: FIXTURES.health },
   ]);
 }
 
@@ -119,7 +118,6 @@ describe('a render fault is contained, never a blank page', () => {
       { match: '/compliance/audits', body: FIXTURES.audits },
       { match: '/training/queue', body: {}, status: 403 },
       { match: '/training/examples', body: {}, status: 403 },
-      { match: '/health', body: FIXTURES.health },
     ]);
 
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});

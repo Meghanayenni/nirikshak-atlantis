@@ -75,7 +75,6 @@ function stubReview(extra: Parameters<typeof mockApi>[0] = []) {
     { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
     { match: '/compliance/audits/aud-1/remediation', body: FIXTURES.remediation },
     { match: '/compliance/audits', body: FIXTURES.audits },
-    { match: '/health', body: FIXTURES.health },
   ]);
 }
 

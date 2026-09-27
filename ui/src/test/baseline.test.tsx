@@ -55,7 +55,6 @@ function show(body: DeviceBaseline, session = ADMIN_SESSION) {
   signIn(session);
   const api = mockApi([
     { match: '/fleet/baseline/device/', body },
-    { match: '/health', body: FIXTURES.health },
   ]);
   const view = renderWithProviders(<PeerBaseline deviceId="file-1" />);
   return { api, view };
@@ -173,7 +172,6 @@ describe('the peer-baseline card', () => {
     signIn(ADMIN_SESSION);
     mockApi([
       { match: '/fleet/baseline/device/', body: { detail: 'this file is outside the first 200 files read' }, status: 409 },
-      { match: '/health', body: FIXTURES.health },
     ]);
     const refused = renderWithProviders(<PeerBaseline deviceId="file-1" />);
     expect(
@@ -182,7 +180,7 @@ describe('the peer-baseline card', () => {
     refused.unmount();
 
     const hash = 'a'.repeat(64);
-    mockApi([{ match: '/health', body: FIXTURES.health }]); // the baseline is unstubbed: a 404 naming the URL
+    mockApi([]); // the baseline is unstubbed: a 404 naming the URL
     const failed = renderWithProviders(<PeerBaseline deviceId={hash} />);
     expect((await screen.findByText(/No peer baseline —/)).textContent).toBe(
       'No peer baseline — the request failed (404)',

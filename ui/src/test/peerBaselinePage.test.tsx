@@ -59,7 +59,6 @@ function stub() {
     { match: '/compliance/audits', body: FIXTURES.audits },
     { match: '/training/queue', body: {}, status: 403 },
     { match: '/training/examples', body: {}, status: 403 },
-    { match: '/health', body: FIXTURES.health },
   ]);
 }
 
@@ -194,7 +193,6 @@ describe('which devices the selector lists', () => {
           ],
         },
       },
-      { match: '/health', body: FIXTURES.health },
     ]);
     renderApp('/peer-baseline');
 

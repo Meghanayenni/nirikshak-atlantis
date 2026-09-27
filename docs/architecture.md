@@ -594,6 +594,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0058 | P18 | A benchmark an operator can choose | D145, D146 |
 | 0059 | P18 | Prose that cannot quietly expire | D147, D148 |
 | 0060 | P18 | A check is only as real as where it ran | D149, D150 |
+| 0061 | P18 | A probe is not a screen | D151 |
 
 ---
 
@@ -605,9 +606,11 @@ a finding or compares a baseline. Every number it shows was returned by the API
 or is a count of rows the API returned.
 
 Navigation follows the pipeline: **Devices** (ingest, parse) → **Compliance**
-(evaluate) → **Remediation** (resolve) → **Reports**, with the activity log and
-the capability status beside it rather than inside it. The drawer stays closed
-until it is asked for.
+(evaluate) → **Remediation** (resolve) → **Reports**, with vendor packs, the
+peer baseline and the activity log beside it rather than inside it. The drawer
+stays closed until it is asked for. There is no capability-status screen
+(ADR 0061): which optional capabilities a deployment has is answered by
+`GET /health`, for whoever operates it.
 
 The three levels of zoom are still one question each, but they are reached
 without leaving the screen. **Fleet** is the device list; **device** is the
