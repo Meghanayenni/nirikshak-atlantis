@@ -188,7 +188,7 @@ see decision D37 and ADR 0017.
 
 **State: THREE OF FOUR CLOSED — NIST at P17 (ADR 0035), DISA STIG and CIS at
 P18 (ADR 0052).** NIST SP 800-53 Rev 5 is
-published by NIST as OSCAL JSON and was obtained. All nine rules now carry
+published by NIST as OSCAL JSON and was obtained. All ten rules now carry
 control identifiers validated against edition 5.2.0, whose own sha256 is recorded
 in `rules/frameworks/`, with the catalog's 182 withdrawn controls listed
 separately — `AC-17(08)` and `AU-08(01)` are both withdrawn and are both exactly
@@ -274,7 +274,7 @@ never pooled (decision D34), so the gap is visible rather than averaged into a
 fleet figure.
 
 **State, derived at ADR 0059.** Seven Cisco development devices — six IOS, one
-NX-OS — reading ten and seven canonical fields respectively, against nine
+NX-OS — reading eleven and seven canonical fields respectively, against ten
 rules. That is enough to validate the *evaluator*: the files disagree, so PASS,
 FAIL and UNKNOWN all arise from real data. It is **not** enough to validate a
 *rule*: seven hand-written devices from one vendor and one author are a sample
@@ -295,7 +295,7 @@ to reason about.
 **Now measured as a cohort size.** P12's peer baselines group devices by platform
 and refuse to claim a deviation below `MIN_COHORT_SIZE` (5). Derived at ADR 0059,
 the nineteen non-holdout files form four cohorts: **Cisco IOS 9, JunOS 5, EOS 4,
-NX-OS 1**. The Cisco IOS cohort is comparable: ten baselines are compared and
+NX-OS 1**. The Cisco IOS cohort is comparable: eleven baselines are compared and
 no device deviates. NX-OS is too small, and each of its seven fields says so.
 JunOS and EOS produce no baseline at all, because neither pack reads a canonical
 field. *(Until P18 this paragraph described "three cohorts of 4, 3 and 3" and no
@@ -318,8 +318,9 @@ make the fleet-cache and peer-baseline numbers look better than the data support
 
 **State: CLOSED for the three shipped platforms.** `snippets/` holds twenty
 snippets — Cisco IOS and Juniper Junos across seven canonical rules, Arista
-EOS across six. The two cipher rules of ADR 0062 have none on any platform:
-nobody has vetted the commands, and the resolver says so. Each names the person who checked it and cites the vendor command
+EOS across six. The two cipher rules of ADR 0062 and the password rule of
+ADR 0063 have none on any platform: nobody has vetted the commands, and the
+resolver says so. Each names the person who checked it and cites the vendor command
 reference or configuration guide the commands were checked against. The loader,
 schema, resolver, dependency ordering, lockout-risk sequencing and report
 integration now run on real snippets rather than only on constructed fixtures.

@@ -78,8 +78,8 @@ frameworks, including CIS Benchmarks, NIST SP 800-53, DISA STIGs, and ISO/IEC
 27001."*
 
 Three are sourced and selectable, each pinned by its source's sha256
-(`rules/frameworks/*.index.yaml`): NIST SP 800-53 Rev 5 edition 5.2.0 (9
-controls mapped, from all 9 rules); DISA Cisco IOS XE Router NDM STIG V3R7 (4 of
+(`rules/frameworks/*.index.yaml`): NIST SP 800-53 Rev 5 edition 5.2.0 (10
+controls mapped, from all 10 rules); DISA Cisco IOS XE Router NDM STIG V3R7 (4 of
 42 requirements, from 3 rules); CIS Cisco IOS XE 17.x Benchmark v2.2.1 (6 of 84
 recommendations, from 6 rules). Every mapping is `project_asserted`
 (`rules/canonical/*.yaml`, enforced by `tests/unit/test_framework_mappings.py`).
@@ -119,9 +119,11 @@ syntax modes — indentation, brace nesting, flat `set` paths
 (`IMPLEMENTED_MODES`, `api/parse/block_parser.py`). OS version is extracted on
 all four platforms (`identity` in each pack; `api/ingest/device_identity.py`).
 
-**Gap.** The statement's own example is not demonstrable: `min_password_length`
-is read by no pack, and the JunOS pack — which reads the three SRX files — reads
-no canonical field at all. Coverage is uneven: IOS reads 10 fields, NX-OS 7,
+**Half of the statement's own example is now demonstrable.** Cisco IOS reads
+`security passwords min-length` into `min_password_length`, and `NRK-PASSWD-001`
+judges it against 15 characters (ADR 0063); branch-rtr-07 sets 12 and fails.
+**Gap.** The Juniper SRX half is not: the JunOS pack — which reads the three SRX files — reads
+no canonical field at all. Coverage is uneven: IOS reads 11 fields, NX-OS 7,
 JunOS and EOS none (`declared_fields`, `api/parse/fields.py`). XML and JSON modes
 raise `UnsupportedSyntaxModeError` rather than returning an empty tree.
 *Blocked on:* SOURCING (vendor documentation for JunOS/EOS field patterns; an
@@ -365,7 +367,9 @@ Compared with the assessment made from the team's restatement:
    delivered on Cisco; strong SSH ciphers and MACs are checked on Cisco IOS only
    (ADR 0062); logging of administrative access is not checked.
 4. **C1 — the statement's own example** (a password setting on Cisco IOS versus
-   Juniper SRX) is not demonstrable: no pack reads `min_password_length`.
+   Juniper SRX) is half demonstrable: Cisco IOS reads and judges
+   `min_password_length` (ADR 0063); no JunOS development file sets a password
+   policy, so the SRX half has nothing to be authored from.
 5. **C2 — "indigenous hardware".** The earlier version listed it as a named
    example; the official text does not mention it. It names SONiC, cloud-native
    security groups and AI-driven infrastructure.

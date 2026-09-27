@@ -105,13 +105,13 @@ def _cohorts_are_9_5_4_1() -> bool:
     return sizes == Counter({"cisco/ios": 9, "juniper/junos": 5, "arista/eos": 4, "cisco/nxos": 1})
 
 
-def _ten_ios_baselines_no_deviation() -> bool:
+def _eleven_ios_baselines_no_deviation() -> bool:
     from api.prioritise.service import fleet_baseline
 
     fleet = fleet_baseline([csm for _, _, csm in _corpus()])
     compared = [b for b in fleet.baselines if b.outcome.value == "compared"]
     return (
-        len(compared) == 10 and {b.cohort for b in compared} == {"cisco/ios"} and not fleet.outliers
+        len(compared) == 11 and {b.cohort for b in compared} == {"cisco/ios"} and not fleet.outliers
     )
 
 
@@ -201,9 +201,9 @@ CLAIMS: tuple[Claim, ...] = (
     ),
     Claim(
         "docs/SOURCING_BACKLOG.md",
-        "ten baselines are compared and\nno device deviates",
-        _ten_ios_baselines_no_deviation,
-        "ten compared baselines, all Cisco IOS, and no outlier",
+        "eleven baselines are compared and\nno device deviates",
+        _eleven_ios_baselines_no_deviation,
+        "eleven compared baselines, all Cisco IOS, and no outlier",
     ),
     Claim(
         "docs/SOURCING_BACKLOG.md",

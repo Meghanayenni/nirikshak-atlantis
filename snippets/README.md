@@ -8,8 +8,8 @@ with no snippet produces no command — not an improvised one.
 
 | Platform | Rules covered |
 | --- | --- |
-| `cisco` / `ios` | seven of nine — none for `NRK-CIPHER-001`/`-002` |
-| `juniper` / `junos` | seven of nine — none for `NRK-CIPHER-001`/`-002` |
+| `cisco` / `ios` | seven of ten — none for `NRK-CIPHER-001`/`-002`, `NRK-PASSWD-001` |
+| `juniper` / `junos` | seven of ten — none for `NRK-CIPHER-001`/`-002`, `NRK-PASSWD-001` |
 | `arista` / `eos` | six — see below |
 
 ---

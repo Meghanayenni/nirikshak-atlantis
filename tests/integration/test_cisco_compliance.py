@@ -79,17 +79,20 @@ def by_rule(findings):
 
 
 def test_rtr_core_passes_every_rule_it_configures(rtr) -> None:
-    """Seven passes, and two abstentions that are not failures (ADR 0062).
+    """Seven passes, and three abstentions that are not failures.
 
     rtr-core-01 writes no `ip ssh server algorithm` line, so what it offers is
-    its release's default list, and no default is declared. The cipher checks
-    abstain on that rather than passing a device whose offer nobody read.
+    its release's default list, and no default is declared (ADR 0062). It sets
+    no `security passwords min-length` either, which does not establish that no
+    minimum is enforced (ADR 0063). Each check abstains rather than passing a
+    device on a setting nobody read.
     """
-    assert summarise(rtr) == {"pass": 7, "fail": 0, "unknown": 2, "not_applicable": 0}
+    assert summarise(rtr) == {"pass": 7, "fail": 0, "unknown": 3, "not_applicable": 0}
     unknown = {f.rule_id: f.unknown_reason for f in rtr if f.status is Verdict.UNKNOWN}
     assert unknown == {
         "NRK-CIPHER-001": UnknownReason.CAPABILITY_UNKNOWN,
         "NRK-CIPHER-002": UnknownReason.CAPABILITY_UNKNOWN,
+        "NRK-PASSWD-001": UnknownReason.CAPABILITY_UNKNOWN,
     }
 
 
@@ -117,8 +120,9 @@ def test_the_boundary_case_passes(rtr) -> None:
 
 
 def test_sw_access_verdict_distribution(sw) -> None:
-    # Two more abstentions since ADR 0062: no SSH algorithm lines.
-    assert summarise(sw) == {"pass": 3, "fail": 2, "unknown": 4, "not_applicable": 0}
+    # Three more abstentions since ADR 0062 and 0063: no SSH algorithm lines,
+    # no password length policy.
+    assert summarise(sw) == {"pass": 3, "fail": 2, "unknown": 5, "not_applicable": 0}
 
 
 def test_telnet_enabled_fails_with_its_citation(sw) -> None:
@@ -174,7 +178,7 @@ def test_no_absence_produces_a_pass(sw) -> None:
 
 def test_findings_record_the_pack_that_read_the_line(rtr) -> None:
     for finding in rtr:
-        assert finding.provenance.pack_versions == {"cisco/ios": "1.5.0"}
+        assert finding.provenance.pack_versions == {"cisco/ios": "1.6.0"}
         assert finding.provenance.rulepack_version == load_rulepack().version
         assert finding.provenance.engine_version
 
@@ -236,7 +240,7 @@ def test_a_run_appends_exactly_one_audit_record(tmp_path, cisco, rulepack) -> No
     assert stored is not None
     assert stored.record.action is AuditAction.AUDIT_RUN
     assert stored.record.subject.id == run_id, "the chain and the findings share one id"
-    assert len(findings) == 9
+    assert len(findings) == 10
     conn.close()
 
 
@@ -290,8 +294,8 @@ def test_the_audit_payload_is_counts_and_identifiers(cisco, rulepack) -> None:
     findings = evaluate_device(csm, rulepack, audit_id="a1")
     payload = audit_payload(csm, rulepack, findings)
 
-    assert payload["verdicts"] == {"pass": 3, "fail": 2, "unknown": 4, "not_applicable": 0}
-    assert payload["rules_evaluated"] == 9
+    assert payload["verdicts"] == {"pass": 3, "fail": 2, "unknown": 5, "not_applicable": 0}
+    assert payload["rules_evaluated"] == 10
     assert set(payload) == {
         "device_id",
         "engine_version",

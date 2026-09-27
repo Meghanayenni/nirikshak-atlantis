@@ -49,8 +49,7 @@ conditional on another field, and `CheckSpec` examines one field by design. So
 the field is reported and not judged, rather than judged badly.
 
 The remaining canonical fields without a rule (`aaa_enabled`,
-`min_password_length`, `snmp_v3_only`, `logging_enabled`) have no parser
-support, so a rule over them would abstain on every device forever while looking
+`snmp_v3_only`, `logging_enabled`) have no parser support, so a rule over them would abstain on every device forever while looking
 supported. `weak_ciphers` will not get one: its name is a verdict, which a rule
 makes and a pack must not. The offered SSH algorithms are read into
 `ssh_ciphers` and `ssh_macs`, and NRK-CIPHER-001 and -002 judge them

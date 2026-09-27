@@ -1,0 +1,45 @@
+rule_id: NRK-PASSWD-001
+title: Locally configured passwords are at least 15 characters
+severity: medium
+rationale: >-
+  A device's local passwords — enable secret, user and line passwords — are a
+  single authentication factor, and they are the fallback when central AAA is
+  unreachable. NIST SP 800-63B-4 requires passwords used as a single factor to be
+  at least 15 characters, and the DISA STIG for this platform requires the same
+  minimum. Fifteen is therefore NIRIKSHAK's threshold; it is data, and an
+  operator with a different policy edits it. The check reads the global
+  minimum-length policy the device enforces on new passwords, not the length of
+  any password already stored, which the configuration does not reveal. A device
+  that sets no such policy abstains rather than failing: the command's own
+  reference describes its default both as "not enabled" and as six characters,
+  and a length policy can also be set by an AAA password policy this check does
+  not read, so absence of this one line does not establish that no minimum is
+  enforced.
+check:
+  field: min_password_length
+  condition: { op: gte, value: 15 }
+references:
+  - "NIST SP 800-63B-4, Digital Identity Guidelines: Authentication and Authenticator Management, section 3.1.1.2 Password Verifiers — https://pages.nist.gov/800-63-4/sp800-63b.html#passwordver"
+  - "DISA Cisco IOS XE Router NDM STIG V3R7, CISC-ND-000550, check and fix text — docs/sources/disa/U_Cisco_IOS-XE_Router_NDM_STIG_V3R7_Manual-xccdf.xml"
+  - "Cisco IOS Security Command Reference: Commands S to Z, security passwords min-length (Command Default, Usage Guidelines) — https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/security/s1/sec-s1-cr-book/sec-cr-s1.html"
+frameworks:
+  - framework: nist
+    control_id: "IA-05(01)"
+    version: "5.2.0"
+    citation: "NIST SP 800-53 Rev 5 — OSCAL catalog, edition 5.2.0, control IA-05(01)"
+    # Our judgement that this check evidences this control, not a
+    # published crosswalk. No catalog maps NIRIKSHAK's own rules.
+    mapping_provenance: project_asserted
+not_mapped:
+  - framework: stig
+    reason: >-
+      CISC-ND-000550 asks for the same 15-character minimum, but its check reads
+      min-length inside an aaa common-criteria policy, a different command this
+      rule does not read. A device meeting it that way would be UNKNOWN here, and
+      one meeting this rule would still be a finding there (ADR 0063).
+  - framework: cis
+    reason: >-
+      Not assessed against CIS. The CIS Cisco IOS XE 17.x Benchmark is referenced
+      and never held, and it was not read when this rule was written, so whether
+      a recommendation asks for this is unanswered rather than answered no
+      (ADR 0063). Mapping it needs someone to read the Benchmark.

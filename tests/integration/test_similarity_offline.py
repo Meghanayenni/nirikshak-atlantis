@@ -81,16 +81,17 @@ def unknown_lines_for(relative: str):
 
 
 def test_the_index_is_built_from_development_packs(index) -> None:
-    """D38 — small, and stated. 25 pairs across 11 fields.
+    """D38 — small, and stated. 26 pairs across 12 fields.
 
     Was 11 pairs over 8 fields from one pack. The NX-OS pack added the rest,
     so the index now spans two *platforms* — still one vendor, and still far
     too small to support any claim about retrieval. The twentieth is
     `ip http server`, from cisco/ios 1.4.0 (ADR 0053); the last five are the
-    SSH algorithm lines from cisco/ios 1.5.0, over two new fields (ADR 0062).
+    SSH algorithm lines from cisco/ios 1.5.0, over two new fields (ADR 0062),
+    and one is the password minimum from 1.6.0 (ADR 0063).
     """
-    assert len(index.entries) == 25
-    assert len(index.fields) == 11
+    assert len(index.entries) == 26
+    assert len(index.fields) == 12
     assert index.vendors == {"cisco"}
 
 
@@ -111,8 +112,8 @@ def test_every_entry_is_a_seed_with_a_named_origin(index) -> None:
 def test_the_index_describes_its_own_size_honestly(index) -> None:
     """The sentence the report and the training screen print."""
     described = index.describe()
-    assert "25 labelled examples" in described
-    assert "11 fields" in described
+    assert "26 labelled examples" in described
+    assert "12 fields" in described
     assert "1 vendor" in described
 
 

@@ -30,7 +30,7 @@ def cisco():
         for p in load_active_packs(use_cache=False)
         if (p.vendor, p.os_family) == ("cisco", "ios")
     )
-    assert pack.pack_version == "1.5.0", "the active Cisco pack should be the parsing pack"
+    assert pack.pack_version == "1.6.0", "the active Cisco pack should be the parsing pack"
     return pack
 
 
@@ -69,9 +69,9 @@ def test_cisco_pack_is_no_longer_detection_only(cisco) -> None:
     # the development corpus could verify them (ADR 0011). One of the three —
     # the affirmative `ip http server` — has had its verifying line since P15
     # (edge-rtr-01.cfg:47) and returned in 1.4.0 (ADR 0053). 1.5.0 adds the two
-    # SSH algorithm patterns (ADR 0062).
-    assert len(cisco.patterns) == 12
-    assert cisco.parent_version == "1.4.0"
+    # SSH algorithm patterns (ADR 0062); 1.6.0 the password minimum (ADR 0063).
+    assert len(cisco.patterns) == 13
+    assert cisco.parent_version == "1.5.0"
 
 
 def test_the_affirmative_http_server_line_is_read_where_it_was_authored(cisco) -> None:
@@ -91,7 +91,7 @@ def test_all_patterns_self_check(cisco) -> None:
     assert cisco.validate_patterns() == {}
 
 
-def test_ten_declared_fields(cisco) -> None:
+def test_eleven_declared_fields(cisco) -> None:
     from api.parse.fields import declared_fields
 
     assert declared_fields(cisco) == [
@@ -105,6 +105,7 @@ def test_ten_declared_fields(cisco) -> None:
         "banner_present",
         "ssh_ciphers",
         "ssh_macs",
+        "min_password_length",
     ]
 
 
@@ -138,8 +139,9 @@ def test_rtr_core_fields(rtr, field_name: str, value: object, lines: list[int]) 
 def test_rtr_core_determines_every_field_it_configures(rtr) -> None:
     result, _ = rtr
     assert len(result.determinable) == 8
-    # No `ip ssh server algorithm` line: parsing sees nothing to read (ADR 0062).
-    assert set(result.abstained) == {"ssh_ciphers", "ssh_macs"}
+    # No `ip ssh server algorithm` line (ADR 0062) and no password minimum
+    # (ADR 0063): parsing sees nothing to read.
+    assert set(result.abstained) == {"ssh_ciphers", "ssh_macs", "min_password_length"}
 
 
 # ---------------------------------------------------------------------------
@@ -267,7 +269,7 @@ def test_provenance_records_the_pack_version(rtr) -> None:
 
     assert provenance is not None
     assert provenance.pack_id == "cisco/ios"
-    assert provenance.pack_version == "1.5.0"
+    assert provenance.pack_version == "1.6.0"
     assert provenance.pattern_id == "p-ssh-version-001"
 
 
@@ -281,6 +283,6 @@ def test_residue_holds_only_unmatched_commands(rtr) -> None:
 
 
 def test_result_summary(rtr, sw) -> None:
-    assert rtr[0].coverage() == pytest.approx(8 / 10)
-    assert sw[0].coverage() == pytest.approx(5 / 10)
-    assert "8/10" in rtr[0].summary()
+    assert rtr[0].coverage() == pytest.approx(8 / 11)
+    assert sw[0].coverage() == pytest.approx(5 / 11)
+    assert "8/11" in rtr[0].summary()

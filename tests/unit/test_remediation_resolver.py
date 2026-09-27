@@ -58,8 +58,8 @@ def test_an_empty_library_yields_the_mandated_sentence() -> None:
     assert not result.has_commands
 
 
-UNVETTED_CISCO_RULES = frozenset({"NRK-CIPHER-001", "NRK-CIPHER-002"})
-"""Cisco rules no person has vetted a snippet for yet (ADR 0062).
+UNVETTED_CISCO_RULES = frozenset({"NRK-CIPHER-001", "NRK-CIPHER-002", "NRK-PASSWD-001"})
+"""Cisco rules no person has vetted a snippet for yet (ADR 0062, ADR 0063).
 
 A snippet names who checked its commands against which document; nobody has for
 these, so none ships and the resolver must say so. This set only shrinks: when a
