@@ -515,3 +515,7 @@ def test_the_selector_options_are_decided_by_the_api(
     for option in body["frameworks"]:
         assert (option["reason"] is None) is option["describes_device"]
     assert "iso" not in {f["framework"] for f in body["frameworks"]}
+    # Rendered as the selector's second line (ADR 0058), so it must stand alone.
+    assert body["note"] == (
+        "Control mappings are this project's judgement, not from a published crosswalk."
+    )

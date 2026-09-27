@@ -96,3 +96,15 @@ the audit returns 409 with the edition's reason, shown beside the selector.
 The decision path is unchanged — the API still returns `describes_device` and
 `reason`, and the backend, not the interface, still decides and refuses. What
 is lost is the warning before selection; the explanation after it remains.
+
+**Note, appended 2026-09-27 — the scope line shortened.** The panel's closing
+sentence, "No benchmark selected: every applicable NIRIKSHAK check runs.
+Mappings from NIRIKSHAK checks to these controls are asserted by this project,
+not taken from a published crosswalk.", is now two lines: "No benchmark
+selected — all checks run." at body size, and beneath it, smaller and muted,
+"Control mappings are this project's judgement, not from a published
+crosswalk." The second line is still the `note` returned by
+`GET /compliance/audits/frameworks/device/{id}`, reworded there so the interface
+keeps one source for it. Same information; no logic changed. The unscoped
+`/compliance/audits/frameworks` note, which a test pins to its wording about
+catalogs, is unchanged.

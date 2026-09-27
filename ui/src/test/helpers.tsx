@@ -63,7 +63,7 @@ const DEFAULT_FRAMEWORK_OPTIONS: Route = {
         reason: null,
       },
     ],
-    note: 'Mappings from NIRIKSHAK checks to these controls are asserted by this project.',
+    note: "Control mappings are this project's judgement, not from a published crosswalk.",
   },
 };
 

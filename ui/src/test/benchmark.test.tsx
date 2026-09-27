@@ -42,7 +42,7 @@ const OPTIONS = {
       reason: 'DISA … is written for cisco/ios; this device is juniper/junos, which the edition does not describe.',
     },
   ],
-  note: 'Mappings from NIRIKSHAK checks to these controls are asserted by this project.',
+  note: "Control mappings are this project's judgement, not from a published crosswalk.",
 };
 
 const REFUSAL =
@@ -80,7 +80,23 @@ describe('the benchmark selector', () => {
 
     expect(await within(scope).findByText(/CIS Cisco IOS XE 17\.x Benchmark · edition v2\.2\.1/)).toBeInTheDocument();
     expect(scope.textContent).not.toMatch(/Describes this device|Does not describe this device/);
-    expect(within(scope).getByText('No benchmark selected: every applicable NIRIKSHAK check runs.', { exact: false })).toBeInTheDocument();
+  });
+
+  it('states the unscoped run in one line and the mapping caveat in a second, quieter one', async () => {
+    stub();
+    renderApp('/devices');
+    const scope = await screen.findByRole('region', { name: /benchmark scope/i });
+
+    const first = await within(scope).findByText('No benchmark selected — all checks run.');
+    const second = within(scope).getByText(
+      "Control mappings are this project's judgement, not from a published crosswalk.",
+    );
+    // Two elements, not one sentence run on: the caveat is smaller and muted.
+    expect(first).not.toBe(second);
+    expect(second.className).toMatch(/text-xs/);
+    expect(second.className).toMatch(/text-muted/);
+    expect(first.className).not.toMatch(/text-xs/);
+    expect(scope.textContent).not.toMatch(/every applicable NIRIKSHAK check runs/);
   });
 
   it('sends the selection and shows a 409 refusal as a reason, not as an empty result', async () => {

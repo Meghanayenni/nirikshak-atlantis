@@ -232,10 +232,9 @@ def frameworks_for_device(conn: Conn, user: CurrentUser, file_id: str) -> dict[s
         "frameworks": device_framework_options(
             row["detected_vendor"], row["detected_os_family"], os_version
         ),
-        "note": (
-            "Mappings from NIRIKSHAK checks to these controls are asserted by this "
-            "project, not taken from a published crosswalk."
-        ),
+        # Shown under the selector as its own muted line (ADR 0058), in both
+        # states, so it is written to stand alone.
+        "note": "Control mappings are this project's judgement, not from a published crosswalk.",
     }
 
 

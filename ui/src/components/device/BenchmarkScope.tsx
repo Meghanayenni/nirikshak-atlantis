@@ -66,12 +66,12 @@ export function BenchmarkScope({
         </ul>
       )}
 
-      <p className="mt-2 text-xs text-muted">
+      <p className="mt-2 text-ink-2">
         {selected.length === 0
-          ? 'No benchmark selected: every applicable NIRIKSHAK check runs.'
-          : `Only checks mapped to ${selected.map((f) => f.toUpperCase()).join(', ')} will run; the rest are reported as not assessed, each with its reason.`}{' '}
-        {options.data?.note}
+          ? 'No benchmark selected — all checks run.'
+          : `Only checks mapped to ${selected.map((f) => f.toUpperCase()).join(', ')} will run; the rest are reported as not assessed, each with its reason.`}
       </p>
+      {options.data?.note && <p className="mt-0.5 text-xs text-muted">{options.data.note}</p>}
 
       {refusal && (
         <div role="alert" className="mt-3 rounded border border-unknown-br bg-unknown-bg px-3 py-2">
