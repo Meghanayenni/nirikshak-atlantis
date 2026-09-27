@@ -7,9 +7,10 @@
  * appear, and an empty checkbox for it would read as "checked and clean".
  *
  * A benchmark whose edition does not describe the device is still offered, and
- * says so plainly with the API's reason. It is not disabled: the refusal belongs
- * to the backend, which answers 409 with its own sentence, and that sentence is
- * shown where the operator is looking rather than turned into an empty result.
+ * is not disabled. The per-row "does not describe this device" line was removed
+ * at the team's request; the refusal still belongs to the backend, which answers
+ * 409 with its own sentence, and that sentence is shown where the operator is
+ * looking rather than turned into an empty result.
  */
 import { useApi } from '@/hooks/useApi';
 import { getFrameworkOptions } from '@/services/audits';
@@ -52,17 +53,11 @@ export function BenchmarkScope({
                   className="mt-1"
                   checked={selected.includes(option.framework)}
                   onChange={() => toggle(option.framework)}
-                  aria-describedby={`scope-${option.framework}`}
                 />
                 <span>
                   <span className="font-medium uppercase text-ink">{option.framework}</span>
                   <span className="ml-2 text-muted">
                     {option.document} · edition {option.edition}
-                  </span>
-                  <span id={`scope-${option.framework}`} className="block text-xs text-muted">
-                    {option.describes_device
-                      ? 'Describes this device.'
-                      : `Does not describe this device — ${option.reason}`}
                   </span>
                 </span>
               </label>

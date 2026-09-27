@@ -74,13 +74,14 @@ describe('the benchmark selector', () => {
     expect(scope.textContent).not.toMatch(/\bISO\b/);
   });
 
-  it('says plainly when a benchmark does not describe the device, in the API’s words', async () => {
+  it('shows each benchmark by label, name and edition, with no per-row description line', async () => {
     stub();
     renderApp('/devices');
     const scope = await screen.findByRole('region', { name: /benchmark scope/i });
 
-    expect(await within(scope).findByText(/Does not describe this device — CIS Cisco IOS XE/)).toBeInTheDocument();
-    expect(within(scope).getByText('Describes this device.')).toBeInTheDocument();
+    expect(await within(scope).findByText(/CIS Cisco IOS XE 17\.x Benchmark · edition v2\.2\.1/)).toBeInTheDocument();
+    expect(scope.textContent).not.toMatch(/Describes this device|Does not describe this device/);
+    expect(within(scope).getByText('No benchmark selected: every applicable NIRIKSHAK check runs.', { exact: false })).toBeInTheDocument();
   });
 
   it('sends the selection and shows a 409 refusal as a reason, not as an empty result', async () => {
