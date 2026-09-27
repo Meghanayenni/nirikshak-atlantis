@@ -1,0 +1,209 @@
+# NIRIKSHAK vendor pack — arista eos
+#
+# 1.2.0 (ADR 0064): the first canonical security fields on EOS.
+#
+#   telnet_enabled        `no shutdown` anywhere under `management telnet`
+#   idle_timeout_seconds  `idle-timeout N` under `management ssh` and
+#                         `management telnet` -- minutes, per the EOS manual
+#   banner_present        `banner motd`, whose body is now a literal block
+#
+# AUTHORED FROM corpus/arista/dev/dc1-spine-01.cfg lines 36-42 and 62-65. No
+# evaluation file was opened.
+#
+# `management console` is NOT read for idle_timeout_seconds. A console session
+# needs physical access; the field means a remote management session's timeout,
+# and the Cisco pack excludes `line con 0` for the same reason.
+#
+# `shutdown` under `management telnet` has no pattern: no development file
+# carries it. A device that writes it, or writes no telnet block at all,
+# abstains -- the vendor's default is sourced but not declared (see the end of
+# this file).
+#
+# 1.0.1 (P10, defect DEF-9). ONE CHANGE from 1.0.0: `comment_prefixes` now
+# declares '!'.
+#
+# Arista EOS uses '!' as its comment character exactly as Cisco IOS does, and
+# the Cisco pack has declared it since P4. This pack did not, so every '!' line
+# became a parse node and landed in the unknown-line queue: 23 of 57 residue
+# lines across the Arista corpus, 40% of the queue, none of it configuration.
+#
+# `api/normalise/residue.py` states the invariant that breaks:
+#
+#     Comments, blank lines and literal-block bodies cannot appear here. They
+#     never became nodes at P4, so a queue full of `!` and banner prose is
+#     impossible by construction rather than by filtering.
+#
+# For Arista it was neither. That mattered little before P10 and matters a great
+# deal now: the queue is the input to clustering and to the similarity index,
+# and at P11 it is what an administrator reads one line at a time. Making a
+# person page through '!' twenty-three times is how careless confirmations
+# happen, and a careless confirmation enters a vendor pack permanently.
+#
+# AUTHORED FROM: corpus/arista/dev/sw-leaf-01.cfg and sw-spine-01.cfg, which use
+# '!' as a section separator throughout. This is a reading of the development
+# corpus, not general vendor knowledge — the same standard every pattern is held
+# to. NO PARSING PATTERN IS ADDED. This pack remains detection-and-identity only
+# (decision D41).
+#
+# WHY IDENTITY STILL WORKS: `detect` and `identity` are applied to raw lines at
+# ingestion, before the parse tree exists, so the '! device: ...' signature and
+# the os_version pattern that reads it are unaffected by comment stripping.
+# Verified rather than assumed.
+#
+# CHECKSUM: sha256 of this file's bytes as stored (LF endings), with the
+# `checksum:` line removed. The repository had no reproducible convention —
+# the checksums on earlier packs match no computable digest, which
+# `tests/unit/test_rulepack_loading.py` already records as "a mistake worth
+# not repeating". This one is reproducible; the older ones are left alone.
+
+vendor: arista
+os_family: eos
+pack_version: 1.2.0
+parent_version: 1.1.0
+status: active
+created_by: team-atlantis
+checksum: sha256:1182368ea1a701efdf1f6419cece288910a9ec59553ef9a156f9a69d959ede90
+
+comment_prefixes: ['!']
+
+# EOS writes `banner motd` on its own line and closes the body with a line
+# reading EOF (dc1-spine-01.cfg lines 62-65). The body is prose and must be
+# beyond the pattern engine's reach; until 1.2.0 its lines reached the training
+# queue as unknown configuration.
+literal_blocks:
+  - name: banner
+    open: '^banner motd$'
+    terminator: 'EOF'
+
+detect:
+  - { type: regex, pattern: '^! device: \S+ \(', weight: 0.35 }
+  - { type: regex, pattern: '^transceiver qsfp default-mode ', weight: 0.3 }
+  - { type: regex, pattern: '^management api http-commands', weight: 0.25 }
+  - { type: regex, pattern: '^interface Ethernet\d', weight: 0.2 }
+  - { type: regex, pattern: '^line vty \d+', weight: 0.05 }
+
+identity:
+  - field: hostname
+    match:   { type: regex, pattern: '^hostname (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['hostname sw-leaf-01']
+  - field: os_version
+    match:   { type: regex, pattern: '^! device: \S+ \([^,]+, EOS-(\S+)\)' }
+    capture: { value: '$1', cast: str }
+    examples: ['! device: sw-leaf-01 (DCS-7050SX3-48YC8, EOS-4.29.2F)']
+  # The hardware model, from the same header line EOS writes at the top of
+  # `show running-config`. It is a COMMENT, and reading it is deliberate:
+  # ADR 0011 keeps identity extraction on the raw line list precisely because
+  # platform metadata legitimately lives in comments while active security
+  # configuration never does. This line is the clearest example of that -- the
+  # device emits it, every Arista file in the corpus carries it, and no
+  # canonical security field is read from it.
+  - field: model
+    match:   { type: regex, pattern: '^! device: \S+ \(([^,]+), EOS-\S+\)' }
+    capture: { value: '$1', cast: str }
+    examples:
+      - '! device: sw-leaf-01 (DCS-7050SX3-48YC8, EOS-4.29.2F)'
+      - '! device: sw-spine-01 (DCS-7280CR3-32P4, EOS-4.30.1F)'
+
+# NO `serial` PATTERN, and this is a finding rather than an omission.
+# Not one running-config in this corpus carries a serial number, on any of the
+# four platforms. A serial is inventory data: it appears in `show version` and
+# `show inventory`, not in a configuration export. Declaring a pattern for it
+# would put a regex in this pack that no device could ever satisfy, which is
+# what CLAUDE.md warns against -- a field that looks supported while producing
+# UNKNOWN forever. DeviceIdentity.serial therefore stays UNKNOWN, honestly.
+#
+# VERSION NUMBERING. This is 1.1.0 rather than 1.0.2 because a TRAINED
+# arista/eos 1.0.2 exists in packs/archive/. Two different packs sharing one
+# (platform, version) would make `audit_run.pack_versions` ambiguous forever --
+# a stored finding citing "arista 1.0.2" could mean either. The archive is not
+# only insurance; it reserves the version numbers it holds.
+
+patterns:
+
+  # --- telnet_enabled -------------------------------------------------------
+  # dc1-spine-01 line 42, under `management telnet` (line 40). The scope is a
+  # prefix, so a `no shutdown` inside a VRF sub-block of `management telnet`
+  # counts too. That matters for the day the absent-means-off default is
+  # declared: every way this pack knows of enabling telnet must be read first.
+  - id: p-telnet-enabled-001
+    field: telnet_enabled
+    scope: { block: ['^management telnet$'] }
+    match:   { type: regex, pattern: '^no shutdown$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['no shutdown']
+    negative_examples: ['shutdown', 'no shutdown extra']
+
+  # --- idle_timeout_seconds -------------------------------------------------
+  # Lines 37 (ssh, 15) and 41 (telnet, 0). The value is minutes: the EOS manual
+  # (Session Management Commands, `idle-timeout (SSH Management)` and
+  # `idle-timeout (Telnet Management)`) gives the parameter in minutes and says
+  # 0 disables the timeout. Converted to seconds by `duration_minutes`, so the
+  # canonical field keeps one unit across platforms.
+  #
+  # Both remote planes are read, so a device whose ssh and telnet timeouts
+  # differ abstains and cites both -- as two Cisco vty ranges do (ADR 0026).
+  # Reading ssh alone would pass dc1-spine-01 while its telnet sessions never
+  # expire.
+  - id: p-idle-timeout-001
+    field: idle_timeout_seconds
+    scope: { block: ['^management ssh$'] }
+    match:   { type: regex, pattern: '^idle-timeout (\d+)$' }
+    capture: { value: '$1', cast: duration_minutes }
+    examples: ['idle-timeout 15']
+    negative_examples: ['idle-timeout', 'idle-timeout fifteen']
+
+  - id: p-idle-timeout-002
+    field: idle_timeout_seconds
+    scope: { block: ['^management telnet$'] }
+    match:   { type: regex, pattern: '^idle-timeout (\d+)$' }
+    capture: { value: '$1', cast: duration_minutes }
+    examples: ['idle-timeout 0']
+    negative_examples: ['idle-timeout', 'idle-timeout zero']
+
+  # --- banner_present -------------------------------------------------------
+  # Line 62. The opener only; the body is the literal block above.
+  - id: p-banner-present-001
+    field: banner_present
+    scope: { block: null }
+    match:   { type: regex, pattern: '^banner motd$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['banner motd']
+    negative_examples: ['no banner motd', 'banner login']
+
+# ---------------------------------------------------------------------------
+# Platform knowledge: SOURCED, AND DELIBERATELY NOT DECLARED (ADR 0064).
+#
+# Arista's EOS User Manual, edition 4.36.2F, chapter Connection Management
+# (https://www.arista.com/en/um-eos/eos-connection-management), states in its
+# opening paragraph that EOS disables Telnet by default. That would let an
+# absent `management telnet` block resolve to telnet_enabled = false, and
+# NRK-TELNET-001 PASS as INFERRED on sw-leaf-01 and sw-spine-01.
+#
+# It is not declared here. Declaring it moves the evaluation harness's
+# wrong-confident count from 0 to 1: the one EOS evaluation label for the field
+# is `not_determinable`, because a label records only what the file alone
+# shows, and the harness counts any assertion against such a label as wrong.
+# How inferred values should be scored is a decision about the safety metric,
+# and it was taken as: not yet. Until it is, an absent block abstains, as it did
+# before this version.
+#
+# The entry, ready to declare once that decision is made:
+#
+#   capabilities:
+#     - field: telnet_enabled
+#       supported: true
+#       provenance: { platform: arista/eos, source_type: vendor_documentation,
+#         source_id: 'Arista EOS User Manual 4.36.2F — Connection Management',
+#         locator: 'chapter introduction, the list of connection methods',
+#         status: sourced, applies_to_versions: 'read in the 4.36.2F edition' }
+#   defaults:
+#     - field: telnet_enabled
+#       value: false
+#       provenance: { ...as above...,
+#         locator: 'chapter introduction, the statement of the default Telnet state' }
+#
+# arista.com refused a direct download; the page was read through a rendering
+# fetcher, so a person should confirm the reading before it is declared. The
+# corpus devices run 4.29.2F and 4.30.1F; the claim was read in 4.36.2F only.
+# ---------------------------------------------------------------------------

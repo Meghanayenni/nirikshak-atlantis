@@ -92,12 +92,20 @@ def _no_defaults_or_capabilities() -> bool:
     return all(not p.defaults and not p.capabilities for p in _packs())
 
 
-def _junos_and_eos_read_no_canonical_field() -> bool:
+def _junos_reads_no_canonical_field() -> bool:
     from api.parse.fields import declared_fields
 
-    return not declared_fields(_pack("juniper", "junos")) and not declared_fields(
-        _pack("arista", "eos")
-    )
+    return not declared_fields(_pack("juniper", "junos"))
+
+
+def _eos_reads_three_fields() -> bool:
+    from api.parse.fields import declared_fields
+
+    return set(declared_fields(_pack("arista", "eos"))) == {
+        "telnet_enabled",
+        "idle_timeout_seconds",
+        "banner_present",
+    }
 
 
 def _cohorts_are_9_5_4_1() -> bool:
@@ -183,9 +191,15 @@ CLAIMS: tuple[Claim, ...] = (
     ),
     Claim(
         "docs/architecture.md",
-        "neither pack reads a canonical field, so there is nothing to\ncompare",
-        _junos_and_eos_read_no_canonical_field,
-        "the JunOS and EOS packs declare no canonical-field pattern",
+        "its pack reads no canonical field, so there is nothing to\ncompare",
+        _junos_reads_no_canonical_field,
+        "the JunOS pack declares no canonical-field pattern",
+    ),
+    Claim(
+        "docs/architecture.md",
+        "does the same for the three fields its pack reads",
+        _eos_reads_three_fields,
+        "the EOS pack reads telnet_enabled, idle_timeout_seconds and banner_present",
     ),
     Claim(
         "docs/architecture.md",

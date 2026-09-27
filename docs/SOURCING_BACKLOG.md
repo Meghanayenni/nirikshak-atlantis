@@ -132,6 +132,18 @@ locators only, never transcribed vendor prose.
 branch fire on real data for the first time. This is the highest value-per-hour
 item on the list.
 
+**One default obtained, and deliberately not declared (ADR 0064).** Arista's EOS
+User Manual (4.36.2F, *Connection Management*) states that EOS disables Telnet
+by default. Declared, it made the branch fire on two EOS development devices —
+and moved the harness's wrong-confident count from 0 to 1, because the EOS
+evaluation label for `telnet_enabled` is `not_determinable`: a label records
+what the file alone shows, and the harness counts any assertion against such a
+label as wrong. So the next blocker here is no longer only sourcing. It is a
+decision about how the harness scores an inferred value, taken as "not yet".
+The ready-to-declare entry sits commented at the end of
+`packs/builtin/arista_eos/1.2.0.yaml`, with the note that a person should
+confirm the reading (arista.com refused a direct download).
+
 **A second capability now waits here too.** P12's exposure ranking abstains with
 `indeterminate_interfaces`, and ADR 0034 built the construct that would close it:
 a pack declares `interface_roles` — anchored interface-name patterns with the
@@ -281,10 +293,12 @@ FAIL and UNKNOWN all arise from real data. It is **not** enough to validate a
 too small to say anything about the check. *(This paragraph said "two Cisco
 development devices" until P18; that was the P4 corpus.)*
 
-Arista remains detection-only. Juniper is no longer: it reads firewall filters
-in both surfaces and four identity fields (ADR 0033, ADR 0043). **Neither reads
-a canonical security field**, which is what recall 0 measures — so both still
-produce a canonical model with zero scored fields, and Juniper's residue is no
+Arista is no longer detection-only: since ADR 0064 it reads `telnet_enabled`,
+`idle_timeout_seconds` and `banner_present` from one development file — and
+still scores recall 0, because none of the three is asserted on its one
+evaluation file. Juniper reads firewall filters in both surfaces and four
+identity fields (ADR 0033, ADR 0043) but **no canonical security field**, so
+its canonical model still has zero scored fields, though its residue is no
 longer the whole file.
 
 **What would close it.** More Cisco devices with genuine variation rather than
@@ -297,8 +311,8 @@ and refuse to claim a deviation below `MIN_COHORT_SIZE` (5). Derived at ADR 0059
 the nineteen non-holdout files form four cohorts: **Cisco IOS 9, JunOS 5, EOS 4,
 NX-OS 1**. The Cisco IOS cohort is comparable: eleven baselines are compared and
 no device deviates. NX-OS is too small, and each of its seven fields says so.
-JunOS and EOS produce no baseline at all, because neither pack reads a canonical
-field. *(Until P18 this paragraph described "three cohorts of 4, 3 and 3" and no
+EOS is too small as well, and each of the three fields it now reads says so.
+JunOS produces no baseline at all, because its pack reads no canonical field. *(Until P18 this paragraph described "three cohorts of 4, 3 and 3" and no
 baseline anywhere — the P12 corpus.)*
 
 Note what the Cisco IOS cohort does and does not buy: it is *comparable*, not

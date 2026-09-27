@@ -24,7 +24,7 @@ import pytest
 from api.comply.engine import evaluate_device
 from api.comply.rulepacks import load_rulepack
 from api.comply.service import run_audit, summarise
-from api.ingest.packs import load_active_packs
+from api.ingest.packs import PACKS_ROOT, load_active_packs, load_pack
 from api.models.enums import AuditAction, UnknownReason, Verdict
 from api.normalise.service import build_csm
 from api.parse.service import parse_configuration
@@ -193,8 +193,13 @@ def test_a_second_run_produces_identical_findings(cisco, rulepack) -> None:
 
 
 def test_a_detection_only_device_abstains_on_everything(rulepack) -> None:
-    """Arista is recognised but not parseable — every control is unreadable."""
-    pack = next(p for p in load_active_packs(use_cache=False) if p.vendor == "arista")
+    """A recognised, unparseable platform — every control is unreadable.
+
+    Arista EOS 1.1.0 as it shipped, which read identity and nothing else. The
+    active EOS pack reads three fields since ADR 0064, so it no longer is one.
+    """
+    pack = load_pack(PACKS_ROOT / "arista_eos" / "1.1.0.yaml")
+    assert pack.is_detection_only
     path = Path("corpus/arista/dev/sw-leaf-01.cfg")
     file_id = hashlib.sha256(path.read_bytes()).hexdigest()
     parsed = parse_configuration(

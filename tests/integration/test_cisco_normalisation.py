@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from api.ingest.packs import load_active_packs
+from api.ingest.packs import PACKS_ROOT, load_active_packs, load_pack
 from api.models.enums import ConfidenceMethod, FieldState, UnknownReason
 from api.normalise.service import build_csm
 from api.parse.service import parse_configuration
@@ -254,12 +254,13 @@ def test_acls_and_interfaces_are_extracted(rtr) -> None:
 
 
 def test_a_detection_only_pack_yields_a_valid_empty_csm() -> None:
-    """Arista is recognised but not yet parseable. That is an honest state.
+    """A recognised but unparseable platform. That is an honest state.
 
     Device identity is established, no field is claimed, and the whole file
-    becomes residue for the training queue — not an exception.
+    becomes residue for the training queue — not an exception. Arista EOS 1.1.0
+    as it shipped; the active EOS pack reads fields since ADR 0064.
     """
-    pack = next(p for p in load_active_packs(use_cache=False) if p.vendor == "arista")
+    pack = load_pack(PACKS_ROOT / "arista_eos" / "1.1.0.yaml")
     assert pack.is_detection_only
 
     path = Path("corpus/arista/dev/sw-leaf-01.cfg")

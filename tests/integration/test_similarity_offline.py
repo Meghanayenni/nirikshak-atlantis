@@ -81,18 +81,20 @@ def unknown_lines_for(relative: str):
 
 
 def test_the_index_is_built_from_development_packs(index) -> None:
-    """D38 — small, and stated. 26 pairs across 12 fields.
+    """D38 — small, and stated. 30 pairs across 12 fields, two vendors.
 
     Was 11 pairs over 8 fields from one pack. The NX-OS pack added the rest,
     so the index now spans two *platforms* — still one vendor, and still far
     too small to support any claim about retrieval. The twentieth is
     `ip http server`, from cisco/ios 1.4.0 (ADR 0053); the last five are the
-    SSH algorithm lines from cisco/ios 1.5.0, over two new fields (ADR 0062),
-    and one is the password minimum from 1.6.0 (ADR 0063).
+    SSH algorithm lines from cisco/ios 1.5.0, over two new fields (ADR 0062);
+    one more is the password minimum from 1.6.0 (ADR 0063); and four come from
+    arista/eos 1.2.0 (ADR 0064), the first seeds from a second vendor. Still far
+    too small, and one author wrote every line (SOURCING_BACKLOG gap 8).
     """
-    assert len(index.entries) == 26
+    assert len(index.entries) == 30
     assert len(index.fields) == 12
-    assert index.vendors == {"cisco"}
+    assert index.vendors == {"cisco", "arista"}
 
 
 def test_every_entry_traces_to_a_development_configuration(index, development_lines) -> None:
@@ -102,7 +104,7 @@ def test_every_entry_traces_to_a_development_configuration(index, development_li
 
 def test_every_entry_is_a_seed_with_a_named_origin(index) -> None:
     origins = {entry.origin.split(":")[0] for entry in index.entries}
-    assert origins == {"cisco/ios", "cisco/nxos"}
+    assert origins == {"cisco/ios", "cisco/nxos", "arista/eos"}
 
     for entry in index.entries:
         assert entry.source is ExampleSource.SEED
@@ -112,9 +114,9 @@ def test_every_entry_is_a_seed_with_a_named_origin(index) -> None:
 def test_the_index_describes_its_own_size_honestly(index) -> None:
     """The sentence the report and the training screen print."""
     described = index.describe()
-    assert "26 labelled examples" in described
+    assert "30 labelled examples" in described
     assert "12 fields" in described
-    assert "1 vendor" in described
+    assert "2 vendor" in described
 
 
 def test_no_identity_pattern_leaks_into_the_index(index) -> None:

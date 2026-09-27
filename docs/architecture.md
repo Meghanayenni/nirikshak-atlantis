@@ -312,10 +312,11 @@ minimum of ADR 0063 make it eleven, still with none. That zero is a result rathe
 response distinguishes them: a cohort below the floor carries an explanation and
 an outcome that is not `compared`, while these were compared and agreed.
 
-The other three cohorts, derived at ADR 0059: **NX-OS** is one device, so its
-seven fields each carry the outcome `cohort_too_small`. **JunOS** (five devices)
-and **EOS** (four) produce no baseline row at all — not because they are too
-small, but because neither pack reads a canonical field, so there is nothing to
+The other three cohorts, derived at ADR 0059 and again at ADR 0064: **NX-OS** is
+one device, so its seven fields each carry the outcome `cohort_too_small`, and
+**EOS** (four devices) now does the same for the three fields its pack reads.
+**JunOS** (five devices) produces no baseline row at all — not because it is too
+small, but because its pack reads no canonical field, so there is nothing to
 compare. Every one of the nineteen files has an active pack; until P18 this
 paragraph said two did not.
 
@@ -598,6 +599,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0061 | P18 | A probe is not a screen | D151 |
 | 0062 | P18 | The algorithms a server offers, and who calls them weak | D152, D153, D154 |
 | 0063 | P18 | A password minimum, and what its absence does not say | D155, D156, D157 |
+| 0064 | P18 | EOS management blocks, and a sourced default held back | D158, D159, D160 |
 
 ---
 

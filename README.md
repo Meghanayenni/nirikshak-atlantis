@@ -44,7 +44,7 @@ on. And the accuracy of that pipeline is a measurement rather than a claim —
 | | |
 | --- | --- |
 | Platforms with a vendor pack | **4** — Cisco IOS, Cisco NX-OS, Juniper Junos, Arista EOS |
-| Platforms reading canonical security fields | **2** — IOS (eleven fields), NX-OS (seven) |
+| Platforms reading canonical security fields | **3** — IOS (eleven fields), NX-OS (seven), EOS (three) |
 | Access lists analysed, across 3 packs | **6**, none dropped |
 | ACL observations on real corpus files | 5 shadowed, 4 redundant, 3 overly permissive |
 | Frameworks with a sourced catalog | **3 of 4** — NIST SP 800-53 Rev 5 (5.2.0); DISA Cisco IOS XE Router NDM STIG (V3R7); CIS Cisco IOS XE 17.x Benchmark (v2.2.1). Each pinned by sha256; ISO/IEC 27001 not sourced |
@@ -95,11 +95,13 @@ cannot express, or an honest UNKNOWN — and builds the canonical model the
 compliance engine will consume.
 
 The Cisco IOS pack reads eleven canonical fields and the Cisco NX-OS pack seven.
-Juniper reads firewall filters in both surfaces and four identity fields; Arista
-reads three identity fields. **Neither reads a canonical security field**, so
-every compliance check on those platforms abstains with `no_match` and both
-score recall 0 in the harness — an honest state rather than a placeholder: the
-platform is recognised, and every field no pack can read says UNKNOWN.
+Arista EOS reads three identity fields and three canonical ones — telnet,
+the SSH and telnet idle timeouts, and the banner (ADR 0064). Juniper reads
+firewall filters in both surfaces and four identity fields, and **no canonical
+security field**, so every compliance check on JunOS abstains with `no_match`.
+Both still score recall 0 in the harness: nothing EOS reads is asserted on its
+one evaluation file. That is an honest state rather than a placeholder: every
+field no pack can read says UNKNOWN.
 
 **Four platforms are now detected and three parse access lists.**
 `corpus/cisco/dev/dc1-leaf-01.cfg` scored 0.25 against Cisco IOS — below the

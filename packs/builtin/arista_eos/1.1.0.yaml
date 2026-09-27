@@ -41,9 +41,9 @@ vendor: arista
 os_family: eos
 pack_version: 1.1.0
 parent_version: 1.0.0
-status: active
+status: deprecated
 created_by: team-atlantis
-checksum: sha256:32fd0c69143cbcda3a8d4c2e8fa0cf48d9b727c29f0ecb69dd424f4c1b5f4d10
+checksum: sha256:cee7e7f2a423e037f24fae6137e582b57241869fb2c84e9389c229055a5cc55d
 
 comment_prefixes: ['!']
 
@@ -82,7 +82,7 @@ identity:
 # four platforms. A serial is inventory data: it appears in `show version` and
 # `show inventory`, not in a configuration export. Declaring a pattern for it
 # would put a regex in this pack that no device could ever satisfy, which is
-# what DEVELOPER_GUIDE.md warns against -- a field that looks supported while producing
+# what CLAUDE.md warns against -- a field that looks supported while producing
 # UNKNOWN forever. DeviceIdentity.serial therefore stays UNKNOWN, honestly.
 #
 # VERSION NUMBERING. This is 1.1.0 rather than 1.0.2 because a TRAINED
