@@ -33,7 +33,12 @@ ROOT = ("root", "admin-long-password-1")
 
 CORPUS = Path("corpus")
 ROUTEROS = CORPUS / "mikrotik/dev/edge-mt-01.rsc"
-FINGERPRINTS = ["/ip firewall filter", "/ip service", "/system ntp client"]
+FINGERPRINTS = ["/ip firewall filter", "/ip neighbor discovery-settings", "/system ntp client"]
+
+DEMO_LINE = "/ip service disable telnet,ftp,www,api"
+"""The line the demo confirms. Printed verbatim in MikroTik's First Time
+Configuration guide, and self-contained: it names its own path, so the
+section-scoping limit of ADR 0067 cannot touch it."""
 
 
 @pytest.fixture
@@ -184,7 +189,7 @@ def test_an_unrecognised_file_is_eligible_and_says_what_it_shows(client: TestCli
     assert body["eligible"] is True
     assert body["syntax"]["derived"] == "indent"
     assert body["comments"]["prefix"] == "#"
-    assert body["structure"]["section_path_lines"] == 12
+    assert body["structure"]["section_path_lines"] == 14
     assert body["structure"]["indented_lines"] == 0
     assert len(body["fingerprints"]["candidates"]) == 8
     assert body["split_check"] == "not an evaluation or held-out corpus file"
@@ -321,7 +326,7 @@ def test_after_bootstrap_the_file_detects_against_the_new_pack(
     assert body["detection"]["score"] == pytest.approx(1.0, abs=1e-5)
     assert [d["pattern"] for d in body["detect"]] == [
         "^/ip firewall filter$",
-        "^/ip service$",
+        "^/ip neighbor discovery-settings$",
         "^/system ntp client$",
     ]
 
@@ -345,16 +350,19 @@ def test_after_bootstrap_the_training_loop_runs_unchanged(client: TestClient) ->
     audited = client.post(f"/compliance/audits?file_id={file_id}", auth=ALICE)
     assert audited.status_code == 201, audited.text
     residue_before = audited.json()["residue_lines"]
-    assert residue_before == 35, "every content line is unknown to a pack with no patterns"
+    assert residue_before == 31, "every content line is unknown to a pack with no patterns"
 
     queue = client.get(f"/training/queue?file_id={file_id}", auth=ROOT).json()
-    entry = next(e for e in queue["entries"] if e["line"] == "set telnet disabled=yes")
+    entry = next(e for e in queue["entries"] if e["line"] == DEMO_LINE)
+    # Top level and alone in its shape: nothing section-scoped is confirmed.
+    assert entry["occurrences"] == 1
+    assert entry["block_path"] == []
 
     confirmed = client.post(
         "/training/confirm",
         json={
             "cluster_id": entry["cluster_id"],
-            "line": "set telnet disabled=yes",
+            "line": DEMO_LINE,
             "vendor": "mikrotik",
             "os_family": "routeros",
             "outcome": "corrected",
@@ -394,7 +402,8 @@ def test_after_bootstrap_the_training_loop_runs_unchanged(client: TestClient) ->
     ).json()["findings"]
     telnet = next(f for f in findings if f["rule_id"] == "NRK-TELNET-001")
     assert telnet["status"] == "pass"
-    assert telnet["evidence"][0]["raw_line"].strip() == "set telnet disabled=yes"
+    assert telnet["evidence"][0]["raw_line"].strip() == DEMO_LINE
+    assert telnet["evidence"][0]["line_start"] == 35
 
 
 # ---------------------------------------------------------------------------

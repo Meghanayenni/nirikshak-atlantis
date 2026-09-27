@@ -6,15 +6,15 @@
 # (ADR 0067): MikroTik RouterOS, which no pack describes.
 #
 # Provenance : every command below is a form shown in MikroTik's RouterOS
-#              documentation (help.mikrotik.com), written in the /export shape
-#              that documentation shows: a section path at column zero, then
-#              `add` or `set` lines, properties in alphabetical order.
-#              Configuration Management (export format), First Time
-#              Configuration (bridge, addressing, input filter, service and
-#              ssh hardening, neighbour discovery, mac-server), Identity, NTP.
-#              `set <service> disabled=yes` under /ip service is the export
-#              form of the documented `/ip service disable telnet,ftp,www,api`,
-#              not a line the documentation prints verbatim.
+#              documentation (help.mikrotik.com). Most sections are written in
+#              the /export shape that Configuration Management shows (a section
+#              path at column zero, then the `add` or `set` command run there,
+#              properties in alphabetical order); the three /ip service lines
+#              are the full-path commands First Time Configuration prints,
+#              verbatim. First Time Configuration also supplies the bridge,
+#              addressing, input filter, ssh hardening, neighbour discovery and
+#              mac-server commands; Identity and NTP the rest. No line changes
+#              a documented command into a form the documentation does not show.
 # Addressing : RFC 1918 (192.168.88.0/24, the documentation's own) and
 #              RFC 5737. No credentials: no user or password line at all.
 /interface bridge
@@ -32,13 +32,9 @@ add action=accept chain=input comment="allow SSH" in-interface=ether1 port=22 pr
 add action=drop chain=input comment="block everything else" in-interface=ether1
 /ip neighbor discovery-settings
 set discover-interface-list=LAN
-/ip service
-set telnet disabled=yes
-set ftp disabled=yes
-set www disabled=yes
-set api disabled=yes
-set ssh port=2200
-set winbox address=192.168.88.0/24
+/ip service disable telnet,ftp,www,api
+/ip service set ssh port=2200
+/ip service set winbox address=192.168.88.0/24
 /ip ssh
 set strong-crypto=yes
 /system identity

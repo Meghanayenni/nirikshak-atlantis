@@ -124,21 +124,39 @@ was the first choice and could not be sourced: support.huawei.com refused direct
 requests and its guide pages render empty without a browser. MikroTik's RouterOS
 documentation (help.mikrotik.com) was fetched and read: *Configuration
 Management* for the `/export` shape, *First Time Configuration* for the bridge,
-addressing, input filter and hardening commands, *Identity*, *NTP*. One line form
-is derived rather than printed there: `set telnet disabled=yes` under
-`/ip service` is the export form of the documented
-`/ip service disable telnet,ftp,www,api`. The PAN-OS holdout was not touched.
+addressing, input filter and hardening commands, *Identity*, *NTP*. The PAN-OS
+holdout was not touched.
+
+**No inferred line.** The first version of the fixture wrote the `/ip service`
+section as `set telnet disabled=yes` (and the same for ftp, www, api): the
+export form of the documented `/ip service disable telnet,ftp,www,api`. No
+MikroTik page read — including *Securing your router* — prints that form; it
+changed a documented command's verb into one the documentation does not show,
+which is unsourced vendor syntax. Removed at review. The section is now the
+three full-path commands *First Time Configuration* prints verbatim:
+`/ip service disable telnet,ftp,www,api`, `/ip service set ssh port=2200`,
+`/ip service set winbox address=192.168.88.0/24`. The other sections keep the
+export shape, which *Configuration Management* documents with its own example
+(`set 0 protocol=gre` run under `/ip ipsec policy` exports as that path line
+followed by the `set` line): the command is unchanged, only its path moves to
+the line above.
 
 ## What the demo shows, and one limit it exposes
 
 Uploaded, the file is `no_signature_matched`. The page derives **indent** with
 "no line is indented: every statement is read at the top level", comment `#`
-(19 lines), 35 content lines, and 12 column-zero lines beginning `/`. Eight
-fingerprints are offered, all section paths; one stem was set aside as used by
-a known platform. Bootstrapped with three, it detects at 1.0; an audit puts all
-35 content lines in the queue; confirming `set telnet disabled=yes` as
-`telnet_enabled` = false compiles 1.0.1, and the re-audit PASSes NRK-TELNET-001
-citing that line.
+(19 lines), 31 content lines, and 14 column-zero lines beginning `/` (eleven
+section paths and the three full-path `/ip service` commands). Eight
+fingerprints are offered; one stem was set aside as used by a known platform.
+Bootstrapped with three, it detects at 1.0; an audit puts all 31 content lines
+in the queue.
+
+**The demo path is chosen so the limit below never shows.** It confirms
+`/ip service disable telnet,ftp,www,api` (line 35) as `telnet_enabled` = false.
+That line names its own path, sits at the top level (empty block path), and is
+alone in its shape in the queue, so reading it without a section loses
+nothing. It compiles 1.0.1, and the re-audit PASSes NRK-TELNET-001 citing
+line 35.
 
 **The limit.** A RouterOS export scopes its lines by a preceding `/section` line,
 not by indentation. No implemented mode expresses that, so every line is read at

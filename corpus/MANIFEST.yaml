@@ -356,11 +356,11 @@ files:
     vendor: mikrotik
     os_family: routeros
     source_type: synthetic
-    source_ref: "hand-written by Team Atlantis in the /export form shown by MikroTik's RouterOS documentation (help.mikrotik.com: Configuration Management, First Time Configuration, Identity, NTP); `set <service> disabled=yes` is the export form of the documented `/ip service disable`"
+    source_ref: "hand-written by Team Atlantis from MikroTik's RouterOS documentation (help.mikrotik.com: Configuration Management, First Time Configuration, Identity, NTP): sections in the documented /export shape, the /ip service lines as the full-path commands First Time Configuration prints"
     authored_by: team-atlantis
     sanitised: true
     sanitisation_notes: "RFC 1918/5737 addressing; invented identity; no user or password lines"
     is_real_world_data: false
     labelled: false
-    sha256: 37d24a3c3beef0d0fa5df38539a1fca8d2d9e4caaeb3fb8a569b59ba56f1ff8d
+    sha256: e2adee3692dad13b633110a4bc68d4b35d3c5fe125034be96398dad1827da761
     added: 2026-09-27
