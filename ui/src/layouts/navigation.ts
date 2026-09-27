@@ -24,6 +24,7 @@ import {
   HardDrive,
   ScrollText,
   ShieldCheck,
+  Users,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
@@ -34,6 +35,11 @@ export interface NavItem {
   /** The pipeline stage this screen belongs to. Shown beside the label. */
   stage: string;
   icon: LucideIcon;
+  /**
+   * Hidden from non-admins. A convenience, not a boundary: the backend answers
+   * 403 to the endpoint behind the screen whatever the drawer shows.
+   */
+  adminOnly?: boolean;
 }
 
 /** The pipeline, in execution order. */
@@ -52,6 +58,13 @@ export const PIPELINE_NAV: NavItem[] = [
  */
 export const SUPPORT_NAV: NavItem[] = [
   { to: '/packs', label: 'Vendor packs', stage: 'How each platform is read', icon: Boxes },
+  {
+    to: '/peer-baseline',
+    label: 'Peer baseline',
+    stage: 'Compare devices in cohort',
+    icon: Users,
+    adminOnly: true,
+  },
   { to: '/activity', label: 'Activity log', stage: 'Every recorded action', icon: Activity },
   { to: '/status', label: 'Status', stage: 'Installed capabilities', icon: ScrollText },
 ];

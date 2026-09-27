@@ -13,10 +13,18 @@ import { Toaster } from '@/components/ui/Toaster';
 import { useAuth } from '@/hooks/useAuth';
 import { PIPELINE_NAV, SUPPORT_NAV } from './navigation';
 
-function NavList({ items, onNavigate }: { items: typeof PIPELINE_NAV; onNavigate: () => void }) {
+function NavList({
+  items,
+  onNavigate,
+  isAdmin,
+}: {
+  items: typeof PIPELINE_NAV;
+  onNavigate: () => void;
+  isAdmin: boolean;
+}) {
   return (
     <ul>
-      {items.map((item) => (
+      {items.filter((item) => isAdmin || !item.adminOnly).map((item) => (
         <li key={item.to}>
           <NavLink
             to={item.to}
@@ -148,12 +156,12 @@ export function AppShell() {
 
         <div className="flex-1 overflow-y-auto py-3">
           <p className="px-4 pb-2 label">Pipeline</p>
-          <NavList items={PIPELINE_NAV} onNavigate={() => setOpen(false)} />
+          <NavList items={PIPELINE_NAV} onNavigate={() => setOpen(false)} isAdmin={isAdmin} />
 
           {/* Not "Records": these are capabilities built on top of the base
               idea, and only one of them is a record of anything. */}
           <p className="px-4 pb-2 pt-5 label">Beyond the pipeline</p>
-          <NavList items={SUPPORT_NAV} onNavigate={() => setOpen(false)} />
+          <NavList items={SUPPORT_NAV} onNavigate={() => setOpen(false)} isAdmin={isAdmin} />
         </div>
 
         {/*

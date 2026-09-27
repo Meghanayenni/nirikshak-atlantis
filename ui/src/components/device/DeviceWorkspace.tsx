@@ -18,7 +18,6 @@ import { deviceLabel, formatTimestamp, platformLabel, shortId } from '@/utils/fo
 
 import { BenchmarkScope } from './BenchmarkScope';
 import { FindingsPanel } from './Findings';
-import { PeerBaseline } from './PeerBaseline';
 import { RemediationTab } from './Remediation';
 import { ReportPanel } from './Report';
 import { ReviewPanel } from './Review';
@@ -206,8 +205,6 @@ export function DeviceWorkspace({ deviceId }: { deviceId: string }) {
               </p>
             </div>
           )}
-
-          <PeerBaseline deviceId={deviceId} />
 
           {runs.length > 1 && (
             <div className="mt-5 border-t border-border pt-4">

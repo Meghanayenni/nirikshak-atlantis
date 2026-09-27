@@ -22,6 +22,7 @@ import { CompliancePage } from '@/pages/Compliance';
 import { DevicesPage } from '@/pages/Devices';
 import { LandingPage } from '@/pages/Landing';
 import { LoginPage } from '@/pages/Login';
+import { PeerBaselinePage } from '@/pages/PeerBaseline';
 import { RemediationPage } from '@/pages/Remediation';
 import { ReportsPage } from '@/pages/Reports';
 import { StatusPage } from '@/pages/Status';
@@ -55,6 +56,7 @@ export function App() {
         <Route path="/remediation" element={<RemediationPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/packs" element={<VendorPacksPage />} />
+        <Route path="/peer-baseline" element={<PeerBaselinePage />} />
         <Route path="/activity" element={<ActivityPage />} />
         <Route path="/status" element={<StatusPage />} />
 
