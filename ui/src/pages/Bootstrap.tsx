@@ -4,8 +4,8 @@
  * The page proposes only what the backend derived from the file (ADR 0067): a
  * syntax mode with the counts behind it, a comment style, plain structural
  * facts, and fingerprint lines no known platform uses. It never proposes a
- * vendor or platform name, and says so first, because that is the design and
- * not a gap in it. The administrator names the platform.
+ * vendor or platform name: that is the design, not a gap in it. The
+ * administrator names the platform.
  *
  * Every derived value is editable, not merely confirmable. There is no single
  * "is this right?" gate: the mode is a choice with the derived one selected and
@@ -61,7 +61,6 @@ export function BootstrapPage() {
       )}
       {assessment.data && (
         <div className="mx-auto max-w-3xl space-y-5">
-          <Principle text={assessment.data.principle} />
           {created ? (
             <Created
               fileId={fileId}
@@ -81,15 +80,6 @@ export function BootstrapPage() {
         </div>
       )}
     </>
-  );
-}
-
-function Principle({ text }: { text: string }) {
-  return (
-    <section aria-label="What NIRIKSHAK proposes" className="rounded border border-border bg-paper px-5 py-4">
-      <p className="label mb-1">What this page proposes, and what it never will</p>
-      <p className="text-ink-2">{text}</p>
-    </section>
   );
 }
 

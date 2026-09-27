@@ -90,13 +90,13 @@ function sent(fetchMock: ReturnType<typeof vi.fn>, method: string) {
 }
 
 describe('the unrecognised-vendor page', () => {
-  it('states the principle and proposes no name', async () => {
+  it('proposes no name, and carries no principle paragraph', async () => {
     signIn(ADMIN_SESSION);
     stub();
     renderApp(`/bootstrap/${FILE}`);
 
-    const principle = await screen.findByRole('region', { name: /what nirikshak proposes/i });
-    expect(principle.textContent).toMatch(/never proposes a vendor or platform name/);
+    expect(await screen.findByLabelText('Vendor')).toBeInTheDocument();
+    expect(screen.queryByText(/never proposes a vendor or platform name/)).toBeNull();
     expect((screen.getByLabelText('Vendor') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Platform') as HTMLInputElement).value).toBe('');
   });
