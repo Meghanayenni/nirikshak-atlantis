@@ -24,7 +24,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from api.config import settings
 from api.ingest import blobs
@@ -32,6 +32,7 @@ from api.ingest.device_identity import extract_identity
 from api.ingest.lines import split_lines
 from api.ingest.packs import find_pack
 from api.models.csm import CanonicalSecurityModel
+from api.models.enums import FieldState
 from api.normalise.service import build_csm
 from api.parse.service import parse_configuration
 from api.prioritise.baseline import MIN_COHORT_SIZE, BaselineOutcome
@@ -150,5 +151,91 @@ def read_baseline(
             "A deviation from a peer group is an observation about the fleet, not "
             "a compliance verdict. Whether it breaches a control is decided by the "
             "rule engine over the canonical model, on a separate rail."
+        ),
+    }
+
+
+@router.get("/baseline/device/{device_id}")
+def read_device_baseline(
+    device_id: str,
+    conn: Conn,
+    _admin: AdminUser,
+    limit: Annotated[int, Query(ge=1, le=500)] = 200,
+) -> dict[str, Any]:
+    """One device against its own peer group — the fleet baseline, filtered.
+
+    Admin-only for the same reason as `/fleet/baseline`: a cohort's majority is a
+    fact about other people's devices. Nothing is recomputed here. The cohort,
+    every per-field baseline and every deviation come from `fleet_baseline`
+    unchanged; this route selects the rows that concern one device and names the
+    state the whole answer is in, so the interface decides nothing.
+
+    `status` is one of:
+
+      * `cohort_too_small` — fewer than `floor` devices; no claim either way.
+      * `nothing_compared` — enough devices, but no field produced a baseline
+        (the JunOS and EOS packs read no canonical field, so there is nothing to
+        compare). Not "no deviation": no comparison was made.
+      * `compared` — at least one field was compared against a majority.
+
+    Baselines compare field *states* (read and present, absent by default,
+    absent and unsupported), never values. UNKNOWN on this device is shown as
+    UNKNOWN and is never counted as agreeing with the cohort.
+    """
+    known = conn.execute("SELECT 1 FROM config_file WHERE file_id = ?", (device_id,)).fetchone()
+    if known is None:
+        raise HTTPException(status_code=404, detail="no such device")
+
+    models, skipped = _models(conn, limit=limit)
+    result = fleet_baseline(models)
+
+    device = next((o for o in result.observations if o.device_id == device_id), None)
+    if device is None:
+        reason = (
+            "this file's platform has no active vendor pack, so it has no canonical "
+            "model and belongs to no cohort"
+            if device_id in skipped
+            else f"this file is outside the first {limit} files read, so its cohort was not built"
+        )
+        raise HTTPException(status_code=409, detail=reason)
+
+    cohort = device.cohort
+    cohort_size = sum(1 for o in result.observations if o.cohort == cohort)
+    rows = [b for b in result.baselines if b.cohort == cohort]
+    deviating = {o.field: o for o in result.outliers if o.device_id == device_id}
+
+    if cohort_size < MIN_COHORT_SIZE:
+        status = "cohort_too_small"
+    elif not any(b.outcome is BaselineOutcome.COMPARED for b in rows):
+        status = "nothing_compared"
+    else:
+        status = "compared"
+
+    return {
+        "device_id": device_id,
+        "cohort": cohort,
+        "cohort_size": cohort_size,
+        "floor": MIN_COHORT_SIZE,
+        "status": status,
+        "per_field": [
+            {
+                "field": b.field,
+                "outcome": str(b.outcome),
+                "device_state": str(device.states.get(b.field, FieldState.UNKNOWN)),
+                "majority_state": str(b.majority_state) if b.majority_state else None,
+                "agreeing": b.majority_count,
+                "of_readable": b.determinable,
+                "deviation": b.field in deviating,
+                "explanation": (
+                    deviating[b.field].explain() if b.field in deviating else b.explain()
+                ),
+            }
+            for b in rows
+        ],
+        "overall_deviation": bool(deviating),
+        "is_verdict": False,
+        "note": (
+            "A deviation from a peer group is an observation about the fleet, not "
+            "a compliance verdict. Baselines compare field states, not values."
         ),
     }

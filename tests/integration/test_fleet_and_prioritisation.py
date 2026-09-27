@@ -296,3 +296,83 @@ def test_the_audit_record_carries_no_configuration_content(client: TestClient) -
     text = str(payload)
     assert "192.0.2" not in text
     assert "transport input" not in text
+
+
+# ---------------------------------------------------------------------------
+# One device against its cohort — /fleet/baseline/device/{id}
+# ---------------------------------------------------------------------------
+
+
+def _file_id(relative: str) -> str:
+    import hashlib
+
+    return hashlib.sha256((CORPUS / relative).read_bytes()).hexdigest()
+
+
+def test_the_device_baseline_is_admin_only(client: TestClient) -> None:
+    _upload_fleet(client)
+    device = _file_id("cisco/dev/sw-access-02.cfg")
+    assert client.get(f"/fleet/baseline/device/{device}").status_code == 401
+    assert client.get(f"/fleet/baseline/device/{device}", auth=ALICE).status_code == 403
+    assert client.get("/fleet/baseline/device/no-such-file", auth=ROOT).status_code == 404
+
+
+def test_a_device_in_a_compared_cohort_names_every_field_and_invents_no_deviation(
+    client: TestClient,
+) -> None:
+    """Cisco IOS: nine devices, eight baselines, and the backend's own outliers."""
+    _upload_fleet(client)
+    body = client.get(
+        f"/fleet/baseline/device/{_file_id('cisco/dev/sw-access-02.cfg')}", auth=ROOT
+    ).json()
+    fleet = client.get("/fleet/baseline", auth=ROOT).json()
+
+    assert body["cohort"] == "cisco/ios"
+    assert body["cohort_size"] == 9
+    assert body["floor"] == MIN_COHORT_SIZE
+    assert body["status"] == "compared"
+    assert body["is_verdict"] is False
+
+    # The rows are the fleet endpoint's rows for this cohort, not a second answer.
+    fleet_rows = {b["field"] for b in fleet["baselines"] if b["cohort"] == "cisco/ios"}
+    assert {row["field"] for row in body["per_field"]} == fleet_rows
+    fleet_deviations = {
+        o["field"] for o in fleet["outliers"] if o["device_id"] == body["device_id"]
+    }
+    assert {r["field"] for r in body["per_field"] if r["deviation"]} == fleet_deviations
+    assert body["overall_deviation"] is bool(fleet_deviations)
+
+    # An abstention on this device is reported as one, never as agreement.
+    for row in body["per_field"]:
+        if row["device_state"] == "unknown":
+            assert row["deviation"] is False
+
+
+def test_a_cohort_below_the_floor_says_so(client: TestClient) -> None:
+    """Cisco NX-OS: one device against a floor of five."""
+    _upload_fleet(client)
+    body = client.get(
+        f"/fleet/baseline/device/{_file_id('cisco/dev/dc1-leaf-01.cfg')}", auth=ROOT
+    ).json()
+
+    assert body["cohort"] == "cisco/nxos"
+    assert body["cohort_size"] == 1
+    assert body["status"] == "cohort_too_small"
+    assert body["overall_deviation"] is False
+    assert all(row["outcome"] == "cohort_too_small" for row in body["per_field"])
+
+
+def test_a_cohort_above_the_floor_with_nothing_to_compare_is_not_called_clean(
+    client: TestClient,
+) -> None:
+    """JunOS: five devices, and a pack that reads no canonical field."""
+    _upload_fleet(client)
+    body = client.get(
+        f"/fleet/baseline/device/{_file_id('juniper/dev/srx-edge-01.conf')}", auth=ROOT
+    ).json()
+
+    assert body["cohort"] == "juniper/junos"
+    assert body["cohort_size"] >= MIN_COHORT_SIZE
+    assert body["status"] == "nothing_compared"
+    assert body["per_field"] == []
+    assert body["overall_deviation"] is False

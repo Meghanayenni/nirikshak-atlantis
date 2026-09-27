@@ -104,7 +104,7 @@ export function SeverityLabel({ severity }: { severity: Severity }) {
   );
 }
 
-const STATE_LABEL: Record<FieldState, string> = {
+export const STATE_LABEL: Record<FieldState, string> = {
   present: 'Present',
   absent_default: 'Absent — platform default',
   absent_unsupported: 'Absent — unsupported',

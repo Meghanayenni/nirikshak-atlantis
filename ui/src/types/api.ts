@@ -460,6 +460,32 @@ export interface FleetBaseline {
   note: string;
 }
 
+/** One device against its peer group — `/fleet/baseline/device/{id}`. */
+export type DeviceBaselineStatus = 'cohort_too_small' | 'nothing_compared' | 'compared';
+
+export interface DeviceBaselineField {
+  field: string;
+  outcome: BaselineOutcome;
+  device_state: FieldState;
+  majority_state: FieldState | null;
+  agreeing: number;
+  of_readable: number;
+  deviation: boolean;
+  explanation: string;
+}
+
+export interface DeviceBaseline {
+  device_id: string;
+  cohort: string;
+  cohort_size: number;
+  floor: number;
+  status: DeviceBaselineStatus;
+  per_field: DeviceBaselineField[];
+  overall_deviation: boolean;
+  is_verdict: false;
+  note: string;
+}
+
 // ---------------------------------------------------------------------------
 // Audit chain
 // ---------------------------------------------------------------------------

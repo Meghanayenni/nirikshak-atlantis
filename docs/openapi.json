@@ -743,6 +743,56 @@
         ]
       }
     },
+    "/compliance/audits/frameworks/device/{file_id}": {
+      "get": {
+        "description": "What a selector may offer for one device (ADR 0058).\n\nEvery sourced framework, and whether its edition describes this device \u2014\nwith the reason when it does not. An unsourced framework is absent, as on\nthe unscoped list. The interface renders this; it decides nothing. The audit\nroute still refuses a non-describing selection with 409 on its own, so a\nclient that ignored this answer would be refused, not misled.",
+        "operationId": "frameworks_for_device_compliance_audits_frameworks_device__file_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Frameworks For Device Compliance Audits Frameworks Device  File Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Frameworks For Device",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
     "/compliance/audits/{audit_id}": {
       "get": {
         "operationId": "get_audit_compliance_audits__audit_id__get",
@@ -1064,6 +1114,68 @@
           }
         ],
         "summary": "Read Baseline",
+        "tags": [
+          "fleet"
+        ]
+      }
+    },
+    "/fleet/baseline/device/{device_id}": {
+      "get": {
+        "description": "One device against its own peer group \u2014 the fleet baseline, filtered.\n\nAdmin-only for the same reason as `/fleet/baseline`: a cohort's majority is a\nfact about other people's devices. Nothing is recomputed here. The cohort,\nevery per-field baseline and every deviation come from `fleet_baseline`\nunchanged; this route selects the rows that concern one device and names the\nstate the whole answer is in, so the interface decides nothing.\n\n`status` is one of:\n\n  * `cohort_too_small` \u2014 fewer than `floor` devices; no claim either way.\n  * `nothing_compared` \u2014 enough devices, but no field produced a baseline\n    (the JunOS and EOS packs read no canonical field, so there is nothing to\n    compare). Not \"no deviation\": no comparison was made.\n  * `compared` \u2014 at least one field was compared against a majority.\n\nBaselines compare field *states* (read and present, absent by default,\nabsent and unsupported), never values. UNKNOWN on this device is shown as\nUNKNOWN and is never counted as agreeing with the cohort.",
+        "operationId": "read_device_baseline_fleet_baseline_device__device_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Device Baseline Fleet Baseline Device  Device Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Read Device Baseline",
         "tags": [
           "fleet"
         ]
