@@ -82,3 +82,17 @@ The six pre-existing TypeScript errors in `report.test.tsx` and
 `review.test.tsx` (ADR 0057) remain. The browser run is a scratch script, not a
 committed test: adding a browser-automation dependency to the lock file this
 close to freeze is not justified by one demonstration.
+
+---
+
+**Note, appended after submission — the per-row description line removed.** At
+the team's request, for a cleaner interface, the benchmark scope panel no longer
+prints "Describes this device." or "Does not describe this device — …" under
+each benchmark (`ui/src/components/device/BenchmarkScope.tsx`, commit
+`cd65997`). Each row still shows its label, document and edition, and the
+checkbox is still never disabled. The operator still sees the backend's own
+refusal: selecting a benchmark that does not describe the device and running
+the audit returns 409 with the edition's reason, shown beside the selector.
+The decision path is unchanged — the API still returns `describes_device` and
+`reason`, and the backend, not the interface, still decides and refuses. What
+is lost is the warning before selection; the explanation after it remains.
