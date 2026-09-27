@@ -126,7 +126,7 @@ export function basicToken(username: string, password: string): string {
 }
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'DELETE';
   body?: unknown;
   formData?: FormData;
   /** An array repeats the key — `framework=stig&framework=nist` — as FastAPI expects. */

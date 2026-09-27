@@ -344,3 +344,23 @@ files:
     labelled: false
     sha256: 7fcfa2a640d634c8d4e27f107642180abc311dc8a763258593e8927cf26c45f2
     added: 2026-09-23
+
+  # The demo fixture for vendor bootstrap (ADR 0067). MikroTik RouterOS has no
+  # pack, so this file is undetected on ingestion by design. Written from
+  # MikroTik's own documentation, fetched and read: Configuration Management,
+  # First Time Configuration, Identity, NTP (help.mikrotik.com, RouterOS space).
+  # Huawei VRP was the first choice and could not be sourced: support.huawei.com
+  # refused direct requests and its guide pages render empty without a browser.
+  - path: mikrotik/dev/edge-mt-01.rsc
+    split: dev
+    vendor: mikrotik
+    os_family: routeros
+    source_type: synthetic
+    source_ref: "hand-written by Team Atlantis in the /export form shown by MikroTik's RouterOS documentation (help.mikrotik.com: Configuration Management, First Time Configuration, Identity, NTP); `set <service> disabled=yes` is the export form of the documented `/ip service disable`"
+    authored_by: team-atlantis
+    sanitised: true
+    sanitisation_notes: "RFC 1918/5737 addressing; invented identity; no user or password lines"
+    is_real_world_data: false
+    labelled: false
+    sha256: 37d24a3c3beef0d0fa5df38539a1fca8d2d9e4caaeb3fb8a569b59ba56f1ff8d
+    added: 2026-09-27

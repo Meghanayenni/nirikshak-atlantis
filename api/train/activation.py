@@ -163,14 +163,26 @@ def _serialise(pack: VendorPack, checksum: str) -> bytes:
     payload = pack.model_dump(mode="json", exclude_none=True)
     payload["checksum"] = checksum
 
+    if pack.parent_version is None:
+        # The first version of a platform, bootstrapped from one of its files
+        # (ADR 0067). There is no confirmation to trace; there is an
+        # administrator who named the platform and chose what detects it.
+        origin = (
+            "# Bootstrapped by an administrator from one configuration file (ADR 0067),\n"
+            f"# by {pack.created_by}. Detection signatures only: each is a literal stem\n"
+            "# of a line in that file, chosen by the administrator. No field patterns\n"
+            "# until the training loop adds them.\n"
+        )
+    else:
+        origin = (
+            f"# Compiled from administrator confirmations by api/train/, parent version\n"
+            f"# {pack.parent_version}. Every admin-trained pattern below retains the\n"
+            "# training example id and audit sequence it came from, so any mapping here\n"
+            "# can be traced to the person who confirmed it and the moment they did.\n"
+        )
     header = (
         "# NIRIKSHAK vendor pack — GENERATED AT RUNTIME (P11).\n"
-        "#\n"
-        f"# Compiled from administrator confirmations by api/train/, parent version\n"
-        f"# {pack.parent_version}. Every admin-trained pattern below retains the\n"
-        "# training example id and audit sequence it came from, so any mapping here\n"
-        "# can be traced to the person who confirmed it and the moment they did.\n"
-        "#\n"
+        "#\n" + origin + "#\n"
         "# This file is deployment state, not repository content. It is not reviewed\n"
         "# before it is loaded, which is why its checksum is verified on every load\n"
         "# (see api/ingest/pack_checksum.py).\n\n"

@@ -40,6 +40,20 @@ class ActivationError(TrainError):
     """A pack could not be moved to ACTIVE."""
 
 
+class BootstrapError(TrainError):
+    """A platform could not be bootstrapped from this file, for a stated reason.
+
+    `conflict` separates a refusal about the state of things (the file is in the
+    evaluation split, the platform exists, the pack would not detect) from one
+    about the request itself (a malformed name, too few fingerprints), so the
+    router can answer 409 and 422 respectively.
+    """
+
+    def __init__(self, message: str, *, conflict: bool = True) -> None:
+        super().__init__(message)
+        self.conflict = conflict
+
+
 class NotConfirmedError(TrainError):
     """Something tried to compile a pattern without a recorded human decision.
 

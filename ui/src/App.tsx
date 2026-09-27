@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/ui/States';
 import { useAuth } from '@/hooks/useAuth';
 import { AppShell } from '@/layouts/AppShell';
 import { ActivityPage } from '@/pages/Activity';
+import { BootstrapPage } from '@/pages/Bootstrap';
 import { CompliancePage } from '@/pages/Compliance';
 import { DevicesPage } from '@/pages/Devices';
 import { LandingPage } from '@/pages/Landing';
@@ -57,6 +58,7 @@ export function App() {
         <Route path="/packs" element={<VendorPacksPage />} />
         <Route path="/peer-baseline" element={<PeerBaselinePage />} />
         <Route path="/activity" element={<ActivityPage />} />
+        <Route path="/bootstrap/:fileId" element={<BootstrapPage />} />
 
         <Route
           path="*"

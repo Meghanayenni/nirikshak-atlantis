@@ -49,6 +49,10 @@ def _pack(vendor: str, os_family: str):
     return next(p for p in _packs() if (p.vendor, p.os_family) == (vendor, os_family))
 
 
+_UNPARSED: list[str] = []
+"""Corpus paths `_corpus` could not parse because no pack claims them."""
+
+
 @functools.lru_cache(maxsize=1)
 def _corpus():
     """(split, platform, csm) for every non-holdout file, through the real pipeline."""
@@ -76,6 +80,11 @@ def _corpus():
             min_margin=settings.detection_min_margin,
         )
         pack = find_pack(det.vendor, det.os_family)
+        if pack is None:
+            # A file no pack claims cannot be parsed. Since ADR 0067 the corpus
+            # holds one on purpose: the bootstrap demo fixture.
+            _UNPARSED.append(entry["path"])
+            continue
         fid = hashlib.sha256(path.read_bytes()).hexdigest()
         parsed = parse_configuration(text, pack, file_id=fid, file_path=entry["path"])
         identity = extract_identity(pack, lines, file_id=fid, file_path=entry["path"])
@@ -139,8 +148,13 @@ def _seven_cisco_dev_devices() -> bool:
     return dev == Counter({"cisco/ios": 6, "cisco/nxos": 1})
 
 
-def _every_file_has_an_active_pack() -> bool:
-    return all(csm.source.pack_versions for _, _, csm in _corpus())
+def _all_but_the_bootstrap_fixture_have_a_pack() -> bool:
+    parsed = _corpus()
+    return (
+        len(parsed) == 19
+        and all(csm.source.pack_versions for _, _, csm in parsed)
+        and _UNPARSED == ["mikrotik/dev/edge-mt-01.rsc"]
+    )
 
 
 def _twenty_snippets_three_platforms() -> bool:
@@ -197,9 +211,9 @@ CLAIMS: tuple[Claim, ...] = (
     ),
     Claim(
         "docs/architecture.md",
-        "Every one of the nineteen files has an active pack",
-        _every_file_has_an_active_pack,
-        "every non-holdout corpus file is read by an active pack",
+        "Nineteen of the twenty non-holdout files have an active pack",
+        _all_but_the_bootstrap_fixture_have_a_pack,
+        "every non-holdout file but the bootstrap fixture is read by an active pack",
     ),
     Claim(
         "docs/SOURCING_BACKLOG.md",

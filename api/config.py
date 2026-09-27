@@ -90,5 +90,13 @@ class Settings(BaseSettings):
     detection_min_score: float = 0.60
     detection_min_margin: float = 0.25
 
+    # --- vendor bootstrap (ADR 0067) --------------------------------------
+    # The corpus manifest, read only to refuse bootstrapping a platform from an
+    # evaluation or held-out file (matched by sha256) or naming the held-out
+    # vendor. A deployment built without the corpus has no such file, and the
+    # bootstrap response says the check had nothing to compare against rather
+    # than implying it passed.
+    corpus_manifest: Path = REPO_ROOT / "corpus" / "MANIFEST.yaml"
+
 
 settings = Settings()

@@ -57,6 +57,11 @@ def syntax_mode_for(pack: VendorPack, text: str | None = None) -> SyntaxMode:
     zero between them — so one at column zero is unambiguous. No counting, no
     ratio, no threshold to tune.
     """
+    if pack.syntax_mode is not None:
+        # Declared by the pack (ADR 0067). A bootstrapped platform is known to
+        # no table in this module, and the INDENT fallback below would parse a
+        # brace or `set` file as flat text without saying so.
+        return pack.syntax_mode
     default = SYNTAX_MODE_BY_OS.get(pack.os_family, SyntaxMode.INDENT)
     alternate = ALTERNATE_SURFACES.get(pack.os_family)
     if alternate is None or text is None:

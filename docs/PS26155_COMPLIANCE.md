@@ -201,16 +201,22 @@ happens in two places: the pack gains a deterministic pattern, and the
 confirmation joins the labelled-example index the ranking searches
 (`current_index`, `api/train/service.py`).
 
-**Gap — a new vendor cannot be taught through this loop.** A file whose platform
-is not detected answers 409 at audit ("no vendor pack applies",
-`run_audit_endpoint`, `api/routers/audits.py`), so it never produces residue and
-never reaches the queue; and `compile_confirmation` refuses when no active pack
-exists for the platform ("a confirmation extends an existing platform
-description and cannot create one"). A new vendor needs a hand-written YAML
-pack with at least its detection signatures; after that, the loop extends it.
-No code change is needed either way, but the first step is not in the GUI.
-*Blocked on:* ENGINEERING (a pack-creation step in the training interface,
-seeded from a file detection could not place).
+**A new vendor can now be started from the GUI (ADR 0067).** A file no pack
+claims links an administrator to *Unrecognised vendor*
+(`ui/src/pages/Bootstrap.tsx`, `GET/POST/DELETE /training/bootstrap`). The page
+derives the file's syntax mode, comment style and structure with their evidence,
+and offers fingerprint lines no known platform uses; it never proposes a vendor
+name — the administrator supplies it. A stub pack (detection only, no patterns)
+is activated through the same lifecycle as any pack, the file is re-detected,
+and the loop above takes over unchanged: shown end to end on
+`corpus/mikrotik/dev/edge-mt-01.rsc` (`tests/integration/test_vendor_bootstrap.py`).
+
+**Gaps that remain.** XML and JSON files are derived but refused: those parser
+modes are declared and not implemented. A format that scopes lines by a
+preceding section line rather than by indentation — RouterOS exports — is read
+without its sections, because no implemented mode expresses that; the page says
+so when it sees such lines. *Blocked on:* ENGINEERING (the XML/JSON modes, which
+also need an XML sample independent of the holdout; a section-scoped mode).
 
 **A deliberate difference.** Lines are shown with secrets scrubbed
 (`raw_line_scrubbed`, `api/routers/training.py`), not raw: DEVELOPER_GUIDE.md §9 requires
@@ -248,13 +254,14 @@ over `GET /training/queue`, `POST /training/confirm`, `/compile`, `/activate`,
 from `all-MiniLM-L6-v2` embeddings (`api/learn/embedding.py`).
 
 **Gaps.** First, the one the official wording exposes: *unseen vendor formats*
-cannot be trained — the loop extends a platform that already has a pack (A2).
+can now be started from the GUI (ADR 0067), but only in the three implemented
+syntax modes, and a section-scoped format is read without its sections (A2).
 Second, the ranking needs the optional `[ai]` extra and the model weights; on a
 default install the screen works by hand and offers no suggestions. Third,
 suggestions are never calibrated — every one is `UNCALIBRATED_SIMILARITY` — and
 calibration is refused below 200 labelled samples (`MIN_CALIBRATION_SAMPLES`,
-`api/learn/calibration.py`), which do not exist. *Blocked on:* ENGINEERING (pack
-creation from the GUI); SOURCING (line-level ground truth, which accrues from
+`api/learn/calibration.py`), which do not exist. *Blocked on:* ENGINEERING (the
+unimplemented syntax modes); SOURCING (line-level ground truth, which accrues from
 real administrator confirmations).
 
 ### R3 — Multi-Framework Compliance Engine. PARTIAL

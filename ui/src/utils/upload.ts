@@ -38,7 +38,8 @@ export function describeUpload(result: UploadResult): UploadMessage {
   for (const file of unidentified) {
     lines.push(
       `${file.filename} — stored, but the platform was not identified ` +
-        `(${file.detection.explanation}), so it cannot be audited.`,
+        `(${file.detection.explanation}), so it cannot be audited` +
+        (file.bootstrap ? ' until an administrator describes its platform from the file.' : '.'),
     );
   }
 

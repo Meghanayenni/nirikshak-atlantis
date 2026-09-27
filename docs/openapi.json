@@ -39,6 +39,68 @@
         "title": "Body_upload_ingest_upload_post",
         "type": "object"
       },
+      "BootstrapBody": {
+        "additionalProperties": false,
+        "description": "The administrator's answer. Every derived value arrives here as a choice.",
+        "properties": {
+          "comment_prefixes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment Prefixes"
+          },
+          "file_id": {
+            "minLength": 1,
+            "title": "File Id",
+            "type": "string"
+          },
+          "fingerprints": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Fingerprints",
+            "type": "array"
+          },
+          "os_family": {
+            "minLength": 1,
+            "title": "Os Family",
+            "type": "string"
+          },
+          "pasted_lines": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Pasted Lines",
+            "type": "array"
+          },
+          "syntax_mode": {
+            "$ref": "#/components/schemas/SyntaxMode"
+          },
+          "vendor": {
+            "minLength": 1,
+            "title": "Vendor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "vendor",
+          "os_family",
+          "syntax_mode"
+        ],
+        "title": "BootstrapBody",
+        "type": "object"
+      },
       "CastType": {
         "enum": [
           "int",
@@ -249,6 +311,18 @@
         ],
         "title": "RollbackBody",
         "type": "object"
+      },
+      "SyntaxMode": {
+        "description": "How a configuration file expresses hierarchy (decision R4).",
+        "enum": [
+          "indent",
+          "brace",
+          "set_path",
+          "xml",
+          "json"
+        ],
+        "title": "SyntaxMode",
+        "type": "string"
       },
       "TrainingOutcome": {
         "description": "What the administrator actually did with the suggestions shown.",
@@ -1494,6 +1568,164 @@
           }
         ],
         "summary": "Activate",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/training/bootstrap": {
+      "post": {
+        "description": "Write a stub pack for a new platform, activate it, and re-detect the file.",
+        "operationId": "bootstrap_platform_training_bootstrap_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BootstrapBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bootstrap Platform Training Bootstrap Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Bootstrap Platform",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/training/bootstrap/{file_id}": {
+      "get": {
+        "description": "What this file shows about its own structure \u2014 and never whose it is.",
+        "operationId": "bootstrap_assessment_training_bootstrap__file_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bootstrap Assessment Training Bootstrap  File Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Bootstrap Assessment",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/training/bootstrap/{vendor}/{os_family}": {
+      "delete": {
+        "description": "Discard and start over: every version removed, its files undetected again.",
+        "operationId": "discard_bootstrap_training_bootstrap__vendor___os_family__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vendor",
+            "required": true,
+            "schema": {
+              "title": "Vendor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "os_family",
+            "required": true,
+            "schema": {
+              "title": "Os Family",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Discard Bootstrap Training Bootstrap  Vendor   Os Family  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Discard Bootstrap",
         "tags": [
           "training"
         ]

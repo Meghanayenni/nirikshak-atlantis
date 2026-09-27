@@ -30,13 +30,15 @@ from pydantic import BaseModel, ConfigDict
 from pydantic import Field as Constraint
 
 from api.audit.chain import AuditChain
+from api.config import settings
 from api.db import training as store
+from api.ingest.packs import load_active_packs
 from api.models.csm import CANONICAL_FIELD_NAMES
-from api.models.enums import CastType, PatternSource, TrainingOutcome
+from api.models.enums import CastType, PatternSource, SyntaxMode, TrainingOutcome
 from api.routers.deps import AdminUser, AuditConn, Conn
-from api.train import service
+from api.train import bootstrap, service
 from api.train.compile import CompileRequest
-from api.train.errors import TrainError
+from api.train.errors import BootstrapError, TrainError
 from api.train.queue import QueueEntry, TrainingQueue
 
 router = APIRouter(prefix="/training", tags=["training"])
@@ -435,4 +437,182 @@ def withdraw(audit_conn: AuditConn, admin: AdminUser, body: WithdrawBody) -> dic
         "withdrawn_pattern_id": body.pattern_id,
         "checksum": result.checksum,
         "pattern_count": len(result.pattern_ids),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Bootstrapping a platform no pack knows (ADR 0067)
+# ---------------------------------------------------------------------------
+
+
+def _fingerprint_json(f: bootstrap.Fingerprint) -> dict[str, Any]:
+    return {
+        "stem": f.stem,
+        "pattern": f.pattern,
+        "example": f.example,
+        "line_number": f.line_number,
+        "occurrences": f.occurrences,
+        "pasted": f.pasted,
+    }
+
+
+def _limits() -> dict[str, float]:
+    return {
+        "min_score": settings.detection_min_score,
+        "min_margin": settings.detection_min_margin,
+    }
+
+
+@router.get("/bootstrap/{file_id}")
+def bootstrap_assessment(conn: Conn, _admin: AdminUser, file_id: str) -> dict[str, Any]:
+    """What this file shows about its own structure — and never whose it is."""
+    try:
+        found = bootstrap.assess(
+            conn,
+            file_id,
+            blob_root=settings.blob_root,
+            packs=load_active_packs(use_cache=False),
+            guard=bootstrap.corpus_guard(settings.corpus_manifest),
+            **_limits(),
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="no such file") from None
+
+    s = found.structure
+    return {
+        "file_id": found.file_id,
+        "filename": found.filename,
+        "eligible": found.eligible,
+        "reason": found.reason,
+        "principle": found.principle,
+        "detection": {
+            "outcome": found.detection_outcome,
+            "explanation": found.detection_explanation,
+            **_limits(),
+        },
+        "split_check": found.split_check,
+        # Set once this file has been bootstrapped: the page offers "Discard and
+        # start over" for it, and for nothing that ships with NIRIKSHAK.
+        "bootstrapped_platform": bootstrap.bootstrapped_platform(conn, file_id),
+        "syntax": {
+            "derived": str(found.syntax.mode),
+            "evidence": list(found.syntax.evidence),
+            "parseable": found.syntax.parseable,
+            "implemented_modes": list(found.implemented_modes),
+        },
+        "comments": {"prefix": found.comments.prefix, "counts": found.comments.counts},
+        "structure": {
+            "total_lines": s.total_lines,
+            "blank_lines": s.blank_lines,
+            "comment_lines": s.comment_lines,
+            "content_lines": s.content_lines,
+            "indented_lines": s.indented_lines,
+            "max_depth": s.max_depth,
+            "block_headers": list(s.block_headers),
+            "section_path_lines": s.section_path_lines,
+        },
+        "fingerprints": {
+            "candidates": [_fingerprint_json(f) for f in found.candidates],
+            "excluded_as_used_elsewhere": found.excluded_stems,
+            "choose": [bootstrap.MIN_FINGERPRINTS, bootstrap.MAX_FINGERPRINTS],
+        },
+    }
+
+
+class BootstrapBody(BaseModel):
+    """The administrator's answer. Every derived value arrives here as a choice."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    file_id: str = Constraint(min_length=1)
+    vendor: str = Constraint(min_length=1)
+    os_family: str = Constraint(min_length=1)
+    syntax_mode: SyntaxMode
+    fingerprints: list[str] = []
+    pasted_lines: list[str] = []
+    comment_prefixes: list[str] | None = None
+
+
+@router.post("/bootstrap", status_code=201)
+def bootstrap_platform(
+    conn: Conn, audit_conn: AuditConn, admin: AdminUser, body: BootstrapBody
+) -> dict[str, Any]:
+    """Write a stub pack for a new platform, activate it, and re-detect the file."""
+    request = bootstrap.BootstrapRequest(
+        file_id=body.file_id,
+        vendor=body.vendor,
+        os_family=body.os_family,
+        syntax_mode=body.syntax_mode,
+        chosen_stems=tuple(body.fingerprints),
+        pasted_lines=tuple(body.pasted_lines),
+        comment_prefixes=tuple(body.comment_prefixes)
+        if body.comment_prefixes is not None
+        else None,
+    )
+    try:
+        result = bootstrap.create(
+            conn,
+            request,
+            admin=admin.username,
+            blob_root=settings.blob_root,
+            guard=bootstrap.corpus_guard(settings.corpus_manifest),
+            chain=AuditChain(audit_conn),
+            **_limits(),
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="no such file") from None
+    except BootstrapError as exc:
+        raise HTTPException(status_code=409 if exc.conflict else 422, detail=str(exc)) from exc
+
+    return {
+        "pack_id": result.pack.pack_id,
+        "pack_version": result.pack.pack_version,
+        "checksum": result.pack.checksum,
+        "syntax_mode": str(result.pack.syntax_mode),
+        "syntax_mode_derived": str(result.derived_mode),
+        "comment_prefixes": list(result.pack.comment_prefixes),
+        "detect": [{"pattern": d.pattern, "weight": d.weight} for d in result.pack.detect],
+        "fingerprints": [_fingerprint_json(f) for f in result.fingerprints],
+        "detection": {
+            "outcome": str(result.detection.outcome),
+            "score": result.detection.score,
+            "margin": result.detection.margin,
+            "explanation": result.detection.explain(),
+        },
+        "also_matches": [
+            {"file_id": c.file_id, "filename": c.filename} for c in result.also_matches
+        ],
+        "next": (
+            "Run an audit of this file. Every line is unknown to the new pack, so "
+            "every line enters the review queue, where each mapping is confirmed "
+            "one at a time."
+        ),
+    }
+
+
+@router.delete("/bootstrap/{vendor}/{os_family}")
+def discard_bootstrap(
+    conn: Conn, audit_conn: AuditConn, admin: AdminUser, vendor: str, os_family: str
+) -> dict[str, Any]:
+    """Discard and start over: every version removed, its files undetected again."""
+    try:
+        result = bootstrap.discard(
+            conn,
+            f"{vendor}/{os_family}",
+            admin=admin.username,
+            blob_root=settings.blob_root,
+            chain=AuditChain(audit_conn),
+            **_limits(),
+        )
+    except KeyError:
+        raise HTTPException(
+            status_code=404, detail="no bootstrapped platform by that name"
+        ) from None
+    except BootstrapError as exc:
+        raise HTTPException(status_code=409 if exc.conflict else 422, detail=str(exc)) from exc
+
+    return {
+        "pack_id": result.pack_id,
+        "versions_removed": list(result.versions_removed),
+        "files_reset": list(result.files_reset),
     }

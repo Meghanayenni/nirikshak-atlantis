@@ -234,7 +234,7 @@ def community_problems(text: str, *, configuration: bool = True) -> list[str]:
 @pytest.mark.parametrize("path", corpus_files(), ids=lambda p: p.name)
 def test_no_snmp_community_is_a_credential_or_unread(path: Path) -> None:
     text = path.read_text(encoding="utf-8", errors="replace")
-    assert community_problems(text, configuration=path.suffix in (".cfg", ".conf")) == []
+    assert community_problems(text, configuration=path.suffix in (".cfg", ".conf", ".rsc")) == []
 
 
 @pytest.mark.parametrize(
@@ -453,7 +453,16 @@ def test_the_synthetic_corpus_is_never_cited_for_a_platform_default() -> None:
     documents as its default. Citing one would dress a fixture up as vendor
     documentation, which is the most convincing way this system could be wrong.
     """
-    corpus_markers = ("corpus/", ".cfg", ".conf", "rtr-core", "sw-access", "sw-leaf", "srx-")
+    corpus_markers = (
+        "corpus/",
+        ".cfg",
+        ".conf",
+        ".rsc",
+        "rtr-core",
+        "sw-access",
+        "sw-leaf",
+        "srx-",
+    )
 
     violations = [
         f"{pack_id} default for {field!r} cites {marker!r} — a synthetic corpus file"
@@ -547,9 +556,11 @@ def test_holdout_contains_only_the_held_out_vendor(manifest: dict) -> None:
             assert entry["vendor"] == held_out
 
 
-def test_corpus_has_the_four_planned_vendors(manifest: dict) -> None:
+def test_corpus_has_the_planned_vendors(manifest: dict) -> None:
+    """The four planned at R9, and MikroTik since ADR 0067: the bootstrap demo
+    fixture, a platform no pack describes on purpose."""
     vendors = {e["vendor"] for e in manifest["files"]}
-    assert vendors == {"cisco", "arista", "juniper", "paloalto"}
+    assert vendors == {"cisco", "arista", "juniper", "paloalto", "mikrotik"}
 
 
 def test_ios_and_arista_are_both_present(manifest: dict) -> None:

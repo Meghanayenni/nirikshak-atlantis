@@ -142,6 +142,8 @@ export interface UploadAccepted {
   duplicate: boolean;
   detection: UploadDetection;
   identity: Record<string, unknown>;
+  /** Set when no known pack claims the file (ADR 0067): the route an administrator can take. */
+  bootstrap: string | null;
 }
 
 export interface UploadRejected {
@@ -698,3 +700,80 @@ export interface ActivationResult {
   note: string;
 }
 
+// ---------------------------------------------------------------------------
+// Vendor bootstrap (ADR 0067)
+// ---------------------------------------------------------------------------
+
+export interface BootstrapFingerprint {
+  stem: string;
+  /** The anchored literal regex this fingerprint becomes, exactly as written. */
+  pattern: string;
+  example: string;
+  line_number: number;
+  occurrences: number;
+  pasted: boolean;
+}
+
+/** What one file shows about its own structure. Never a vendor name. */
+export interface BootstrapAssessment {
+  file_id: string;
+  filename: string;
+  eligible: boolean;
+  reason: string;
+  principle: string;
+  detection: { outcome: string; explanation: string; min_score: number; min_margin: number };
+  split_check: string;
+  bootstrapped_platform: string | null;
+  syntax: {
+    derived: string;
+    evidence: string[];
+    parseable: boolean;
+    implemented_modes: string[];
+  };
+  comments: { prefix: string | null; counts: Record<string, number> };
+  structure: {
+    total_lines: number;
+    blank_lines: number;
+    comment_lines: number;
+    content_lines: number;
+    indented_lines: number;
+    max_depth: number | null;
+    block_headers: string[];
+    section_path_lines: number;
+  };
+  fingerprints: {
+    candidates: BootstrapFingerprint[];
+    excluded_as_used_elsewhere: number;
+    choose: [number, number];
+  };
+}
+
+export interface BootstrapInput {
+  file_id: string;
+  vendor: string;
+  os_family: string;
+  syntax_mode: string;
+  fingerprints: string[];
+  pasted_lines: string[];
+  comment_prefixes: string[] | null;
+}
+
+export interface BootstrapResult {
+  pack_id: string;
+  pack_version: string;
+  checksum: string;
+  syntax_mode: string;
+  syntax_mode_derived: string;
+  comment_prefixes: string[];
+  detect: { pattern: string; weight: number }[];
+  fingerprints: BootstrapFingerprint[];
+  detection: { outcome: string; score: number | null; margin: number | null; explanation: string };
+  also_matches: { file_id: string; filename: string }[];
+  next: string;
+}
+
+export interface DiscardResult {
+  pack_id: string;
+  versions_removed: string[];
+  files_reset: string[];
+}

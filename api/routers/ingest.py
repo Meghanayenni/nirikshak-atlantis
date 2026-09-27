@@ -19,6 +19,7 @@ from api.db.connection import connect, table_exists
 from api.ingest import line_cache
 from api.ingest.service import IngestionLimits, IngestionService, UploadedFile
 from api.routers.deps import AdminUser, CurrentUser, owner_filter, require_access
+from api.train.bootstrap import ELIGIBLE_OUTCOMES as BOOTSTRAP_OUTCOMES
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
@@ -106,6 +107,13 @@ async def upload(conn: Conn, user: CurrentUser, files: list[UploadFile]) -> dict
                     "explanation": f.detection.explain(),
                 },
                 "identity": f.identity.known_fields(),
+                # ADR 0067: a file no known pack claims is not a dead end. The
+                # route is named, not taken — an administrator decides.
+                "bootstrap": (
+                    f"/training/bootstrap/{f.file_id}"
+                    if f.detection.outcome in BOOTSTRAP_OUTCOMES
+                    else None
+                ),
             }
             for f in batch.accepted
         ],

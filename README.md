@@ -81,6 +81,15 @@ from, so any mapping traces back to the person who confirmed it. A field read by
 a learned pattern reports `admin_confirmed`, never `deterministic` — an operator
 always knows which mappings NIRIKSHAK shipped and which this deployment learned.
 
+**A platform with no pack at all can be started from the GUI** (ADR 0067). For a
+file no pack claims, *Unrecognised vendor* shows what the file itself shows — its
+syntax mode with the counts behind it, its comment style, and lines no known
+platform uses — and **never proposes a vendor name**: the administrator supplies
+the name, the file supplies the structure. Every derived value can be changed,
+not merely accepted. The result is a detection-only pack, activated through the
+same lifecycle as any other; the loop above then fills it. *Discard and start
+over* removes it entirely. The demo file is `corpus/mikrotik/dev/edge-mt-01.rsc`.
+
 **The queue works with no model installed**, which is the state of this
 repository. It shows clusters ranked by frequency and says *why* there are no
 suggestions. It never returns an empty list as though the model had run and found

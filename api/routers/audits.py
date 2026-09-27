@@ -278,7 +278,9 @@ def run_audit_endpoint(
             status_code=409,
             detail=(
                 "the platform for this file was not identified, so no vendor pack "
-                "applies and nothing can be audited. This is UNKNOWN, not a failure."
+                "applies and nothing can be audited. This is UNKNOWN, not a failure. "
+                "If no known platform claims it, an administrator can describe its "
+                f"platform from the file itself: GET /training/bootstrap/{file_id}."
             ),
         )
 

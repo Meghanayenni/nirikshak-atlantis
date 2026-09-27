@@ -16,7 +16,11 @@
  */
 import type {
   ActivationResult,
+  BootstrapAssessment,
+  BootstrapInput,
+  BootstrapResult,
   ConfirmResult,
+  DiscardResult,
   DraftResult,
   TrainingExampleList,
   TrainingOutcome,
@@ -81,4 +85,26 @@ export function rollback(packId: string, toVersion: string): Promise<ActivationR
 
 export function listExamples(limit = 100): Promise<TrainingExampleList> {
   return request<TrainingExampleList>('/training/examples', { query: { limit } });
+}
+
+/**
+ * Bootstrapping a platform no pack knows (ADR 0067).
+ *
+ * The assessment is what the file shows; the input is the administrator's
+ * choices over it. The client proposes nothing of its own.
+ */
+export function getBootstrap(fileId: string): Promise<BootstrapAssessment> {
+  return request<BootstrapAssessment>(`/training/bootstrap/${encodeURIComponent(fileId)}`);
+}
+
+export function createBootstrap(input: BootstrapInput): Promise<BootstrapResult> {
+  return request<BootstrapResult>('/training/bootstrap', { method: 'POST', body: input });
+}
+
+export function discardBootstrap(packId: string): Promise<DiscardResult> {
+  const [vendor, osFamily] = packId.split('/');
+  return request<DiscardResult>(
+    `/training/bootstrap/${encodeURIComponent(vendor)}/${encodeURIComponent(osFamily)}`,
+    { method: 'DELETE' },
+  );
 }

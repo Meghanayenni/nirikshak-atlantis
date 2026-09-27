@@ -27,6 +27,7 @@ from api.models.enums import (
     PatternSource,
     PlatformSourceType,
     ProvenanceStatus,
+    SyntaxMode,
 )
 
 SEMVER = r"^\d+\.\d+\.\d+$"
@@ -666,6 +667,15 @@ class VendorPack(BaseModel):
         description=(
             "Line prefixes marking a comment. A commented-out directive must never "
             "produce a PRESENT field, so these never become nodes."
+        ),
+    )
+    syntax_mode: SyntaxMode | None = Constraint(
+        default=None,
+        description=(
+            "How this platform's files express hierarchy, declared by the pack "
+            "(ADR 0067). Absent on every pack written before it, which keep the "
+            "mode `api/parse/service.py` assigns their OS family. A bootstrapped "
+            "platform has no entry there, so it must say."
         ),
     )
     patterns: tuple[PatternDef, ...] = ()

@@ -315,7 +315,7 @@ to reason about.
 
 **Now measured as a cohort size.** P12's peer baselines group devices by platform
 and refuse to claim a deviation below `MIN_COHORT_SIZE` (5). Derived at ADR 0059,
-the nineteen non-holdout files form four cohorts: **Cisco IOS 9, JunOS 5, EOS 4,
+the nineteen non-holdout files with a pack form four cohorts: **Cisco IOS 9, JunOS 5, EOS 4,
 NX-OS 1**. Two cohorts are comparable: Cisco IOS compares eleven fields and
 JunOS four — fifteen baselines, and
 no device deviates. JunOS produced no baseline at all until its pack read a

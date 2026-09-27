@@ -7,11 +7,13 @@
  */
 import { Lock, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { VerdictCounts } from '@/components/domain/VerdictCounts';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { Button, Field, NotAvailable, Table, Td, Th } from '@/components/ui/Primitives';
 import { EmptyState, ErrorState, Loading } from '@/components/ui/States';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { ApiError } from '@/services/api';
 import { deviceLabel, formatTimestamp, platformLabel, shortId } from '@/utils/format';
@@ -28,6 +30,7 @@ type TabId = 'overview' | 'findings' | 'review' | 'remediation' | 'report';
 export function DeviceWorkspace({ deviceId }: { deviceId: string }) {
   const workspace = useDeviceWorkspace(deviceId);
   const { push } = useToast();
+  const { isAdmin } = useAuth();
   const [tab, setTab] = useState<TabId>('overview');
   const [scope, setScope] = useState<string[]>([]);
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -135,6 +138,27 @@ export function DeviceWorkspace({ deviceId }: { deviceId: string }) {
           {workspace.audit.pending ? 'Auditing…' : latest ? 'Re-run audit' : 'Run audit'}
         </Button>
       </div>
+
+      {!d.vendor && (
+        // ADR 0067: an unidentified file is not a dead end. The platform can be
+        // described from the file itself — by an administrator, who names it.
+        <section
+          aria-label="Platform not identified"
+          className="border-b border-dashed border-unknown-br bg-unknown-bg px-4 py-3"
+        >
+          <p className="label text-unknown">Platform not identified</p>
+          <p className="mt-0.5 text-ink-2">
+            No vendor pack claims this file, so it cannot be audited yet.{' '}
+            {isAdmin ? (
+              <Link to={`/bootstrap/${deviceId}`} className="text-accent underline">
+                Describe this platform from the file
+              </Link>
+            ) : (
+              'An administrator can describe its platform from the file.'
+            )}
+          </p>
+        </section>
+      )}
 
       <BenchmarkScope
         deviceId={deviceId}

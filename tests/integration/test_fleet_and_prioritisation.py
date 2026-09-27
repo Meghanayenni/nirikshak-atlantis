@@ -128,12 +128,13 @@ def test_baselines_are_established_now_that_a_cohort_clears_the_floor(
     body = client.get("/fleet/baseline", auth=ROOT).json()
 
     assert body["devices"] == 19
-    # Every registered corpus file is now audited. dc1-leaf-01.cfg joined at P17
-    # with the NX-OS pack; core-rtr-01.conf joined at P18 when brace-nested JunOS
-    # became detectable and parseable (ADR 0043). `skipped_files` stays in the
-    # response: it distinguishes "no active pack for this platform" from a file
-    # that simply produced nothing, and zero is a result rather than an absence.
-    assert body["skipped_files"] == 0
+    # Every registered corpus file with a platform is audited. dc1-leaf-01.cfg
+    # joined at P17 with the NX-OS pack; core-rtr-01.conf joined at P18 when
+    # brace-nested JunOS became detectable and parseable (ADR 0043).
+    # `skipped_files` distinguishes "no active pack for this platform" from a
+    # file that simply produced nothing: it is one since ADR 0067, the RouterOS
+    # bootstrap fixture, which no pack claims by design.
+    assert body["skipped_files"] == 1
     assert body["minimum_cohort_size"] == MIN_COHORT_SIZE
     # Eight until ADR 0062 added ssh_ciphers and ssh_macs to the IOS pack, and
     # ADR 0063 min_password_length: eleven for Cisco IOS. JunOS adds four once

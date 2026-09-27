@@ -76,6 +76,11 @@ class ActivationRecord:
         updated[pack_id] = version
         return ActivationRecord(active=updated)
 
+    def without(self, pack_id: str) -> ActivationRecord:
+        """The record with no choice for `pack_id` — used when a bootstrapped
+        platform is discarded (ADR 0067), so no entry outlives its pack."""
+        return ActivationRecord(active={k: v for k, v in self.active.items() if k != pack_id})
+
     def version_for(self, pack_id: str) -> str | None:
         return self.active.get(pack_id)
 

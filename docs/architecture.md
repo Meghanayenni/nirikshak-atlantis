@@ -100,7 +100,7 @@ contract, not by intention.
 
 ## 4. Packages and responsibilities
 
-Fifteen packages under `api/`, 112 modules.
+Fifteen packages under `api/`, 114 modules.
 
 | Package | Responsibility |
 | --- | --- |
@@ -108,7 +108,7 @@ Fifteen packages under `api/`, 112 modules.
 | `security/` | Password hashing (scrypt) and secret scrubbing before inference. |
 | `db/` | SQLite connections, forward-only checksum-verified migrations, and the row-level stores. |
 | `audit/` | The append-only hash chain: append, read, verify. Records events; never judges them. |
-| `ingest/` | Upload, validation, format and vendor detection, line hashing and the fleet line cache, device identity extraction, vendor-pack loading and checksum verification. |
+| `ingest/` | Upload, validation, format and vendor detection (and re-detection of a stored file when the packs change), line hashing and the fleet line cache, device identity extraction, vendor-pack loading and checksum verification. |
 | `parse/` | Text to `ConfigTree`; applies a pack's patterns to produce `FieldMatch` objects and the **residue** — every node no pattern matched. |
 | `normalise/` | `ParseResult` to `CanonicalSecurityModel`. Decides what an **absent** directive means, and scrubs residue for the training queue. |
 | `comply/` | The deterministic rule engine. Reads the canonical model and nothing else; emits `Finding` objects. |
@@ -117,7 +117,7 @@ Fifteen packages under `api/`, 112 modules.
 | `remediate/` | Resolves a vetted snippet for a failing finding, or states that none exists. |
 | `report/` | Renders a persisted run as a self-contained HTML document with its own disclosures, and to PDF through WeasyPrint behind a live availability probe. |
 | `learn/` | The advisory branch: token-shape clustering, the labelled-example index, embedding adapter, top-3 retrieval, calibration machinery. Proposes; never decides. |
-| `train/` | The confirmation loop: queue, pattern compiler, pack lifecycle, and the audit records for each. The only package permitted to compose `learn` with storage. |
+| `train/` | The confirmation loop: queue, pattern compiler, pack lifecycle, and the audit records for each; and bootstrapping a platform no pack knows, from what one of its files shows (ADR 0067). The only package permitted to compose `learn` with storage. |
 | `routers/` | The HTTP surface. Performs the I/O and the authorisation checks; the layers below stay free of both. |
 
 ### Forbidden boundaries
@@ -317,8 +317,9 @@ one device, so its nine fields each carry the outcome `cohort_too_small`, and
 **EOS** (four devices) now does the same for the three fields its pack reads.
 **JunOS** (five devices) produced no baseline row at all until ADR 0065 — its
 pack read no canonical field — and now compares four fields with no device
-deviating. Every one of the nineteen files has an active pack; until P18 this
-paragraph said two did not.
+deviating. Nineteen of the twenty non-holdout files have an active pack; the
+twentieth, `mikrotik/dev/edge-mt-01.rsc`, is the bootstrap demo fixture and has
+none by design (ADR 0067). Until P18 this paragraph said two did not.
 
 **The cohort is comparable, not representative.** Six of the nine Cisco devices
 were written by one author in one sitting, and `edge-rtr-11.cfg` is a deliberate
@@ -602,6 +603,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0064 | P18 | EOS management blocks, and a sourced default held back | D158, D159, D160 |
 | 0065 | P18 | JunOS in two surfaces, and a default a gap makes unsafe | D161, D162, D163, D164, D165 |
 | 0066 | P18 | An example carries its block | D166 |
+| 0067 | P18 | A platform described from its own file | D167, D168, D169, D170, D171 |
 
 ---
 
