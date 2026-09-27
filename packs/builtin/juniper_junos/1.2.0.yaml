@@ -26,9 +26,9 @@
 vendor: juniper
 os_family: junos
 pack_version: 1.2.0
-status: active
+status: deprecated
 created_by: team-atlantis
-checksum: sha256:ce6ea476025dce5780e198b47187f837e0f0e1a3740953acda620f23b33f37a8
+checksum: sha256:134aa3bd5e0c4ef3d29388da1dda725196acaa1e65f7fab1fe3c17296a772b91
 
 # Two surfaces, two sets of signatures. The `set` signatures never match a
 # brace file and the brace signatures never match a `set` file, so a file scores

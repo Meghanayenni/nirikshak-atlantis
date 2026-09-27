@@ -174,8 +174,9 @@ def read_device_baseline(
 
       * `cohort_too_small` — fewer than `floor` devices; no claim either way.
       * `nothing_compared` — enough devices, but no field produced a baseline
-        (the JunOS and EOS packs read no canonical field, so there is nothing to
-        compare). Not "no deviation": no comparison was made.
+        (a pack that reads no canonical field, or a cohort in which no device
+        sets any field its pack reads). Not "no deviation": no comparison was
+        made.
       * `compared` — at least one field was compared against a majority.
 
     Baselines compare field *states* (read and present, absent by default,

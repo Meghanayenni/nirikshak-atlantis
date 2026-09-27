@@ -180,13 +180,22 @@ def test_the_wrong_confident_rate_is_zero_across_every_vendor(run) -> None:
         assert metrics.wrong_confident == 0, f"{vendor} asserted a wrong value"
 
 
-def test_detection_only_vendors_produce_no_correct_field(run) -> None:
-    """Honest, and the reason D34 forbids pooling them into one recall figure."""
-    for vendor in ("arista", "juniper"):
-        metrics = field_metrics(by_vendor(run.fields)[vendor], vendor)
-        assert metrics.correct == 0
-        assert metrics.recall == 0.0
-        assert metrics.miss > 0, "a human could read some of these fields"
+def test_arista_and_junos_recall_is_low_and_reported_apart(run) -> None:
+    """Honest, and the reason D34 forbids pooling them into one recall figure.
+
+    Both were detection-only here until ADR 0064 and ADR 0065. EOS reads three
+    fields, none of which its one evaluation file lets it assert; JunOS reads
+    four and asserts one, correctly. Neither asserts anything wrongly.
+    """
+    arista = field_metrics(by_vendor(run.fields)["arista"], "arista")
+    assert (arista.correct, arista.wrong_confident) == (0, 0)
+    assert arista.recall == 0.0
+    assert arista.miss > 0, "a human could read some of these fields"
+
+    juniper = field_metrics(by_vendor(run.fields)["juniper"], "juniper")
+    assert (juniper.correct, juniper.wrong_confident) == (1, 0)
+    assert juniper.recall == pytest.approx(0.25)
+    assert juniper.miss > 0
 
 
 def test_evidence_integrity_is_perfect_where_it_could_be_checked(run) -> None:

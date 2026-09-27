@@ -315,9 +315,9 @@ an outcome that is not `compared`, while these were compared and agreed.
 The other three cohorts, derived at ADR 0059 and again at ADR 0064: **NX-OS** is
 one device, so its seven fields each carry the outcome `cohort_too_small`, and
 **EOS** (four devices) now does the same for the three fields its pack reads.
-**JunOS** (five devices) produces no baseline row at all — not because it is too
-small, but because its pack reads no canonical field, so there is nothing to
-compare. Every one of the nineteen files has an active pack; until P18 this
+**JunOS** (five devices) produced no baseline row at all until ADR 0065 — its
+pack read no canonical field — and now compares four fields with no device
+deviating. Every one of the nineteen files has an active pack; until P18 this
 paragraph said two did not.
 
 **The cohort is comparable, not representative.** Six of the nine Cisco devices
@@ -600,6 +600,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0062 | P18 | The algorithms a server offers, and who calls them weak | D152, D153, D154 |
 | 0063 | P18 | A password minimum, and what its absence does not say | D155, D156, D157 |
 | 0064 | P18 | EOS management blocks, and a sourced default held back | D158, D159, D160 |
+| 0065 | P18 | JunOS in two surfaces, and a default a gap makes unsafe | D161, D162, D163, D164, D165 |
 
 ---
 

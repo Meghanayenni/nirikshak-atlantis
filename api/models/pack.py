@@ -85,6 +85,14 @@ class CaptureSpec(BaseModel):
     map: dict[str, str] | None = Constraint(
         default=None, description="Literal to canonical-value mapping, e.g. {'enable': 'true'}"
     )
+    distinct: bool = Constraint(
+        default=False,
+        description=(
+            "For a multi-valued field: repeated captures name ONE object, so the "
+            "value keeps each once (ADR 0065). A JunOS `set` file writes one syslog "
+            "host as several lines; an IOS file listing a server twice does not."
+        ),
+    )
 
 
 class PatternScope(BaseModel):

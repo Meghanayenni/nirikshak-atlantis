@@ -1,0 +1,213 @@
+# NIRIKSHAK vendor pack — juniper junos
+#
+# 1.3.0 (ADR 0065): the first canonical security fields on JunOS, in both of
+# the surfaces JunOS ships.
+#
+#   field            brace (core-rtr-01.conf)          flat `set` (edge-rtr-02, srx-*)
+#   telnet_enabled   `telnet` under system/services    -- no development line
+#   banner_present   `message "..."` under system/login  `set system login message ...`
+#   logging_hosts    `host X` under system/syslog      `set system syslog host X ...`
+#   ssh_version      -- no development line            `set system services ssh protocol-version vN`
+#
+# A dash is a dialect with no development line to author from, so that field
+# abstains there. NO PLATFORM DEFAULT IS DECLARED, although Juniper documents
+# the one the brief wanted: see the note at the end of this file.
+#
+# 1.1.0 adds ACL extraction for JunOS firewall filters written in the flat
+# `set` form. Packs are immutable, so this is a new version rather than an edit
+# to 1.0.0, which is deprecated and re-stamped.
+#
+# WHAT THIS PACK STILL DOES NOT READ, stated so nobody infers otherwise:
+#
+#   * (CLOSED at P18, ADR 0043 — this version reads the brace-nested form too.)
+#     JunOS ships the same filter language as `set` commands and as a brace
+#     hierarchy. Which one a file uses is a property of how it was exported, so
+#     the pack names the LANGUAGE (`dialect: junos_filter`) and declares a
+#     locator for each surface; the reader picks by the parsed tree's syntax
+#     mode.
+#   * Interfaces. `interface_extraction` is absent, so `applied` below is null:
+#     a filter's binding to an interface is read from the interface, and there
+#     are no interfaces. A binding that is absent is better than one that is
+#     guessed, and an ACL with no `applied_to` says only that.
+#   * (CLOSED at 1.3.0, ADR 0065 — four canonical fields, listed above.)
+#
+# Patterns use single-quoted YAML scalars: double quotes would process
+# backslashes as escapes and mangle every regex.
+
+vendor: juniper
+os_family: junos
+pack_version: 1.3.0
+parent_version: 1.2.0
+status: active
+created_by: team-atlantis
+checksum: sha256:b0d02593be30c6aa7fbf653c4771a7fccda94b36b9aa12b2ccfb2d5728c828ba
+
+# Two surfaces, two sets of signatures. The `set` signatures never match a
+# brace file and the brace signatures never match a `set` file, so a file scores
+# on one group only and the winning margin is unaffected by the other being
+# present.
+#
+# THE BRACE SIGNATURES MUST NOT MATCH cisco/ios, arista/eos OR cisco/nxos, or
+# the min_margin ambiguity rule fires and the file becomes unauditable a second
+# way. Each is a top-level block name no indent-based platform writes at column
+# zero, and the version signature requires JunOS's `NNRN` release form and its
+# terminating semicolon -- `version 17.9` has neither.
+detect:
+  # --- flat `set` form ---
+  - { type: regex, pattern: '^set system host-name ', weight: 0.35 }
+  - { type: regex, pattern: '^set version ', weight: 0.25 }
+  - { type: regex, pattern: '^set interfaces \S+ unit \d+', weight: 0.25 }
+  - { type: regex, pattern: '^set security ', weight: 0.2 }
+  # --- brace-nested form ---
+  - { type: regex, pattern: '^system \{$', weight: 0.3 }
+  - { type: regex, pattern: '^interfaces \{$', weight: 0.25 }
+  - { type: regex, pattern: '^firewall \{$', weight: 0.2 }
+  - { type: regex, pattern: '^routing-options \{$', weight: 0.15 }
+  - { type: regex, pattern: '^version \d+\.\d+R\S*;$', weight: 0.25 }
+
+identity:
+  - field: hostname
+    match:   { type: regex, pattern: '^set system host-name (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['set system host-name srx-edge-01']
+  - field: os_version
+    match:   { type: regex, pattern: '^set version (\S+)' }
+    capture: { value: '$1', cast: str }
+    examples: ['set version 21.4R3']
+  # The brace form writes the same two facts as hierarchy rather than as a path.
+  # Identity runs over RAW lines (ADR 0011), so these match the indented source
+  # text and not the parsed node, which is why they carry leading whitespace.
+  - field: hostname
+    match:   { type: regex, pattern: '^\s+host-name (\S+);$' }
+    capture: { value: '$1', cast: str }
+    examples: ['    host-name core-rtr-01;']
+  - field: os_version
+    match:   { type: regex, pattern: '^version (\d+\.\d+R\S*);$' }
+    capture: { value: '$1', cast: str }
+    examples: ['version 21.4R3.15;']
+
+# A JunOS filter in `set` form has no block header: one term is several
+# top-level lines. `named_block` therefore locates the *path prefix* up to and
+# including the filter name — `family inet` is a configuration detail an
+# operator can legitimately differ on, so it belongs in data — and the
+# junos_set_filter reader parses the `term … from/then …` tail that follows.
+#
+# `applied` is null: see the note at the top of this file.
+acl_extraction:
+  dialect: junos_filter
+  acl_type: extended
+  named_block: '^set firewall family inet filter (\S+) '
+  # The brace surface's locator. `firewall` in the ancestry is what separates a
+  # filter DEFINITION from the `filter { input NAME; }` binding inside an
+  # interface, and the reader checks it.
+  brace_block: '^filter (\S+)$'
+  examples:
+    - 'filter PROTECT-RE {'
+    - 'term allow-anything {'
+    - 'set firewall family inet filter PROTECT-RE term allow-mgmt-ssh from protocol tcp'
+    - 'set firewall family inet filter PROTECT-RE term allow-mgmt-ssh from destination-port ssh'
+    - 'set firewall family inet filter PROTECT-RE term allow-mgmt-ssh then accept'
+    - 'set firewall family inet filter PROTECT-RE term log-and-deny then discard'
+
+patterns:
+
+  # --- telnet_enabled -------------------------------------------------------
+  # core-rtr-01.conf line 67, `telnet;` inside `system { services { ... } }`.
+  # Brace statements lose their `;` and `{` when parsed, so the pattern and its
+  # example are the statement `telnet`; a `telnet { connection-limit N; }`
+  # block has the same header and reads the same way.
+  #
+  # NO FLAT PATTERN. No development `set` file enables telnet -- the only
+  # `set system services telnet` in the corpus is inside a comment
+  # (edge-rtr-02.conf line 14) -- so there is no line to author one from. A
+  # flat file enabling telnet therefore abstains rather than being read.
+  - id: p-telnet-enabled-001
+    field: telnet_enabled
+    scope: { block: ['^system$', '^services$'] }
+    match:   { type: regex, pattern: '^telnet$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['telnet']
+    negative_examples: ['ssh', 'telnet-server', 'ftp']
+
+  # --- banner_present -------------------------------------------------------
+  # Brace: core-rtr-01.conf line 44. Flat: edge-rtr-02.conf line 39. The same
+  # statement in the two surfaces, so one fact from either.
+  - id: p-banner-present-001
+    field: banner_present
+    scope: { block: ['^system$', '^login$'] }
+    match:   { type: regex, pattern: '^message \S.*$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['message "Authorised use only. All activity is logged and monitored.\n"']
+    negative_examples: ['message', 'user netadmin']
+
+  - id: p-banner-present-002
+    field: banner_present
+    scope: { block: null }
+    match:   { type: regex, pattern: '^set system login message \S.*$' }
+    capture: { value: 'true', cast: bool }
+    examples: ['set system login message "Authorised use only. All activity is logged and monitored.\n"']
+    negative_examples: ['set system login message', 'set system login user netadmin class super-user']
+
+  # --- logging_hosts --------------------------------------------------------
+  # Brace: core-rtr-01.conf line 78, the `host X` header of a syslog block.
+  # Flat: edge-rtr-02.conf lines 43-45 name ONE host on three lines (facility,
+  # authorization, port), so the flat capture is `distinct` -- repetition there
+  # is one object described three times, not three hosts (ADR 0065). Every
+  # line stays cited. `file messages` is a local file, not a remote host, and
+  # neither pattern reads it.
+  - id: p-logging-host-001
+    field: logging_hosts
+    scope: { block: ['^system$', '^syslog$'] }
+    match:   { type: regex, pattern: '^host (\S+)$' }
+    capture: { value: '$1', cast: list }
+    examples: ['host 198.51.100.40']
+    negative_examples: ['file messages', 'host']
+
+  - id: p-logging-host-002
+    field: logging_hosts
+    scope: { block: null }
+    match:   { type: regex, pattern: '^set system syslog host (\S+) \S.*$' }
+    capture: { value: '$1', cast: list, distinct: true }
+    examples:
+      - 'set system syslog host 198.51.100.40 any notice'
+      - 'set system syslog host 198.51.100.40 authorization info'
+      - 'set system syslog host 198.51.100.40 port 514'
+      - 'set system syslog host 192.0.2.11 any warning'
+      - 'set system syslog host 192.0.2.10 any notice'
+    negative_examples:
+      - 'set system syslog file messages any notice'
+      - 'set system syslog host 198.51.100.40'
+
+  # --- ssh_version ----------------------------------------------------------
+  # srx-branch-04.conf line 3 and srx-edge-01.conf line 4. The brief said JunOS
+  # SSH is always protocol 2 and not configurable, and asked for a capability
+  # claim instead of a pattern. Two development files configure it, so it is
+  # read like any other directive. A list form such as `[ v1 v2 ]` does not
+  # match and abstains.
+  - id: p-ssh-version-001
+    field: ssh_version
+    scope: { block: null }
+    match:   { type: regex, pattern: '^set system services ssh protocol-version v(\d+)$' }
+    capture: { value: '$1', cast: int }
+    examples: ['set system services ssh protocol-version v2']
+    negative_examples:
+      - 'set system services ssh root-login deny'
+      - 'set system services ssh protocol-version [ v1 v2 ]'
+
+# ---------------------------------------------------------------------------
+# Platform knowledge: SOURCED, AND DELIBERATELY NOT DECLARED (ADR 0065).
+#
+# Juniper's "Enable Remote Access Services" (Junos OS Getting Started Guide,
+# https://www.juniper.net/documentation/us/en/software/junos/junos-getting-started/topics/task/remote-access.html)
+# states in its introduction that SSH, Telnet and FTP are all disabled by
+# default in Junos OS. That would let an absent telnet statement resolve to
+# telnet_enabled = false.
+#
+# It is not declared, for a reason specific to this pack: the flat surface has
+# no telnet pattern (no development line). With the default declared, a flat
+# file that DOES write `set system services telnet` would match nothing, fall
+# through to the default, and PASS NRK-TELNET-001 as inferred -- a false PASS,
+# the worst output this system can produce. The default becomes safe to
+# declare only once every surface that can enable the service is read. It
+# would also meet the harness question ADR 0064 left open.
+# ---------------------------------------------------------------------------

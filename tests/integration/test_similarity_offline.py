@@ -32,6 +32,7 @@ from api.learn.suggest import suggest_for_vectors, suggestions_are_evidence
 from api.models.enums import ConfidenceMethod, ExampleSource
 from api.normalise.service import build_csm
 from api.parse.service import parse_configuration
+from tests.fixtures.corpus_lines import development_lines as corpus_development_lines
 
 OS_FAMILY = {"cisco": "ios", "arista": "eos", "juniper": "junos"}
 CORPUS = pathlib.Path("corpus")
@@ -39,20 +40,12 @@ CORPUS = pathlib.Path("corpus")
 
 @pytest.fixture(scope="module")
 def development_lines() -> set[str]:
-    """Every line of every development configuration.
+    """Every line of every development configuration, brace statements included.
 
     Supplied by the test rather than read inside `api/learn/`: production code
     must not depend on a `corpus/` directory that no deployment has.
     """
-    lines: set[str] = set()
-    for vendor_dir in sorted(CORPUS.iterdir()):
-        dev = vendor_dir / "dev"
-        if not dev.is_dir():
-            continue
-        for path in sorted(dev.iterdir()):
-            text = path.read_text(encoding="utf-8", errors="replace")
-            lines |= {line.strip() for line in text.splitlines() if line.strip()}
-    return lines
+    return corpus_development_lines(CORPUS)
 
 
 @pytest.fixture(scope="module")
@@ -81,7 +74,7 @@ def unknown_lines_for(relative: str):
 
 
 def test_the_index_is_built_from_development_packs(index) -> None:
-    """D38 — small, and stated. 30 pairs across 12 fields, two vendors.
+    """D38 — small, and stated. 40 pairs across 12 fields, three vendors.
 
     Was 11 pairs over 8 fields from one pack. The NX-OS pack added the rest,
     so the index now spans two *platforms* — still one vendor, and still far
@@ -89,12 +82,13 @@ def test_the_index_is_built_from_development_packs(index) -> None:
     `ip http server`, from cisco/ios 1.4.0 (ADR 0053); the last five are the
     SSH algorithm lines from cisco/ios 1.5.0, over two new fields (ADR 0062);
     one more is the password minimum from 1.6.0 (ADR 0063); and four come from
-    arista/eos 1.2.0 (ADR 0064), the first seeds from a second vendor. Still far
+    arista/eos 1.2.0 (ADR 0064), the first seeds from a second vendor; ten from
+    juniper/junos 1.3.0 (ADR 0065), three of them brace statements. Still far
     too small, and one author wrote every line (SOURCING_BACKLOG gap 8).
     """
-    assert len(index.entries) == 30
+    assert len(index.entries) == 40
     assert len(index.fields) == 12
-    assert index.vendors == {"cisco", "arista"}
+    assert index.vendors == {"cisco", "arista", "juniper"}
 
 
 def test_every_entry_traces_to_a_development_configuration(index, development_lines) -> None:
@@ -104,7 +98,7 @@ def test_every_entry_traces_to_a_development_configuration(index, development_li
 
 def test_every_entry_is_a_seed_with_a_named_origin(index) -> None:
     origins = {entry.origin.split(":")[0] for entry in index.entries}
-    assert origins == {"cisco/ios", "cisco/nxos", "arista/eos"}
+    assert origins == {"cisco/ios", "cisco/nxos", "arista/eos", "juniper/junos"}
 
     for entry in index.entries:
         assert entry.source is ExampleSource.SEED
@@ -114,9 +108,9 @@ def test_every_entry_is_a_seed_with_a_named_origin(index) -> None:
 def test_the_index_describes_its_own_size_honestly(index) -> None:
     """The sentence the report and the training screen print."""
     described = index.describe()
-    assert "30 labelled examples" in described
+    assert "40 labelled examples" in described
     assert "12 fields" in described
-    assert "2 vendor" in described
+    assert "3 vendor" in described
 
 
 def test_no_identity_pattern_leaks_into_the_index(index) -> None:

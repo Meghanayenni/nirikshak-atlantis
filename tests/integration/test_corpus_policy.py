@@ -21,6 +21,7 @@ import pytest
 import yaml
 
 from api.ingest.packs import load_active_packs
+from tests.fixtures.corpus_lines import lines_of
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CORPUS = REPO_ROOT / "corpus"
@@ -364,11 +365,13 @@ def _pack_examples() -> list[tuple[str, str, str]]:
 
 
 def _lines_in_split(manifest: dict, *splits: str) -> set[str]:
+    """Every non-blank line, stripped, and for a brace-form file each line as the
+    parser reads it too (`tests/fixtures/corpus_lines.py`, ADR 0065)."""
     lines: set[str] = set()
     for entry in manifest["files"]:
         if entry["split"] in splits:
             text = (CORPUS / entry["path"]).read_text(encoding="utf-8", errors="replace")
-            lines |= {ln.strip() for ln in text.splitlines() if ln.strip()}
+            lines |= lines_of(text, entry.get("os_family"))
     return lines
 
 

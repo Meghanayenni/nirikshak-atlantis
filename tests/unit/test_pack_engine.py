@@ -16,6 +16,7 @@ from api.models import (
     UnknownReason,
     VendorPack,
 )
+from api.models.enums import SyntaxMode
 from api.parse.block_parser import build_tree
 from api.parse.casts import cast_value, is_multi_valued
 from api.parse.errors import CastError
@@ -276,6 +277,43 @@ def test_tokens_from_several_lines_flatten_in_source_order() -> None:
     assert field.state is FieldState.PRESENT
     assert field.value == ["3des-cbc", "aes128-cbc", "aes256-ctr"]
     assert [e.line_start for e in field.evidence] == [1, 2]
+
+
+def _syslog_pack(*, distinct: bool) -> VendorPack:
+    return pack(
+        PatternDef(
+            id="p-syslog",
+            field="logging_hosts",
+            match=MatchSpec(type=MatchType.REGEX, pattern=r"^set system syslog host (\S+) \S.*$"),
+            capture=CaptureSpec(value="$1", cast=CastType.LIST, distinct=distinct),
+        )
+    )
+
+
+FLAT_SYSLOG = (
+    "set system syslog host 198.51.100.40 any notice\n"
+    "set system syslog host 198.51.100.40 authorization info\n"
+    "set system syslog host 198.51.100.40 port 514\n"
+)
+
+
+def test_distinct_captures_name_one_object_and_cite_every_line() -> None:
+    """ADR 0065: three `set` lines describe one syslog host, not three."""
+    p = _syslog_pack(distinct=True)
+    by_field, _ = apply_pack(p, tree(FLAT_SYSLOG, mode=SyntaxMode.SET_PATH))
+    field = build_field("logging_hosts", by_field["logging_hosts"], p)
+
+    assert field.value == ["198.51.100.40"]
+    assert [e.line_start for e in field.evidence] == [1, 2, 3]
+
+
+def test_without_distinct_repetition_still_accumulates() -> None:
+    """The default is unchanged: a list names what each line names."""
+    p = _syslog_pack(distinct=False)
+    by_field, _ = apply_pack(p, tree(FLAT_SYSLOG, mode=SyntaxMode.SET_PATH))
+    field = build_field("logging_hosts", by_field["logging_hosts"], p)
+
+    assert field.value == ["198.51.100.40"] * 3
 
 
 def test_declared_but_unmatched_fields_are_still_reported() -> None:

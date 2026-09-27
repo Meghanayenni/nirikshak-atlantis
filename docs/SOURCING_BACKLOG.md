@@ -144,6 +144,13 @@ The ready-to-declare entry sits commented at the end of
 `packs/builtin/arista_eos/1.2.0.yaml`, with the note that a person should
 confirm the reading (arista.com refused a direct download).
 
+**A second one obtained, and held back for a different reason (ADR 0065).**
+Juniper's *Enable Remote Access Services* (Junos OS Getting Started Guide) says
+SSH, Telnet and FTP are disabled by default. The JunOS pack reads telnet only in
+the brace form — no `set`-form development file enables it — so declaring the
+default would let a `set` file that enables telnet fall through to it and PASS.
+It becomes declarable once the flat form has a development line to author from.
+
 **A second capability now waits here too.** P12's exposure ranking abstains with
 `indeterminate_interfaces`, and ADR 0034 built the construct that would close it:
 a pack declares `interface_roles` — anchored interface-name patterns with the
@@ -296,10 +303,10 @@ development devices" until P18; that was the P4 corpus.)*
 Arista is no longer detection-only: since ADR 0064 it reads `telnet_enabled`,
 `idle_timeout_seconds` and `banner_present` from one development file — and
 still scores recall 0, because none of the three is asserted on its one
-evaluation file. Juniper reads firewall filters in both surfaces and four
-identity fields (ADR 0033, ADR 0043) but **no canonical security field**, so
-its canonical model still has zero scored fields, though its residue is no
-longer the whole file.
+evaluation file. Juniper reads firewall filters in both surfaces, four identity
+fields (ADR 0033, ADR 0043) and, since ADR 0065, four canonical fields across
+both surfaces; on its one evaluation file it asserts one, correctly, for a
+recall of 25%. Neither platform has asserted a wrong value.
 
 **What would close it.** More Cisco devices with genuine variation rather than
 near-copies; at least one further vendor with a real parsing pack; and devices
@@ -309,10 +316,12 @@ to reason about.
 **Now measured as a cohort size.** P12's peer baselines group devices by platform
 and refuse to claim a deviation below `MIN_COHORT_SIZE` (5). Derived at ADR 0059,
 the nineteen non-holdout files form four cohorts: **Cisco IOS 9, JunOS 5, EOS 4,
-NX-OS 1**. The Cisco IOS cohort is comparable: eleven baselines are compared and
-no device deviates. NX-OS is too small, and each of its seven fields says so.
-EOS is too small as well, and each of the three fields it now reads says so.
-JunOS produces no baseline at all, because its pack reads no canonical field. *(Until P18 this paragraph described "three cohorts of 4, 3 and 3" and no
+NX-OS 1**. Two cohorts are comparable: Cisco IOS compares eleven fields and
+JunOS four — fifteen baselines, and
+no device deviates. JunOS produced no baseline at all until its pack read a
+canonical field (ADR 0065). NX-OS is too small, and each of its seven fields
+says so; EOS is too small as well, and so is each of the three fields it now
+reads. *(Until P18 this paragraph described "three cohorts of 4, 3 and 3" and no
 baseline anywhere — the P12 corpus.)*
 
 Note what the Cisco IOS cohort does and does not buy: it is *comparable*, not

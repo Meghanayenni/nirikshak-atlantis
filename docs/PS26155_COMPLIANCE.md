@@ -98,7 +98,7 @@ uses these four as its examples of what the frameworks require.
 
 | Example | Status | Evidence |
 | --- | --- | --- |
-| Disable Telnet / HTTP | DELIVERED on Cisco IOS and NX-OS; telnet on EOS where configured | `NRK-TELNET-001`, `NRK-HTTP-001` (`rules/canonical/`); both Cisco packs read `telnet_enabled` and `http_server_enabled`. EOS reads `telnet_enabled` from `management telnet` (ADR 0064): dc1-spine-01 fails; an EOS device with no telnet block abstains, because the vendor default is sourced but not declared. JunOS reads no canonical field, so both rules abstain there. |
+| Disable Telnet / HTTP | DELIVERED on Cisco IOS and NX-OS; telnet on EOS where configured | `NRK-TELNET-001`, `NRK-HTTP-001` (`rules/canonical/`); both Cisco packs read `telnet_enabled` and `http_server_enabled`. EOS reads `telnet_enabled` from `management telnet` (ADR 0064): dc1-spine-01 fails; an EOS device with no telnet block abstains, because the vendor default is sourced but not declared. JunOS reads `telnet_enabled` in the brace form only (ADR 0065): core-rtr-01 fails; a `set`-form file abstains, having no development line to author the flat pattern from. `http_server_enabled` is not read on JunOS. |
 | Strong cryptographic suites | PARTIAL | Cisco IOS only. The pack reads the SSH server's offered encryption and MAC lists into `ssh_ciphers` and `ssh_macs`; `NRK-CIPHER-001` fails any CBC cipher and `NRK-CIPHER-002` any MD5 or SHA-1 MAC, each citing its sources (ADR 0062). A device with no algorithm line abstains, because its offered set is a release default nobody has declared. TLS suites, key exchange and host-key algorithms are not read; no other platform reads either list. `weak_ciphers` stays in the model unread — its name is a verdict a pack would have to make. |
 | Granular ACLs | PARTIAL | Access lists are read and analysed by interval logic for shadowed, redundant and overly permissive entries (`api/analyse/`). These are observations, not compliance verdicts, and no rule requires an ACL on a management interface. |
 | Logging all administrative access | ABSENT | `NRK-LOGGING-001` checks that a remote logging host is configured (`logging_hosts`, `non_empty`). Accounting of administrative sessions is not read and not checked. |
@@ -122,9 +122,11 @@ all four platforms (`identity` in each pack; `api/ingest/device_identity.py`).
 **Half of the statement's own example is now demonstrable.** Cisco IOS reads
 `security passwords min-length` into `min_password_length`, and `NRK-PASSWD-001`
 judges it against 15 characters (ADR 0063); branch-rtr-07 sets 12 and fails.
-**Gap.** The Juniper SRX half is not: the JunOS pack — which reads the three SRX files — reads
-no canonical field at all. Coverage is uneven: IOS reads 11 fields, NX-OS 7,
-EOS 3, JunOS none (`declared_fields`, `api/parse/fields.py`). XML and JSON modes
+**Gap.** The Juniper SRX half is not: the JunOS pack reads four canonical fields
+since ADR 0065, but no JunOS development file sets a password policy, so
+`min_password_length` has nothing to be authored from. Coverage is uneven: IOS
+reads 11 fields, NX-OS 7, JunOS 4, EOS 3 (`declared_fields`,
+`api/parse/fields.py`). XML and JSON modes
 raise `UnsupportedSyntaxModeError` rather than returning an empty tree.
 *Blocked on:* SOURCING (vendor documentation for JunOS/EOS field patterns; an
 XML sample independent of the holdout), then ENGINEERING.

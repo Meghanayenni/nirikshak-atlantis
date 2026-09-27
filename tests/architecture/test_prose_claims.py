@@ -92,12 +92,6 @@ def _no_defaults_or_capabilities() -> bool:
     return all(not p.defaults and not p.capabilities for p in _packs())
 
 
-def _junos_reads_no_canonical_field() -> bool:
-    from api.parse.fields import declared_fields
-
-    return not declared_fields(_pack("juniper", "junos"))
-
-
 def _eos_reads_three_fields() -> bool:
     from api.parse.fields import declared_fields
 
@@ -113,14 +107,14 @@ def _cohorts_are_9_5_4_1() -> bool:
     return sizes == Counter({"cisco/ios": 9, "juniper/junos": 5, "arista/eos": 4, "cisco/nxos": 1})
 
 
-def _eleven_ios_baselines_no_deviation() -> bool:
+def _fifteen_baselines_ios_and_junos_no_deviation() -> bool:
+    from collections import Counter
+
     from api.prioritise.service import fleet_baseline
 
     fleet = fleet_baseline([csm for _, _, csm in _corpus()])
-    compared = [b for b in fleet.baselines if b.outcome.value == "compared"]
-    return (
-        len(compared) == 11 and {b.cohort for b in compared} == {"cisco/ios"} and not fleet.outliers
-    )
+    compared = Counter(b.cohort for b in fleet.baselines if b.outcome.value == "compared")
+    return compared == {"cisco/ios": 11, "juniper/junos": 4} and not fleet.outliers
 
 
 def _six_acls_none_dropped_5_4_3() -> bool:
@@ -191,9 +185,9 @@ CLAIMS: tuple[Claim, ...] = (
     ),
     Claim(
         "docs/architecture.md",
-        "its pack reads no canonical field, so there is nothing to\ncompare",
-        _junos_reads_no_canonical_field,
-        "the JunOS pack declares no canonical-field pattern",
+        "now compares four fields with no device\ndeviating",
+        _fifteen_baselines_ios_and_junos_no_deviation,
+        "JunOS compares four fields and no device deviates",
     ),
     Claim(
         "docs/architecture.md",
@@ -215,9 +209,9 @@ CLAIMS: tuple[Claim, ...] = (
     ),
     Claim(
         "docs/SOURCING_BACKLOG.md",
-        "eleven baselines are compared and\nno device deviates",
-        _eleven_ios_baselines_no_deviation,
-        "eleven compared baselines, all Cisco IOS, and no outlier",
+        "fifteen baselines, and\nno device deviates",
+        _fifteen_baselines_ios_and_junos_no_deviation,
+        "fifteen compared baselines, eleven Cisco IOS and four JunOS, and no outlier",
     ),
     Claim(
         "docs/SOURCING_BACKLOG.md",

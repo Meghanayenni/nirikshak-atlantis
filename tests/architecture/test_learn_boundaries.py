@@ -217,15 +217,9 @@ def test_the_index_is_seeded_only_from_development_files() -> None:
     """D38 — provenance re-checked at build time, not trusted from the pack."""
     from api.ingest.packs import load_active_packs
     from api.learn.index import build_index, verify_provenance
+    from tests.fixtures.corpus_lines import development_lines as corpus_development_lines
 
-    development_lines: set[str] = set()
-    for vendor_dir in sorted((REPO_ROOT / "corpus").iterdir()):
-        dev = vendor_dir / "dev"
-        if not dev.is_dir():
-            continue
-        for path in sorted(dev.iterdir()):
-            text = path.read_text(encoding="utf-8", errors="replace")
-            development_lines |= {ln.strip() for ln in text.splitlines() if ln.strip()}
+    development_lines = corpus_development_lines(REPO_ROOT / "corpus")
 
     index = build_index(load_active_packs(use_cache=False), development_lines=development_lines)
     assert verify_provenance(index.entries, development_lines) == []

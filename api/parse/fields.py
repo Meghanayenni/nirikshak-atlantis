@@ -84,6 +84,12 @@ def _cast_of(pack: VendorPack, field_name: str) -> CastType:
     return CastType.STR
 
 
+def _declares_distinct(pack: VendorPack, matches: list[FieldMatch]) -> bool:
+    """Whether a pattern that actually matched declares `distinct` captures."""
+    fired = {m.pattern_id for m in matches}
+    return any(p.capture.distinct for p in pack.patterns if p.id in fired)
+
+
 _UNDECIDED = object()
 """Sentinel: this field declares no policy, so the disagreement stands.
 
@@ -141,6 +147,11 @@ def build_field(
                 values.extend(m.value)
             else:
                 values.append(m.value)
+        if _declares_distinct(pack, matches):
+            # The pack says repetition here is one object described on several
+            # lines, not several objects (ADR 0065). First occurrence wins the
+            # position; every line stays cited.
+            values = list(dict.fromkeys(values))
         return Field[Any](
             value=values,
             state=FieldState.PRESENT,

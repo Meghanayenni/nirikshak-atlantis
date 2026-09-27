@@ -136,8 +136,9 @@ def test_baselines_are_established_now_that_a_cohort_clears_the_floor(
     assert body["skipped_files"] == 0
     assert body["minimum_cohort_size"] == MIN_COHORT_SIZE
     # Eight until ADR 0062 added ssh_ciphers and ssh_macs to the IOS pack, and
-    # ADR 0063 min_password_length.
-    assert body["comparable_baselines"] == 11
+    # ADR 0063 min_password_length: eleven for Cisco IOS. JunOS adds four once
+    # its pack reads fields (ADR 0065).
+    assert body["comparable_baselines"] == 15
     assert body["outliers"] == []
     assert "baseline(s) established" in body["summary"]
 
@@ -367,7 +368,38 @@ def test_a_cohort_below_the_floor_says_so(client: TestClient) -> None:
 def test_a_cohort_above_the_floor_with_nothing_to_compare_is_not_called_clean(
     client: TestClient,
 ) -> None:
-    """JunOS: five devices, and a pack that reads no canonical field."""
+    """Five EOS devices, none of which sets anything the EOS pack reads.
+
+    JunOS was this case until ADR 0065 gave its pack fields to read. The state
+    still exists, so it is built here: five copies of sw-leaf-01 differing only
+    in hostname — test fixtures, not corpus — with no telnet, ssh or banner
+    configuration. Every field is UNKNOWN on every device, so no baseline forms,
+    and that must not read as "no deviation".
+    """
+    template = (CORPUS / "arista/dev/sw-leaf-01.cfg").read_text(encoding="utf-8")
+    ids = []
+    for n in range(MIN_COHORT_SIZE):
+        name = f"fixture-leaf-{n:02d}"
+        text = template.replace("sw-leaf-01", name)
+        response = client.post(
+            "/ingest/upload",
+            files={"files": (f"{name}.cfg", text.encode("utf-8"), "text/plain")},
+            auth=ROOT,
+        )
+        assert response.status_code == 200, response.text
+        ids.extend(a["file_id"] for a in response.json()["accepted"])
+
+    body = client.get(f"/fleet/baseline/device/{ids[0]}", auth=ROOT).json()
+
+    assert body["cohort"] == "arista/eos"
+    assert body["cohort_size"] == MIN_COHORT_SIZE
+    assert body["status"] == "nothing_compared"
+    assert all(row["outcome"] != "compared" for row in body["per_field"])
+    assert body["overall_deviation"] is False
+
+
+def test_junos_is_compared_now_that_its_pack_reads_fields(client: TestClient) -> None:
+    """Five devices and four fields read (ADR 0065): a real comparison, no outlier."""
     _upload_fleet(client)
     body = client.get(
         f"/fleet/baseline/device/{_file_id('juniper/dev/srx-edge-01.conf')}", auth=ROOT
@@ -375,6 +407,7 @@ def test_a_cohort_above_the_floor_with_nothing_to_compare_is_not_called_clean(
 
     assert body["cohort"] == "juniper/junos"
     assert body["cohort_size"] >= MIN_COHORT_SIZE
-    assert body["status"] == "nothing_compared"
-    assert body["per_field"] == []
+    assert body["status"] == "compared"
+    compared = {row["field"] for row in body["per_field"] if row["outcome"] == "compared"}
+    assert compared == {"banner_present", "logging_hosts", "ssh_version", "telnet_enabled"}
     assert body["overall_deviation"] is False
