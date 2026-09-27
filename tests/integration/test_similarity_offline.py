@@ -28,7 +28,7 @@ from api.learn.cluster import cluster_unknown_lines, confirmable
 from api.learn.embedding import MODEL_NAME, availability, embed, require_model
 from api.learn.errors import ModelUnavailableError
 from api.learn.index import build_index, verify_provenance
-from api.learn.suggest import suggest_for_vectors, suggestions_are_evidence
+from api.learn.suggest import rank_candidates, suggest_for_vectors, suggestions_are_evidence
 from api.models.enums import ConfidenceMethod, ExampleSource
 from api.normalise.service import build_csm
 from api.parse.service import parse_configuration
@@ -339,3 +339,28 @@ def test_a_real_embedding_still_cannot_reach_a_verdict(index) -> None:
         assert suggestion.confidence_method is ConfidenceMethod.UNCALIBRATED_SIMILARITY
         assert suggestion.calibrated_confidence is None
     assert suggestions_are_evidence(suggestions) is False
+
+
+@pytest.mark.skipif(
+    not availability().available, reason="the embedding model is absent in this environment"
+)
+def test_an_interface_no_shutdown_is_not_offered_the_telnet_seed(index) -> None:
+    """ADR 0066, measured with the real model on the real index.
+
+    The Arista `no shutdown` seed means telnet only under `management telnet`.
+    Before its scope travelled with it, every `no shutdown` in the queue —
+    interfaces included — was offered that seed at cosine 1.0.
+    """
+    query = embed(["no shutdown"])[0]
+    vectors = embed([entry.text for entry in index.entries])
+    seed = "arista/eos:p-telnet-enabled-001"
+
+    unfiltered = rank_candidates(query, vectors, index)
+    assert unfiltered[0].entry.origin == seed and unfiltered[0].score > 0.99
+
+    interface = rank_candidates(query, vectors, index, block_paths=[("interface Ethernet1",)])
+    assert seed not in {c.entry.origin for c in interface}
+    assert max(c.score for c in interface) < 0.5
+
+    inside = rank_candidates(query, vectors, index, block_paths=[("management telnet",)])
+    assert inside[0].entry.origin == seed

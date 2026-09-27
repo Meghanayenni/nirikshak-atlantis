@@ -117,3 +117,7 @@ ranks `telnet_enabled` first at cosine 1.0. It is a ranked suggestion, and an
 administrator still decides, but this is exactly how a careless confirmation
 happens. The fix is for a seed to carry its pattern's scope; that change belongs
 in `api/learn/` and is not made here.
+
+**Note, appended 2026-09-27.** The seed-scope problem above is fixed by
+ADR 0066: the `no shutdown` seed is offered only for lines under
+`management telnet`.

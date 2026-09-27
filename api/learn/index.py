@@ -34,7 +34,7 @@ from dataclasses import dataclass
 from api.learn.errors import IndexBuildError
 from api.learn.signature import signature
 from api.models.enums import ExampleSource
-from api.models.pack import VendorPack
+from api.models.pack import PatternScope, VendorPack
 from api.models.training import TrainingExample
 
 DEV_SPLIT = "dev"
@@ -60,9 +60,23 @@ class IndexEntry:
 
     signature: str = ""
 
+    scope: tuple[str, ...] = ()
+    """Block headers the example's meaning depends on (ADR 0066).
+
+    A seed from a pattern scoped to `^management telnet$` says `no shutdown`
+    means telnet is enabled *inside that block* — and nothing about a
+    `no shutdown` under an interface. Empty means the text carries its meaning
+    on its own: an unscoped or root-level pattern, or an administrator
+    confirmation, which records no block.
+    """
+
     @property
     def is_seed(self) -> bool:
         return self.source is ExampleSource.SEED
+
+    def applies_within(self, block_path: tuple[str, ...]) -> bool:
+        """Whether a line at `block_path` is somewhere this example means anything."""
+        return not self.scope or PatternScope(block=self.scope).matches(block_path)
 
 
 @dataclass(frozen=True)
@@ -125,6 +139,11 @@ def seed_entries_from_packs(packs: list[VendorPack]) -> tuple[IndexEntry, ...]:
                         source=ExampleSource.SEED,
                         origin=f"{pack.pack_id}:{pattern.id}",
                         signature=signature(text),
+                        # Root scope (`None`) is not carried: a root-level line
+                        # names its own meaning, and restricting it would stop a
+                        # Cisco seed from ever being offered for a JunOS line,
+                        # which is the cross-vendor retrieval the layer is for.
+                        scope=tuple(pattern.scope.block or ()),
                     )
                 )
     return tuple(entries)

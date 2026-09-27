@@ -234,7 +234,12 @@ def build_queue(
             entries.append(QueueEntry(cluster=cluster, outcome=_model_unavailable_outcome(state)))
             continue
 
-        suggestions = suggest_for_vectors(query, index_vectors, index)
+        suggestions = suggest_for_vectors(
+            query,
+            index_vectors,
+            index,
+            block_paths=[member.block_path for member in cluster.members],
+        )
         assert_never_confidence(suggestions)
 
         if not suggestions:

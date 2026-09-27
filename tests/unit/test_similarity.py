@@ -359,3 +359,55 @@ def test_a_ranked_candidate_keeps_its_provenance() -> None:
     candidate = RankedCandidate(entry=entry("ssh_version", "ip ssh version 2"), score=0.8)
     assert candidate.entry.origin == "constructed-fixture"
     assert candidate.entry.source is ExampleSource.SEED
+
+
+# ---------------------------------------------------------------------------
+# Block scope (ADR 0066)
+# ---------------------------------------------------------------------------
+
+
+def _scoped_index() -> ExampleIndex:
+    scoped = IndexEntry(
+        text="no shutdown",
+        field="telnet_enabled",
+        vendor="fixture-vendor",
+        os_family="fixture-os",
+        source=ExampleSource.SEED,
+        origin="constructed-fixture",
+        signature=signature("no shutdown"),
+        scope=("^management telnet$",),
+    )
+    return ExampleIndex(entries=(scoped, entry("http_server_enabled", "no ip http server")))
+
+
+def test_a_scoped_example_is_not_offered_outside_its_block() -> None:
+    index = _scoped_index()
+    identical = [[1.0, 0.0], [0.0, 1.0]]
+
+    ranked = rank_candidates([1.0, 0.0], identical, index, block_paths=[("interface Ethernet1",)])
+
+    assert [c.entry.field for c in ranked] == ["http_server_enabled"]
+
+
+def test_a_scoped_example_is_offered_inside_its_block_at_any_depth() -> None:
+    index = _scoped_index()
+    ranked = rank_candidates(
+        [1.0, 0.0], [[1.0, 0.0], [0.0, 1.0]], index, block_paths=[("management telnet", "vrf X")]
+    )
+    assert ranked[0].entry.field == "telnet_enabled"
+
+
+def test_a_cluster_straddling_blocks_is_offered_only_what_fits_every_member() -> None:
+    """One confirmation covers every member, so one member outside is enough."""
+    index = _scoped_index()
+    ranked = rank_candidates(
+        [1.0, 0.0],
+        [[1.0, 0.0], [0.0, 1.0]],
+        index,
+        block_paths=[("management telnet",), ("interface Ethernet1",)],
+    )
+    assert "telnet_enabled" not in {c.entry.field for c in ranked}
+
+
+def test_an_unscoped_example_is_offered_anywhere() -> None:
+    assert entry("ssh_version", "ip ssh version 2").applies_within(("interface Ethernet1",))

@@ -601,6 +601,7 @@ count is of decisions recorded, not of the highest number reached.)
 | 0063 | P18 | A password minimum, and what its absence does not say | D155, D156, D157 |
 | 0064 | P18 | EOS management blocks, and a sourced default held back | D158, D159, D160 |
 | 0065 | P18 | JunOS in two surfaces, and a default a gap makes unsafe | D161, D162, D163, D164, D165 |
+| 0066 | P18 | An example carries its block | D166 |
 
 ---
 

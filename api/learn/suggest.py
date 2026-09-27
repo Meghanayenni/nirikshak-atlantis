@@ -22,6 +22,7 @@ around; it is the correct answer until the data exists.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from api.learn.errors import UncalibratedScoreError
@@ -74,6 +75,7 @@ def rank_candidates(
     index: ExampleIndex,
     *,
     limit: int = MAX_SUGGESTIONS,
+    block_paths: Sequence[tuple[str, ...]] | None = None,
 ) -> tuple[RankedCandidate, ...]:
     """The closest examples, best first.
 
@@ -81,6 +83,12 @@ def rank_candidates(
     still a stable one. A ranking that reordered between runs would make top-3
     accuracy unreproducible and a training queue that reshuffles under the
     administrator.
+
+    `block_paths` are where the query's lines sit. A scoped example is a
+    candidate only if **every** one of them is inside its scope (ADR 0066): a
+    cluster groups lines by shape across blocks, and one confirmation applies
+    to all of them, so an example that fits some members and not others would
+    teach the pack something false about the rest. `None` applies no filter.
     """
     if len(index_vectors) != len(index.entries):
         raise ValueError(f"index has {len(index.entries)} entries but {len(index_vectors)} vectors")
@@ -88,6 +96,7 @@ def rank_candidates(
     scored = [
         RankedCandidate(entry=entry, score=cosine(query, vector))
         for entry, vector in zip(index.entries, index_vectors, strict=True)
+        if block_paths is None or all(entry.applies_within(path) for path in block_paths)
     ]
     scored.sort(key=lambda c: (-c.score, c.entry.field, c.entry.text))
     return tuple(scored[:limit])
@@ -126,6 +135,8 @@ def suggest_for_vectors(
     query: list[float],
     index_vectors: list[list[float]],
     index: ExampleIndex,
+    *,
+    block_paths: Sequence[tuple[str, ...]] | None = None,
 ) -> tuple[Suggestion, ...]:
     """The whole retrieval path, for one already-embedded line.
 
@@ -135,7 +146,7 @@ def suggest_for_vectors(
     """
     if index.is_empty:
         return ()
-    return to_suggestions(rank_candidates(query, index_vectors, index))
+    return to_suggestions(rank_candidates(query, index_vectors, index, block_paths=block_paths))
 
 
 def assert_never_confidence(suggestions: tuple[Suggestion, ...]) -> None:
