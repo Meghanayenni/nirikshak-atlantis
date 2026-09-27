@@ -313,7 +313,7 @@ response distinguishes them: a cohort below the floor carries an explanation and
 an outcome that is not `compared`, while these were compared and agreed.
 
 The other three cohorts, derived at ADR 0059 and again at ADR 0064: **NX-OS** is
-one device, so its seven fields each carry the outcome `cohort_too_small`, and
+one device, so its nine fields each carry the outcome `cohort_too_small`, and
 **EOS** (four devices) now does the same for the three fields its pack reads.
 **JunOS** (five devices) produced no baseline row at all until ADR 0065 — its
 pack read no canonical field — and now compares four fields with no device

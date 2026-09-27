@@ -74,7 +74,7 @@ def unknown_lines_for(relative: str):
 
 
 def test_the_index_is_built_from_development_packs(index) -> None:
-    """D38 — small, and stated. 40 pairs across 12 fields, three vendors.
+    """D38 — small, and stated. 42 pairs across 12 fields, three vendors.
 
     Was 11 pairs over 8 fields from one pack. The NX-OS pack added the rest,
     so the index now spans two *platforms* — still one vendor, and still far
@@ -83,10 +83,11 @@ def test_the_index_is_built_from_development_packs(index) -> None:
     SSH algorithm lines from cisco/ios 1.5.0, over two new fields (ADR 0062);
     one more is the password minimum from 1.6.0 (ADR 0063); and four come from
     arista/eos 1.2.0 (ADR 0064), the first seeds from a second vendor; ten from
-    juniper/junos 1.3.0 (ADR 0065), three of them brace statements. Still far
+    juniper/junos 1.3.0 (ADR 0065), three of them brace statements; and two
+    from cisco/nxos 1.1.0, its SSH algorithm lines. Still far
     too small, and one author wrote every line (SOURCING_BACKLOG gap 8).
     """
-    assert len(index.entries) == 40
+    assert len(index.entries) == 42
     assert len(index.fields) == 12
     assert index.vendors == {"cisco", "arista", "juniper"}
 
@@ -108,7 +109,7 @@ def test_every_entry_is_a_seed_with_a_named_origin(index) -> None:
 def test_the_index_describes_its_own_size_honestly(index) -> None:
     """The sentence the report and the training screen print."""
     described = index.describe()
-    assert "40 labelled examples" in described
+    assert "42 labelled examples" in described
     assert "12 fields" in described
     assert "3 vendor" in described
 

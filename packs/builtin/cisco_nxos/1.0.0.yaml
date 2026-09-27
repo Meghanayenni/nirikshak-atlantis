@@ -23,9 +23,9 @@
 vendor: cisco
 os_family: nxos
 pack_version: 1.0.0
-status: active
+status: deprecated
 created_by: team-atlantis
-checksum: sha256:ebec1dff85119d6b680dc653b80bc18dd99f44b647140013d2e777a6c94a969a
+checksum: sha256:15da62072d958fe2b3f6fef528376a43185aaa2f99f70ae7152053f3b5414997
 
 comment_prefixes: ['!']
 

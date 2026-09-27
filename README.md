@@ -44,7 +44,7 @@ on. And the accuracy of that pipeline is a measurement rather than a claim —
 | | |
 | --- | --- |
 | Platforms with a vendor pack | **4** — Cisco IOS, Cisco NX-OS, Juniper Junos, Arista EOS |
-| Platforms reading canonical security fields | **4** — IOS (eleven fields), NX-OS (seven), JunOS (four), EOS (three) |
+| Platforms reading canonical security fields | **4** — IOS (eleven fields), NX-OS (nine), JunOS (four), EOS (three) |
 | Access lists analysed, across 3 packs | **6**, none dropped |
 | ACL observations on real corpus files | 5 shadowed, 4 redundant, 3 overly permissive |
 | Frameworks with a sourced catalog | **3 of 4** — NIST SP 800-53 Rev 5 (5.2.0); DISA Cisco IOS XE Router NDM STIG (V3R7); CIS Cisco IOS XE 17.x Benchmark (v2.2.1). Each pinned by sha256; ISO/IEC 27001 not sourced |
@@ -94,7 +94,7 @@ directive means — the platform's documented default, a control the platform
 cannot express, or an honest UNKNOWN — and builds the canonical model the
 compliance engine will consume.
 
-The Cisco IOS pack reads eleven canonical fields and the Cisco NX-OS pack seven.
+The Cisco IOS pack reads eleven canonical fields and the Cisco NX-OS pack nine.
 Arista EOS reads three identity fields and three canonical ones — telnet,
 the SSH and telnet idle timeouts, and the banner (ADR 0064). Juniper reads
 firewall filters and four identity fields, and since ADR 0065 four canonical

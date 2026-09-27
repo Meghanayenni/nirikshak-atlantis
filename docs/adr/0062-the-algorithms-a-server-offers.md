@@ -142,3 +142,11 @@ rate (0) are unchanged. The new fields carry no labels, so they are not scored;
 
 NX-OS `dc1-leaf-01.cfg` carries the same two lines. The NX-OS pack is not
 changed here, so that device abstains on both rules.
+
+**Note, appended 2026-09-27 — NX-OS.** The last paragraph above no longer holds.
+`cisco/nxos` 1.1.0 reads the same two lists with the same patterns, authored
+from `dc1-leaf-01.cfg` after checking the file: lines 39 and 40 are the IOS
+commands verbatim at top level, and line 38 (`ip ssh server algorithm
+authentication publickey password`) is a different command neither pattern
+reads. dc1-leaf-01 offers aes256-ctr, aes192-ctr and aes128-ctr, and
+hmac-sha2-256, so it **PASSes** NRK-CIPHER-001 and NRK-CIPHER-002.

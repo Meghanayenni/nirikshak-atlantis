@@ -113,7 +113,7 @@ def test_the_nxos_signatures_claim_no_other_platform(packs, path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_seven_canonical_fields_resolve(csm) -> None:
+def test_nine_canonical_fields_resolve(csm) -> None:
     resolved = {name: f.value for name, f in csm.fields.items() if f.value is not None}
 
     assert resolved == {
@@ -124,6 +124,10 @@ def test_seven_canonical_fields_resolve(csm) -> None:
         "logging_hosts": ["198.51.100.40"],
         "ntp_servers": ["192.0.2.10", "192.0.2.11"],
         "telnet_enabled": False,
+        # Lines 39 and 40, since 1.1.0 (ADR 0062). Line 38 is the
+        # authentication-method list, a different command, and is not read.
+        "ssh_ciphers": ["aes256-ctr", "aes192-ctr", "aes128-ctr"],
+        "ssh_macs": ["hmac-sha2-256"],
     }
 
 
@@ -171,7 +175,10 @@ def test_the_device_otherwise_passes(csm) -> None:
     findings = evaluate_device(csm, load_rulepack(), audit_id=new_audit_id())
     verdicts = {f.rule_id: f.status for f in findings}
 
-    assert sum(v is Verdict.PASS for v in verdicts.values()) == 6
+    # Six until 1.1.0 read the SSH algorithm lists, which pass both cipher rules.
+    assert sum(v is Verdict.PASS for v in verdicts.values()) == 8
+    assert verdicts["NRK-CIPHER-001"] is Verdict.PASS
+    assert verdicts["NRK-CIPHER-002"] is Verdict.PASS
     assert not any(v is Verdict.FAIL for v in verdicts.values())
 
 

@@ -293,7 +293,7 @@ never pooled (decision D34), so the gap is visible rather than averaged into a
 fleet figure.
 
 **State, derived at ADR 0059.** Seven Cisco development devices — six IOS, one
-NX-OS — reading eleven and seven canonical fields respectively, against ten
+NX-OS — reading eleven and nine canonical fields respectively, against ten
 rules. That is enough to validate the *evaluator*: the files disagree, so PASS,
 FAIL and UNKNOWN all arise from real data. It is **not** enough to validate a
 *rule*: seven hand-written devices from one vendor and one author are a sample
@@ -319,7 +319,7 @@ the nineteen non-holdout files form four cohorts: **Cisco IOS 9, JunOS 5, EOS 4,
 NX-OS 1**. Two cohorts are comparable: Cisco IOS compares eleven fields and
 JunOS four — fifteen baselines, and
 no device deviates. JunOS produced no baseline at all until its pack read a
-canonical field (ADR 0065). NX-OS is too small, and each of its seven fields
+canonical field (ADR 0065). NX-OS is too small, and each of its nine fields
 says so; EOS is too small as well, and so is each of the three fields it now
 reads. *(Until P18 this paragraph described "three cohorts of 4, 3 and 3" and no
 baseline anywhere — the P12 corpus.)*
