@@ -7,6 +7,7 @@
  */
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { EvidenceViewer } from '@/components/domain/EvidenceViewer';
 import { RemediationPanel } from '@/components/domain/RemediationPanel';
@@ -231,7 +232,10 @@ function RunScope({ view }: { view: FrameworkView | undefined }) {
 export function FindingsPanel({ workspace }: { workspace: DeviceWorkspace }) {
   const { findings, latest } = workspace;
   const [filter, setFilter] = useState<'' | Verdict>('');
-  const [openId, setOpenId] = useState<string | null>(null);
+  // `?finding=<id>` opens that finding's evidence in place — the Compliance
+  // page's "Did not comply" list links here (ADR 0068).
+  const [params] = useSearchParams();
+  const [openId, setOpenId] = useState<string | null>(() => params.get('finding'));
 
   const all = useMemo(() => findings.data?.findings ?? [], [findings.data]);
   const rows = useMemo(

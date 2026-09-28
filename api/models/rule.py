@@ -21,6 +21,7 @@ from api.models.enums import (
     AbsenceAction,
     ConditionOp,
     Framework,
+    MappingCoverage,
     MappingProvenance,
     PackStatus,
     Severity,
@@ -212,6 +213,13 @@ class FrameworkRef(BaseModel):
     )
     citation: str | None = Constraint(default=None, description="Source document")
     mapping_provenance: MappingProvenance = MappingProvenance.PROJECT_ASSERTED
+    coverage: MappingCoverage = MappingCoverage.PARTIAL
+    """Partial unless the control is a single configuration requirement this rule
+    tests completely (ADR 0068). Defaulting to partial means a mapping nobody
+    judged can never make a control read as satisfied."""
+    coverage_reason: str | None = Constraint(default=None, max_length=600)
+    """Why, in the project's own words. Every shipped mapping carries one
+    (`test_every_mapping_states_its_coverage`); never the control's text."""
 
 
 MAX_GAP_REASON_CHARS = 600

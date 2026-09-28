@@ -41,6 +41,8 @@ export interface ConfirmInput {
   outcome: TrainingOutcome;
   field?: string | null;
   value_semantics?: string | null;
+  /** The file being reviewed, so a line from a measured file can be refused. */
+  file_id?: string | null;
 }
 
 /**

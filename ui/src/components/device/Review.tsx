@@ -109,6 +109,18 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
   const model = queue.data?.model;
   const dev = device.data as Device | null;
 
+  // DEF-16 — an evaluation or held-out corpus file is measured, not reviewed.
+  // The backend refuses its decisions; this says so before anyone tries.
+  if (queue.data?.reserved) {
+    return (
+      <BlockedState
+        title="Reserved for measurement"
+        reason={queue.data.reserved}
+        unblockedBy="Nothing — this file is scored by the evaluation harness, not reviewed here."
+      />
+    );
+  }
+
   async function decide(reject: boolean) {
     if (!selected) return;
     if (!dev?.vendor || !dev.os_family) {
@@ -127,6 +139,9 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
       os_family: dev.os_family,
       outcome: reject ? 'rejected_not_security_relevant' : 'corrected',
       field: reject ? null : field,
+      // The file the line is reviewed from, so the backend can refuse a line
+      // from a file reserved for measurement (DEF-16).
+      file_id: dev.device_id,
     });
 
     if (!recorded) {
@@ -185,7 +200,8 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
   /** A bool field is asserted by presence, so there is no token to pick. */
   const isPresenceField = valueType === 'bool';
 
-  const decided = entries.length - undecided.length;
+  // The backend's count, computed as the compliance posture gate computes it.
+  const decided = queue.data?.reviewed ?? entries.length - undecided.length;
 
   return (
     <div className="p-4">
@@ -213,7 +229,7 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
             </div>
             <ul className="max-h-[560px] divide-y divide-border overflow-y-auto">
               {entries.map((entry) => {
-                const isDecided = !undecided.includes(entry);
+                const isDecided = entry.decided;
                 return (
                   <li key={entry.cluster_id}>
                     <button
@@ -224,10 +240,8 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
                         setField('');
                         setValueToken('');
                       }}
-                      disabled={!entry.confirmable}
                       className={`w-full px-4 py-3 text-left transition-colors
-                        ${selected?.cluster_id === entry.cluster_id ? 'bg-accent-bg' : 'hover:bg-surface'}
-                        ${entry.confirmable ? '' : 'cursor-not-allowed opacity-60'}`}
+                        ${selected?.cluster_id === entry.cluster_id ? 'bg-accent-bg' : 'hover:bg-surface'}`}
                     >
                       <div className="flex items-start gap-2">
                         {isDecided && (
@@ -240,7 +254,7 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
                       </div>
                       <p className="mt-1 text-micro text-muted">
                         <span className="num">{entry.occurrences}</span> occurrence(s)
-                        {!entry.confirmable && ' · too generic to confirm as one decision'}
+                        {!entry.confirmable && ' · too generic to map; can be dismissed'}
                       </p>
                     </button>
                   </li>
@@ -405,11 +419,21 @@ export function ReviewPanel({ workspace }: { workspace: DeviceWorkspace }) {
                 </div>
                 )}
 
+                {!selected.confirmable && (
+                  <p className="rounded border border-unknown-br bg-unknown-bg px-3 py-2 text-ink-2">
+                    This shape carries no command vocabulary, so one mapping over it would
+                    cover lines that have nothing in common. It cannot be mapped; it can be
+                    marked not security relevant, which compiles nothing.
+                  </p>
+                )}
+
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button
                     variant="primary"
                     onClick={() => decide(false)}
-                    disabled={!field || doConfirm.pending || doCompile.pending}
+                    disabled={
+                      !selected.confirmable || !field || doConfirm.pending || doCompile.pending
+                    }
                   >
                     <Check className="h-4 w-4" aria-hidden="true" />
                     {doConfirm.pending || doCompile.pending ? 'Working…' : 'Confirm mapping'}

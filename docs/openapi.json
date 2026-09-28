@@ -203,6 +203,17 @@
             ],
             "title": "Field"
           },
+          "file_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Id"
+          },
           "line": {
             "minLength": 1,
             "title": "Line",
@@ -1141,6 +1152,56 @@
         ]
       }
     },
+    "/compliance/devices/{device_id}/posture": {
+      "get": {
+        "description": "Whether this device may be scored, and \u2014 only if so \u2014 its posture per framework.",
+        "operationId": "device_posture_endpoint_compliance_devices__device_id__posture_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Device Posture Endpoint Compliance Devices  Device Id  Posture Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBasic": []
+          }
+        ],
+        "summary": "Device Posture Endpoint",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
     "/fleet/baseline": {
       "get": {
         "description": "Peer-baseline outlier detection across every ingested device.",
@@ -1913,7 +1974,7 @@
     },
     "/training/queue": {
       "get": {
-        "description": "Unknown shapes, most frequent first, with suggestions or a stated absence.",
+        "description": "Unknown shapes, most frequent first, with suggestions or a stated absence.\n\nEach entry says whether it is decided, by the function the posture gate\nuses. For one file the response also says when that file is reserved for\nmeasurement, so the review screen can say so before anyone tries.",
         "operationId": "read_queue_training_queue_get",
         "parameters": [
           {

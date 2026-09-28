@@ -18,6 +18,11 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      The control specifies the notice's content and that it stay until
+      acknowledged. This rule tests only that a message-of-the-day banner is
+      configured.
   - framework: cis
     control_id: "1.3.3"
     version: "v2.2.1 (2025-07-17)"
@@ -25,6 +30,10 @@ frameworks:
     # The Cisco pack reads `banner motd`, which is this recommendation's directive.
     # 1.3.2 (`banner login`) is a different directive and is not mapped (ADR 0052).
     mapping_provenance: project_asserted
+    coverage: full
+    coverage_reason: >-
+      The recommendation asks for a message-of-the-day banner, and this rule passes
+      only on a banner motd line.
 not_mapped:
   - framework: stig
     reason: >-

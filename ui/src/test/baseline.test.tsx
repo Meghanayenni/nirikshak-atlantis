@@ -13,7 +13,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PeerBaseline } from '@/components/device/PeerBaseline';
 import type { DeviceBaseline, DeviceBaselineField } from '@/types/api';
 
-import { ADMIN_SESSION, FIXTURES, USER_SESSION, mockApi, renderWithProviders, signIn } from './helpers';
+import { ADMIN_SESSION, USER_SESSION, mockApi, renderWithProviders, signIn } from './helpers';
 
 afterEach(() => {
   vi.unstubAllGlobals();

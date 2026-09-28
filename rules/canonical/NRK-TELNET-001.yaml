@@ -18,6 +18,10 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      Least functionality covers every capability, port, protocol and service. This
+      rule tests one protocol on the vty lines.
   - framework: nist
     control_id: "AC-17(02)"
     version: "5.2.0"
@@ -25,6 +29,10 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      A telnet-free vty removes one unencrypted remote access path. It does not show
+      that the remaining sessions are cryptographically protected.
   - framework: stig
     control_id: "CISC-ND-000140"
     version: "V3R7 (2026-04-01)"
@@ -32,6 +40,11 @@ frameworks:
     # Check and fix configure `transport input ssh` on vty. The control's
     # primary ask, an inbound access-class, is not read by this rule (ADR 0052).
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      The check asks for an inbound access-class ACL on the vty lines limiting
+      management access to the management network, as well as SSH transport. This
+      rule tests the transport only.
   - framework: cis
     control_id: "1.2.2"
     version: "v2.2.1 (2025-07-17)"
@@ -39,3 +52,8 @@ frameworks:
     # Same directive. The pack reads only `ssh` and `none` as telnet-free, so
     # nothing this rule passes admits another transport (ADR 0052).
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      The recommendation wants SSH as the only inbound vty transport. This rule also
+      passes transport input none (ADR 0052), which admits no transport rather than
+      SSH, so a pass is not the recommendation's audit result.

@@ -26,6 +26,7 @@ from api.routers import audit as audit_router
 from api.routers import audits as audits_router
 from api.routers import fleet as fleet_router
 from api.routers import ingest as ingest_router
+from api.routers import posture as posture_router
 from api.routers import reports as reports_router
 from api.routers import training as training_router
 from api.routers import users as users_router
@@ -87,6 +88,7 @@ app.include_router(audit_router.router)
 app.include_router(audits_router.router)
 app.include_router(fleet_router.router)
 app.include_router(ingest_router.router)
+app.include_router(posture_router.router)
 app.include_router(reports_router.router)
 app.include_router(training_router.router)
 app.include_router(users_router.router)

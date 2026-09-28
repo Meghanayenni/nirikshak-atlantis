@@ -23,6 +23,7 @@ reason (D50); it never returns an empty list as though the model had run.
 
 from __future__ import annotations
 
+import sqlite3
 from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -74,9 +75,67 @@ def _suggestion_json(entry: QueueEntry) -> dict[str, Any]:
     }
 
 
-def _queue_json(queue: TrainingQueue) -> dict[str, Any]:
+SPLIT_NAMES = {"eval": "evaluation", "holdout": "held-out"}
+
+
+def split_reason(split: str) -> str:
+    return (
+        f"This line is read from a corpus {SPLIT_NAMES.get(split, split)} file, which "
+        "is reserved for measuring the parser. A decision on it would compile a "
+        "pattern from the data the parser is measured on (DEF-16), so it is refused."
+    )
+
+
+def reserved_reason(
+    conn: sqlite3.Connection, *, file_id: str | None, cluster_id: str | None, line: str
+) -> str | None:
+    """Why a decision on this line is refused, or None (DEF-16, ADR 0068).
+
+    Refused when the file the line is being reviewed from is an evaluation or
+    held-out corpus file, or when every file whose queue holds the line is one.
+    A line also present in a development file or an operator's own upload is
+    not exclusive to the measured data, which is the condition the corpus
+    policy suite already tests pack examples against.
+
+    Reuses the bootstrap's corpus guard: the manifest's sha256 per split, read
+    without opening any corpus file. A deployment without the manifest cannot
+    run this check and is not refused anything.
+    """
+    guard = bootstrap.corpus_guard(settings.corpus_manifest)
+    if not guard.present:
+        return None
+    sources = {file_id} if file_id else set()
+    sources |= store.files_with_line(conn, cluster_id, line)
+    reserved = sources & set(guard.protected)
+    if file_id in guard.protected:
+        return split_reason(guard.protected[file_id])
+    if sources and reserved == sources:
+        return split_reason(guard.protected[sorted(reserved)[0]])
+    return None
+
+
+def _decided(conn: sqlite3.Connection, file_id: str | None) -> set[str]:
+    """Queue entries decided on their platform — the gate's own function (ADR 0068)."""
+    sql = "SELECT DISTINCT cluster_id, vendor, os_family FROM unknown_line"
+    params: tuple = ()
+    if file_id is not None:
+        sql += " WHERE file_id = ?"
+        params = (file_id,)
+    by_platform: dict[tuple, list[str]] = {}
+    for row in conn.execute(sql, params):
+        by_platform.setdefault((row["vendor"], row["os_family"]), []).append(row["cluster_id"])
+    decided: set[str] = set()
+    for (vendor, os_family), clusters in by_platform.items():
+        decided |= set(store.decided_clusters(conn, clusters, vendor=vendor, os_family=os_family))
+    return decided
+
+
+def _queue_json(queue: TrainingQueue, decided: set[str] | None = None) -> dict[str, Any]:
+    decided = decided or set()
     return {
         "size": queue.size,
+        # One count, computed where the posture gate computes it (ADR 0068).
+        "reviewed": sum(1 for e in queue.entries if e.cluster_id in decided),
         "confirmable": len(queue.confirmable),
         # ADR 0017 requires this sentence on the training screen: a person judging
         # a ranking deserves to know it was drawn from eleven examples of one
@@ -98,6 +157,7 @@ def _queue_json(queue: TrainingQueue) -> dict[str, Any]:
                 "occurrences": e.cluster.size,
                 "file_count": e.cluster.file_count,
                 "confirmable": e.cluster.is_confirmable,
+                "decided": e.cluster_id in decided,
                 "block_path": list(e.cluster.exemplar.block_path),
                 "file_id": e.cluster.exemplar.file_id,
                 "line_number": e.cluster.exemplar.line_number,
@@ -115,8 +175,20 @@ def read_queue(
     file_id: Annotated[str | None, Query()] = None,
     vendor: Annotated[str | None, Query()] = None,
 ) -> dict[str, Any]:
-    """Unknown shapes, most frequent first, with suggestions or a stated absence."""
-    return _queue_json(service.training_queue(conn, file_id=file_id, vendor=vendor))
+    """Unknown shapes, most frequent first, with suggestions or a stated absence.
+
+    Each entry says whether it is decided, by the function the posture gate
+    uses. For one file the response also says when that file is reserved for
+    measurement, so the review screen can say so before anyone tries.
+    """
+    body = _queue_json(
+        service.training_queue(conn, file_id=file_id, vendor=vendor), _decided(conn, file_id)
+    )
+    guard = bootstrap.corpus_guard(settings.corpus_manifest)
+    body["reserved"] = (
+        split_reason(guard.protected[file_id]) if file_id in guard.protected else None
+    )
+    return body
 
 
 class ConfirmBody(BaseModel):
@@ -133,6 +205,8 @@ class ConfirmBody(BaseModel):
     outcome: TrainingOutcome
     field: str | None = None
     value_semantics: str | None = None
+    file_id: str | None = None
+    """The file the line is being reviewed from, when there is one (DEF-16)."""
 
 
 @router.post("/confirm", status_code=201)
@@ -140,8 +214,30 @@ def confirm(
     conn: Conn, audit_conn: AuditConn, admin: AdminUser, body: ConfirmBody
 ) -> dict[str, Any]:
     """Record what the administrator decided, and audit that they decided it."""
+    refused = reserved_reason(
+        conn, file_id=body.file_id, cluster_id=body.cluster_id, line=body.line
+    )
+    if refused:
+        raise HTTPException(status_code=409, detail=refused)
+
     entry = service.training_queue(conn).find(body.cluster_id)
     shown = entry.outcome.suggestions if entry else ()
+
+    # A generic shape carries no command vocabulary, so one mapping over it
+    # would cover lines with nothing in common. Dismissing it compiles nothing
+    # and is allowed, so such an entry can always be reviewed (ADR 0068).
+    if (
+        entry is not None
+        and not entry.cluster.is_confirmable
+        and body.outcome is not TrainingOutcome.REJECTED_NOT_SECURITY_RELEVANT
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "this shape is too generic to map as one decision; it can only be "
+                "marked not security relevant"
+            ),
+        )
 
     decision = service.Decision(
         cluster_id=body.cluster_id,
@@ -195,6 +291,11 @@ def compile_draft(
     example = store.read_example(conn, body.example_id)
     if example is None:
         raise HTTPException(status_code=404, detail="no such training example")
+    refused = reserved_reason(
+        conn, file_id=None, cluster_id=example.cluster_id, line=example.raw_line_scrubbed
+    )
+    if refused:
+        raise HTTPException(status_code=409, detail=refused)
 
     request = CompileRequest(
         value_token=body.value_token,

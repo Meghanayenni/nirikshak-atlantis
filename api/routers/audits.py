@@ -137,6 +137,9 @@ def _finding_json(
                 "edition": f.version,
                 "citation": f.citation,
                 "mapping_provenance": f.mapping_provenance.value,
+                # Whether this rule tests all of the control or part of it (ADR 0068).
+                "coverage": f.coverage.value,
+                "coverage_reason": f.coverage_reason,
             }
             for f in finding.frameworks
         ],
@@ -147,15 +150,21 @@ def _finding_json(
         # command. `outcome` says which case this is and `statement` carries the
         # sentence an operator should read; `commands` is present only when a
         # vetted snippet was found, and is never a suggestion.
-        "remediation": {
-            "outcome": resolution.outcome.value,
-            "statement": resolution.statement,
-            "snippet_id": resolution.snippet.snippet_id if resolution.snippet else None,
-            "commands": list(resolution.snippet.commands) if resolution.snippet else [],
-            "rollback": list(resolution.snippet.rollback) if resolution.snippet else [],
-            "vetted_by": resolution.snippet.vetted_by if resolution.snippet else None,
-            "reference": resolution.snippet.reference if resolution.snippet else None,
-        },
+        "remediation": remediation_json(resolution),
+    }
+
+
+def remediation_json(resolution: RemediationResolution) -> dict[str, Any]:
+    """One remediation lookup as the interface consumes it — also used by posture."""
+    snippet = resolution.snippet
+    return {
+        "outcome": resolution.outcome.value,
+        "statement": resolution.statement,
+        "snippet_id": snippet.snippet_id if snippet else None,
+        "commands": list(snippet.commands) if snippet else [],
+        "rollback": list(snippet.rollback) if snippet else [],
+        "vetted_by": snippet.vetted_by if snippet else None,
+        "reference": snippet.reference if snippet else None,
     }
 
 

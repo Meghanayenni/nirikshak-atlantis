@@ -257,7 +257,7 @@ careless confirmations, and a careless confirmation enters a vendor pack
 permanently. Similarity scores are labelled as rankings, not probabilities.
 
 **Restraint.** No chart that a sentence or a sorted table would carry better. No
-decorative visualisation of pass/fail ratios. Prioritisation is computed and
+visualisation of pass/fail ratios without the counts it represents beside it. Prioritisation is computed and
 presented as an ordered list — do not offload ranking onto filters the operator
 must drive themselves.
 

@@ -18,6 +18,10 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      A configured NTP server is a time source. Whether it is authoritative, and the
+      synchronisation threshold, are organisation-defined and not tested.
   - framework: cis
     control_id: "2.3.2"
     version: "v2.2.1 (2025-07-17)"
@@ -25,6 +29,10 @@ frameworks:
     # The recommendation's remediation sets the floor at one server, which is
     # this rule's condition; it prefers more, and so would we (ADR 0052).
     mapping_provenance: project_asserted
+    coverage: full
+    coverage_reason: >-
+      The recommendation's remediation floor is one NTP server (ADR 0052), which is
+      what this rule tests.
 not_mapped:
   - framework: stig
     reason: >-

@@ -427,3 +427,20 @@ body {
     print-color-adjust: exact;
   }
 }
+
+/* ---------- compliance posture (ADR 0068) ---------- */
+
+.posture { margin-bottom: 12px; }
+.gate { border-style: dashed; border-color: var(--unk-br); background: var(--unk-bg); }
+.pbar { display: flex; height: 10px; gap: 2px; margin: 4px 0 10px; }
+.pbar span { display: block; min-width: 4px; border-radius: 2px; }
+.p-sat { background: var(--pass); }
+.p-vio { background: var(--fail); }
+.p-nvf { background: var(--pass-bg); border: 1.5px solid var(--pass); }
+.p-und { background: var(--unk-bg); border: 1.5px dashed var(--unk); }
+.headline { margin: 0 0 4px; }
+.pctl { border-top: 1px solid var(--border); padding: 8px 0; }
+.pctl p { margin: 2px 0; }
+.pctl code { font-family: var(--m); font-size: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 2px 0 6px; color: var(--muted); font-size: 11.5px; }
+.legend .k { display: inline-block; width: 12px; height: 8px; margin-right: 5px; border-radius: 2px; vertical-align: middle; box-sizing: border-box; }

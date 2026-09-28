@@ -3,11 +3,17 @@
  *
  * Findings are scoped to an audit run at the backend, so this composes the runs
  * the caller already has rather than claiming a fleet-wide query that does not
- * exist. A row opens its findings underneath it; nothing navigates.
+ * exist. A row opens underneath it: first the device's posture per framework —
+ * or, until the file has been fully read, the reason it is not scored — then
+ * the findings of its latest run. Nothing navigates.
+ *
+ * Every device is listed, audited or not, so "not audited" is something an
+ * operator can see rather than an absence from the table (ADR 0068).
  */
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 
+import { CompliancePosture } from '@/components/domain/CompliancePosture';
 import { VerdictCounts } from '@/components/domain/VerdictCounts';
 import { SeverityLabel, VerdictChip } from '@/components/domain/Verdict';
 import { PageHeader } from '@/components/ui/Page';
@@ -86,9 +92,10 @@ export function CompliancePage() {
 
   const rows = useMemo(
     () =>
-      (devices.data ?? [])
-        .map((device) => ({ device, run: latest.get(device.device_id) ?? null }))
-        .filter((row) => row.run !== null),
+      (devices.data ?? []).map((device) => ({
+        device,
+        run: latest.get(device.device_id) ?? null,
+      })),
     [devices.data, latest],
   );
 
@@ -117,8 +124,8 @@ export function CompliancePage() {
         {audits.error && !loading && <ErrorState message={audits.error} onRetry={audits.reload} />}
         {!loading && !audits.error && rows.length === 0 && (
           <EmptyState
-            title="No audits yet"
-            detail="Run an audit on a device to populate this view."
+            title="No devices yet"
+            detail="Upload a configuration on the Devices page, then run an audit."
           />
         )}
 
@@ -162,15 +169,25 @@ export function CompliancePage() {
                         </button>
                       </Td>
                       <Td className="font-medium text-ink">{deviceLabel(device)}</Td>
-                      <Td className="text-muted">{formatTimestamp(run!.evaluated_at)}</Td>
+                      <Td className="text-muted">
+                        {run ? formatTimestamp(run.evaluated_at) : 'Not audited'}
+                      </Td>
                       <Td>
-                        <VerdictCounts counts={run!.verdicts} size="sm" />
+                        {run ? (
+                          <VerdictCounts counts={run.verdicts} size="sm" />
+                        ) : (
+                          <NotAvailable reason="no audit run" />
+                        )}
                       </Td>
                     </tr>
                     {expanded && (
                       <tr>
                         <td colSpan={4} className="border-b border-border bg-surface p-0">
-                          <RunFindings auditId={run!.audit_id} />
+                          <div className="px-4 py-3">
+                            <p className="label mb-2">Compliance posture</p>
+                            <CompliancePosture deviceId={device.device_id} />
+                          </div>
+                          {run && <RunFindings auditId={run.audit_id} />}
                         </td>
                       </tr>
                     )}

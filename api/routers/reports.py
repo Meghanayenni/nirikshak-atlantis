@@ -44,6 +44,7 @@ from api.report.model import Report, ReportedFinding, build_report
 from api.report.pdf import availability, render_pdf
 from api.report.render import render_html
 from api.routers.deps import Conn, CurrentUser, require_access
+from api.routers.posture import assemble_posture
 
 router = APIRouter(prefix="/compliance/audits", tags=["reports"])
 
@@ -135,6 +136,10 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
         identity.get("os_version"),
     )
     scope = view.scope
+    # ADR 0068 — the same gate and roll-up the posture endpoint returns. A report
+    # on a gated device, or on a run that is not the latest, states the reason
+    # where a score would be.
+    posture, _ = assemble_posture(conn, user, run["device_id"], run=run)
 
     return build_report(
         report_id=uuid.uuid4().hex,
@@ -152,6 +157,7 @@ def _assemble(conn: sqlite3.Connection, user: User, audit_id: str) -> Report:
             {f.value: why for f, why in sorted(scope.excluded.items())} if scope else {}
         ),
         identity=identity,
+        posture=posture,
     )
 
 

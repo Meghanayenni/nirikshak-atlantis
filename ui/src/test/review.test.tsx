@@ -159,3 +159,75 @@ describe('confirming a boolean mapping', () => {
     expect(body.cast).toBe('bool');
   });
 });
+
+describe('entries the review screen must not trap (ADR 0068)', () => {
+  const GENERIC = '203.0.113.9 203.0.113.10';
+  const genericQueue = {
+    ...QUEUE,
+    reviewed: 0,
+    entries: [
+      {
+        ...QUEUE.entries[0],
+        cluster_id: 'cl-generic',
+        signature: '<IP> <IP>',
+        line: GENERIC,
+        confirmable: false,
+        decided: false,
+        state: 'not_confirmable',
+        reason: 'the shape carries no command vocabulary',
+      },
+    ],
+  };
+
+  it('lets a generic entry be dismissed and never mapped', async () => {
+    signIn(ADMIN_SESSION);
+    const { calls, fetchMock } = mockApi([
+      {
+        match: '/training/confirm',
+        status: 201,
+        body: { example_id: 'trn-9', field: null, outcome: 'rejected_not_security_relevant', audit_seq: 9 },
+      },
+      { match: '/training/queue', body: genericQueue },
+      { match: '/training/examples', body: { count: 0, examples: [] } },
+      { match: '/ingest/devices', body: FIXTURES.devices },
+      { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
+      { match: '/compliance/audits/aud-1/remediation', body: FIXTURES.remediation },
+      { match: '/compliance/audits', body: FIXTURES.audits },
+    ]);
+    renderApp('/devices');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('tab', { name: /needs review/i }));
+    await user.click(await screen.findByText(GENERIC));
+
+    expect(screen.getByRole('button', { name: /confirm mapping/i })).toBeDisabled();
+    expect(screen.getByText(/it cannot be mapped/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /not security relevant/i }));
+    const call = fetchMock.mock.calls.find(([url]) => String(url).includes('/training/confirm'));
+    expect(call, `confirm was never called; calls: ${calls.join(', ')}`).toBeDefined();
+    // The mock declares one parameter; the app calls fetch(url, init).
+    const sent = JSON.parse(String((call as unknown as [unknown, RequestInit])[1].body));
+    expect(sent.outcome).toBe('rejected_not_security_relevant');
+    expect(sent.file_id).toBe(FIXTURES.devices.devices[0].device_id);
+  });
+
+  it('says a file reserved for measurement is not reviewed, before anyone tries', async () => {
+    signIn(ADMIN_SESSION);
+    const reserved =
+      'This line is read from a corpus evaluation file, which is reserved for measuring the parser.';
+    mockApi([
+      { match: '/training/queue', body: { ...QUEUE, reviewed: 0, reserved } },
+      { match: '/training/examples', body: { count: 0, examples: [] } },
+      { match: '/ingest/devices', body: FIXTURES.devices },
+      { match: '/compliance/audits/aud-1/findings', body: FIXTURES.findings },
+      { match: '/compliance/audits/aud-1/remediation', body: FIXTURES.remediation },
+      { match: '/compliance/audits', body: FIXTURES.audits },
+    ]);
+    renderApp('/devices');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('tab', { name: /needs review/i }));
+    expect(await screen.findByText('Reserved for measurement')).toBeInTheDocument();
+    expect(screen.getByText(reserved)).toBeInTheDocument();
+    expect(screen.queryByText(LINE)).toBeNull();
+  });
+});

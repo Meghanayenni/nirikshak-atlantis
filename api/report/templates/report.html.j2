@@ -58,6 +58,132 @@
   <p class="note" style="margin-top:14px">{{ report.ordering_basis }}</p>
 </div>
 
+<!-- COMPLIANCE POSTURE (ADR 0068) -->
+{#
+  Scored only when the gate is ready: every unrecognised line decided, and this
+  run newer than every decision. Otherwise the gate's reason stands where a
+  score would be, and no number appears. The percentage is never printed
+  without the undetermined count and the coverage line beside it. No severity
+  here: posture sits on the verdict axis, and severity stays on the findings.
+#}
+<div class="sec" id="posture">
+  <h2>Compliance posture</h2>
+  {% set p = report.posture %}
+  {% if not p %}
+  <div class="card"><div class="pad">
+    <p class="note">No compliance posture was computed for this report, so no score is given.</p>
+  </div></div>
+  {% elif p.gate.state.value != 'ready' %}
+  <div class="card gate"><div class="pad">
+    <p><b>No compliance score &mdash; {{ p.gate.message }}</b></p>
+    {% if p.gate.review %}
+    <p class="note"><span class="num">{{ p.gate.review.reviewed }}</span> of
+      <span class="num">{{ p.gate.review.total }}</span> unrecognised lines reviewed.</p>
+    {% endif %}
+    {% if p.gate.next_step %}<p class="note">{{ p.gate.next_step }}</p>{% endif %}
+  </div></div>
+  {% elif not p.mappings_attached %}
+  <div class="card gate"><div class="pad">
+    <p><b>No compliance score &mdash; control mappings are withheld.</b></p>
+    <p class="note">{{ p.withheld_reason }}</p>
+  </div></div>
+  {% else %}
+  {% for fw in p.frameworks %}
+  <div class="card posture">
+    <div class="card-h">
+      <h3>{{ fw.document }}</h3>
+      <span class="sub">edition {{ fw.edition }}</span>
+    </div>
+    <div class="pad">
+    {% if fw.status.value != 'assessed' %}
+      <p class="note">Not applicable &mdash; {{ fw.reason }}</p>
+    {% else %}
+      {% set assessed = fw.satisfied + fw.no_violation_found + fw.violated + fw.undetermined %}
+      <div class="pbar" role="img" aria-label="{{ fw.satisfied }} fully satisfied, {{ fw.no_violation_found }} no violation found, {{ fw.violated }} violated, {{ fw.undetermined }} undetermined">
+        {% if fw.satisfied %}<span class="p-sat" style="flex-grow:{{ fw.satisfied }}"></span>{% endif %}
+        {% if fw.no_violation_found %}<span class="p-nvf" style="flex-grow:{{ fw.no_violation_found }}"></span>{% endif %}
+        {% if fw.violated %}<span class="p-vio" style="flex-grow:{{ fw.violated }}"></span>{% endif %}
+        {% if fw.undetermined %}<span class="p-und" style="flex-grow:{{ fw.undetermined }}"></span>{% endif %}
+      </div>
+      <p class="headline">
+        <b><span class="num">{{ fw.satisfied }}</span> of <span class="num">{{ assessed }}</span>
+        assessed controls fully satisfied</b> &middot;
+        <span class="num">{{ fw.no_violation_found }}</span> no violation found (partial check) &middot;
+        <span class="num">{{ fw.violated }}</span> violated &middot;
+        <span class="num">{{ fw.undetermined }}</span> undetermined
+      </p>
+      <p class="legend">
+        <span><i class="k p-sat"></i>Fully satisfied &mdash; a check testing the whole control passed</span>
+        <span><i class="k p-nvf"></i>No violation found &mdash; checks passed, but each tests only part of the control</span>
+        <span><i class="k p-vio"></i>Violated &mdash; a mapped check failed</span>
+        <span><i class="k p-und"></i>Undetermined &mdash; a mapped check could not be answered</span>
+      </p>
+      <p class="note">
+        {% if fw.catalog_total is not none %}<span class="num">{{ assessed }}</span> of
+        <span class="num">{{ fw.catalog_total }}</span> catalog controls assessed by NIRIKSHAK.
+        {% endif %}{{ fw.catalog_basis }}
+        Only a fully satisfied control counts toward the first figure, so it can understate
+        compliance and cannot overstate it.
+      </p>
+
+      <p class="label" style="margin:14px 0 6px">Did not comply</p>
+      {% set violated = fw.controls | selectattr('state.value', 'equalto', 'violated') | list %}
+      {% if not violated %}
+      <p class="note">No assessed control was violated.</p>
+      {% endif %}
+      {% for c in violated %}
+      <div class="pctl">
+        <p><span class="num"><b>{{ c.control_id }}</b></span>
+          <span class="plain">&mdash; {{ fw.framework | upper }} edition {{ fw.edition }}</span></p>
+        {% for r in c.rules if r.verdict and r.verdict.value == 'fail' %}
+        {% set item = report.by_rule.get(r.rule_id) %}
+        <p class="note">Check <span class="num">{{ r.rule_id }}</span> failed on
+          {% for e in r.evidence %}<span class="num">{{ e.file_path }}:{{ e.line_start }}</span>
+          <code>{{ e.raw_line }}</code>{% if not loop.last %}; {% endif %}{% else %}no cited line
+          ({{ r.absence_reason or 'the verdict rests on an absence' }}){% endfor %}
+          &mdash; see the finding below.</p>
+        {% if item and item.remediation.snippet %}
+        <pre class="cmd">{% for cmd in item.remediation.snippet.commands %}{{ cmd }}{{ '\n' if not loop.last }}{% endfor %}</pre>
+        {% if item.remediation.snippet.rollback %}
+        <p class="label" style="margin:8px 0 4px">Rollback</p>
+        <pre class="cmd">{% for cmd in item.remediation.snippet.rollback %}{{ cmd }}{{ '\n' if not loop.last }}{% endfor %}</pre>
+        {% endif %}
+        {% else %}
+        <p class="note"><b>{{ item.remediation.statement if item else 'No vetted remediation was resolved for this check.' }}</b></p>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endfor %}
+
+      {% set nvf = fw.controls | selectattr('state.value', 'equalto', 'no_violation_found') | list %}
+      {% if nvf %}
+      <p class="label" style="margin:14px 0 6px">No violation found</p>
+      {% for c in nvf %}
+      <p class="note"><span class="num">{{ c.control_id }}</span> &mdash; partial check:
+        NIRIKSHAK tests only part of this control.
+        {% for r in c.rules %}<br><span class="num">{{ r.rule_id }}</span> &mdash; {{ r.coverage_reason }}{% endfor %}</p>
+      {% endfor %}
+      {% endif %}
+
+      {% set undetermined = fw.controls | selectattr('state.value', 'equalto', 'undetermined') | list %}
+      {% if undetermined %}
+      <p class="label" style="margin:14px 0 6px">Could not be determined</p>
+      {% for c in undetermined %}
+      <p class="note"><span class="num">{{ c.control_id }}</span> &mdash; {{ c.reason }}</p>
+      {% endfor %}
+      {% endif %}
+    {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% for name, why in p.unsourced.items() %}
+  <p class="note">{{ name | upper }} &mdash; {{ why }}.</p>
+  {% endfor %}
+  <p class="note">Control mappings are this project's judgement, not taken from a published
+    crosswalk. This section is evidence about one configuration, not a certification.</p>
+  {% endif %}
+</div>
+
 <!-- SUBJECT -->
 <div class="sec">
   <h2>Subject</h2>
@@ -161,7 +287,7 @@
       <p style="color:var(--muted);font-size:11.5px;margin:0">
         {% for ref in f.frameworks %}<span class="num">{{ ref.framework.value | upper }}
         {{ ref.control_id }}</span>{% if ref.version %} (edition {{ ref.version }}){% endif %}
-        &mdash; {{ ref.mapping_provenance.value | replace('_', ' ') }}{% if not loop.last %};
+        &mdash; {{ ref.mapping_provenance.value | replace('_', ' ') }}, {{ ref.coverage.value }} check{% if not loop.last %};
         {% endif %}{% endfor %}
       </p>
     </div>

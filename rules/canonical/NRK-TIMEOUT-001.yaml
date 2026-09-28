@@ -24,6 +24,10 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      The control terminates sessions under organisation-defined conditions. This
+      rule tests the vty idle timeout against NIRIKSHAK's own ten-minute bound.
   - framework: nist
     control_id: "SC-10"
     version: "5.2.0"
@@ -31,12 +35,21 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      The control covers every network connection after an organisation-defined idle
+      period. This rule reads the vty lines only.
   - framework: cis
     control_id: "1.2.8"
     version: "v2.2.1 (2025-07-17)"
     citation: "CIS Cisco IOS XE 17.x Benchmark, edition v2.2.1 (2025-07-17), control 1.2.8"
     # At most ten minutes on vty, which is exactly this rule's upper bound.
     mapping_provenance: project_asserted
+    coverage: full
+    coverage_reason: >-
+      The recommendation bounds the vty exec timeout at ten minutes. The rule passes
+      only a vty timeout above zero and at most 600 seconds, and abstains when vty
+      ranges disagree.
 not_mapped:
   - framework: stig
     reason: >-

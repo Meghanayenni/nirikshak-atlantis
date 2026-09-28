@@ -62,19 +62,14 @@ export function useDeviceWorkspace(deviceId: string) {
     !isAdmin || (queue.cause instanceof ApiError && queue.cause.isForbidden);
 
   /**
-   * A queue entry counts as decided once an administrator has recorded a
-   * decision for that exact line — including "not security relevant". Confirming
-   * does not delete the residue row, so an empty queue is not the signal; a
-   * decided queue is.
+   * Whether an entry is decided comes from the backend, computed by the same
+   * function the compliance posture gate uses (ADR 0068) — one count for one
+   * question. It covers every decision ever recorded; nothing here pages
+   * through the decision list, which is fetched only to display it.
    */
-  const decidedLines = useMemo(
-    () => new Set((examples.data?.examples ?? []).map((example) => example.line)),
-    [examples.data],
-  );
-
   const undecided: QueueEntry[] = useMemo(
-    () => (queue.data?.entries ?? []).filter((entry) => !decidedLines.has(entry.line)),
-    [queue.data, decidedLines],
+    () => (queue.data?.entries ?? []).filter((entry) => !entry.decided),
+    [queue.data],
   );
 
   const steps = useMemo(() => remediation.data?.steps ?? [], [remediation.data]);
@@ -112,10 +107,7 @@ export function useDeviceWorkspace(deviceId: string) {
     remediation.loading ||
     (auditId !== null && remediation.data === null && remediation.error === null) ||
     (isAdmin &&
-      (queue.loading ||
-        examples.loading ||
-        (queue.data === null && queue.error === null) ||
-        (examples.data === null && examples.error === null)));
+      (queue.loading || (queue.data === null && queue.error === null)));
 
   /** What stands between this device and a report, in pipeline order. */
   const blockers: Blocker[] = useMemo(() => {
@@ -163,7 +155,6 @@ export function useDeviceWorkspace(deviceId: string) {
     examples,
     reviewRestricted,
     undecided,
-    decidedLines,
     steps,
     actionableSteps,
     review,

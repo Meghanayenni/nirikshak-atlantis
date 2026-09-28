@@ -28,6 +28,10 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      Transmission protection covers every channel. This rule reads the SSH server's
+      MAC list and refuses MD5 and SHA-1 by name.
   - framework: nist
     control_id: "AC-17(02)"
     version: "5.2.0"
@@ -35,6 +39,10 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      Refusing named weak SSH MACs does not show every remote session uses approved
+      cryptography, or that SSH is the only path.
 not_mapped:
   - framework: stig
     reason: >-

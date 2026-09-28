@@ -290,6 +290,9 @@ export interface FrameworkRef {
   edition: string | null;
   citation: string | null;
   mapping_provenance: 'project_asserted' | 'official';
+  /** Whether the rule tests the whole control or part of it (ADR 0068). */
+  coverage?: 'full' | 'partial';
+  coverage_reason?: string | null;
 }
 
 /** A sourced framework the rule deliberately does not map to, and why. */
@@ -571,6 +574,8 @@ export interface QueueEntry {
   occurrences: number;
   file_count: number;
   confirmable: boolean;
+  /** Decided on this platform — the same function the posture gate counts with. */
+  decided: boolean;
   block_path: string[];
   file_id: string;
   line_number: number;
@@ -584,6 +589,10 @@ export interface QueueEntry {
 
 export interface TrainingQueue {
   size: number;
+  /** Entries decided, counted server-side exactly as the posture gate counts. */
+  reviewed: number;
+  /** When the queue was asked for one file reserved for measurement: why it is not reviewed. */
+  reserved?: string | null;
   confirmable: number;
   index: string;
   model: ModelAvailability;
@@ -776,4 +785,89 @@ export interface DiscardResult {
   pack_id: string;
   versions_removed: string[];
   files_reset: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Compliance posture (ADR 0068) — GET /compliance/devices/{id}/posture
+// ---------------------------------------------------------------------------
+
+/**
+ * Decided by the backend from the review queue and decision timestamps. The
+ * interface maps a state to a message and a link; it never derives one.
+ */
+export type GateState =
+  | 'not_audited'
+  | 'review_pending'
+  | 'rerun_required'
+  | 'evaluation_file'
+  | 'ready';
+
+export interface PostureGate {
+  state: GateState;
+  message: string;
+  next_step: string | null;
+  review: { reviewed: number; total: number } | null;
+  audit_id: string | null;
+  evaluated_at: string | null;
+  last_decision_at: string | null;
+}
+
+export interface PostureRule {
+  rule_id: string;
+  verdict: Verdict | null;
+  finding_id: string | null;
+  unknown_reason: string | null;
+  absence_reason: string | null;
+  evidence: Evidence[];
+  /** The mapping's judgement: does this rule test all of the control? */
+  coverage: 'full' | 'partial';
+  coverage_reason: string | null;
+  /** Present on a violated control's failing checks only. */
+  remediation?: RemediationRef;
+}
+
+export interface PostureControl {
+  control_id: string;
+  edition: string;
+  state: 'satisfied' | 'no_violation_found' | 'violated' | 'undetermined';
+  reason: string;
+  rules: PostureRule[];
+}
+
+export interface FrameworkPosture {
+  framework: string;
+  document: string;
+  edition: string;
+  status: 'assessed' | 'not_applicable' | 'not_in_scope';
+  reason: string | null;
+  coverage: { assessed: number; catalog_total: number | null; basis: string };
+  /**
+   * Arrive only when `status` is `assessed`. The headline is `satisfied` of
+   * `assessed` — a fraction the API counted, never a percentage.
+   */
+  counts?: {
+    satisfied: number;
+    no_violation_found: number;
+    violated: number;
+    undetermined: number;
+    assessed: number;
+  };
+  satisfied?: PostureControl[];
+  no_violation_found?: PostureControl[];
+  violated?: PostureControl[];
+  undetermined?: PostureControl[];
+}
+
+export interface DevicePosture {
+  device_id: string;
+  platform: { vendor: string | null; os_family: string | null; os_version: string | null };
+  gate: PostureGate;
+  /** Null in every gated state: no number exists to render. */
+  posture: {
+    mappings_attached: boolean;
+    withheld_reason: string | null;
+    frameworks: FrameworkPosture[];
+    unsourced: Record<string, string>;
+    note: string;
+  } | null;
 }

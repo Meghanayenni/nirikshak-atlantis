@@ -112,6 +112,78 @@ def unknown_lines(
     )
 
 
+def decided_clusters(
+    conn: sqlite3.Connection,
+    cluster_ids: list[str],
+    *,
+    vendor: str | None,
+    os_family: str | None,
+) -> dict[str, str | None]:
+    """`cluster_id -> newest decision time` for the shapes decided on this platform.
+
+    The one definition of "reviewed" (ADR 0068). The posture gate and the
+    Needs-review tab both read it, so the two can never show different counts
+    for the same question. It reads every decision; nothing is paged.
+
+    An entry is reviewed when an administrator decision exists for that shape on
+    this platform, whatever it was: a mapping, a correction, or "not security
+    relevant". A decision recorded for another platform extends another pack and
+    does not count.
+    """
+    if not cluster_ids:
+        return {}
+    marks = ",".join("?" for _ in cluster_ids)
+    rows = conn.execute(
+        f"""
+        SELECT cluster_id, MAX(confirmed_at) AS last
+        FROM training_example
+        WHERE cluster_id IN ({marks}) AND vendor IS ? AND os_family IS ?
+        GROUP BY cluster_id
+        """,
+        (*cluster_ids, vendor, os_family),
+    ).fetchall()
+    return {row["cluster_id"]: row["last"] for row in rows}
+
+
+def review_progress(
+    conn: sqlite3.Connection, file_id: str, *, vendor: str | None, os_family: str | None
+) -> tuple[int, int, str | None]:
+    """`(reviewed, total, last_decision_at)` for one file's Needs-review queue.
+
+    The unit is the queue entry — one line shape, identified by `cluster_id` —
+    which is what the Needs-review tab lists and what one decision covers.
+    Confirming does not delete residue rows, so an empty table is not the
+    signal; a decided one is.
+
+    `last_decision_at` is the newest such decision, which is what says whether
+    the latest run was made before or after the review finished.
+    """
+    entries = [
+        row["cluster_id"]
+        for row in conn.execute(
+            "SELECT DISTINCT cluster_id FROM unknown_line WHERE file_id = ? AND signature <> ''",
+            (file_id,),
+        )
+    ]
+    decided = decided_clusters(conn, entries, vendor=vendor, os_family=os_family)
+    last = max((t for t in decided.values() if t), default=None)
+    return len(decided), len(entries), last
+
+
+def files_with_line(conn: sqlite3.Connection, cluster_id: str | None, text: str) -> set[str]:
+    """Every file whose queue holds this exact scrubbed line in this shape.
+
+    What a decision about the line can have been read from — the question the
+    corpus guard asks before a confirmation or a compile (DEF-16).
+    """
+    sql = "SELECT DISTINCT file_id FROM unknown_line WHERE text_scrubbed = ?"
+    params: list[object] = [text]
+    if cluster_id:
+        sql += " AND cluster_id = ?"
+        params.append(cluster_id)
+    return {row["file_id"] for row in conn.execute(sql, params)}
+
+
 def queue_size(conn: sqlite3.Connection, *, file_id: str | None = None) -> int:
     if file_id is None:
         return conn.execute("SELECT COUNT(*) AS c FROM unknown_line").fetchone()["c"]

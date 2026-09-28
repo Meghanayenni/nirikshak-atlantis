@@ -37,6 +37,7 @@ from typing import Any
 
 from api.models.enums import Framework, Severity, SourceType, UnknownReason, Verdict
 from api.models.finding import Finding
+from api.models.posture import DevicePosture
 from api.models.rule import FrameworkRef
 from api.models.source_limits import not_determinable
 from api.remediate.library import SnippetLibrary
@@ -175,7 +176,18 @@ class Report:
     benchmark. Listed so an operator sees what the narrower scope cost, and why."""
     frameworks_excluded: dict[str, str] = field(default_factory=dict)
     """Selected frameworks whose edition does not describe this device, with why."""
+    posture: DevicePosture | None = None
+    """The gate and, only when it is ready, the posture per framework (ADR 0068).
+
+    Decided by the route through the same function the posture endpoint uses,
+    because `report -> comply` is forbidden. None means the caller supplied
+    none, and the section says so rather than scoring anything."""
     ordering_basis: str = ORDERING_BASIS
+
+    @property
+    def by_rule(self) -> dict[str, ReportedFinding]:
+        """Each finding by rule id — how the posture section reaches a remediation."""
+        return {f.rule_id: f for f in self.findings}
 
     @property
     def failures(self) -> tuple[ReportedFinding, ...]:
@@ -312,6 +324,7 @@ def build_report(
     framework_absence: Mapping[str, str] | None = None,
     not_assessed: tuple[tuple[str, str], ...] = (),
     frameworks_excluded: Mapping[str, str] | None = None,
+    posture: DevicePosture | None = None,
 ) -> Report:
     """Assemble one report from a persisted run.
 
@@ -379,5 +392,6 @@ def build_report(
         framework_selection=tuple(run.get("framework_selection") or ()),
         not_assessed=tuple(not_assessed),
         frameworks_excluded=dict(frameworks_excluded or {}),
+        posture=posture,
         disclosures=_disclosures(ordered, library, framework_absence),
     )

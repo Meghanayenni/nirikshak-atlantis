@@ -205,6 +205,17 @@ is this project's judgement. `official` provenance is reachable only from a
 published **crosswalk** — a document stating the mapping — and none has been
 obtained.
 
+**A device is scored per framework only once its file has been fully read.**
+`GET /compliance/devices/{id}/posture` answers *not audited*, *review pending*
+(with how many unrecognised lines are decided) or *re-run required* — and no
+number — until every Needs-review entry has a decision and the latest run
+includes them; an evaluation corpus file is never reviewed or scored. Then, per
+framework, each control rolls up to fully satisfied, no violation found,
+violated or undetermined. Most mappings test only part of a control, so a pass
+on them is *no violation found*, not a satisfied control, and the headline is a
+fraction — "*1 of 10 assessed controls fully satisfied*" — never a percentage.
+It can understate compliance and never overstate it (ADR 0068).
+
 **An audit can be scoped to a selected benchmark.**
 `POST /compliance/audits?file_id=…&framework=nist` evaluates only the rules that
 map to it, and the run records its own scope so a later reader can tell a
@@ -598,6 +609,7 @@ Endpoints so far:
 | GET | `/compliance/audits/{id}/remediation` | Plan, in application order | user |
 | GET | `/compliance/audits/frameworks` | Sourced benchmarks, each edition and sha256 | public |
 | GET | `/compliance/audits/frameworks/device/{file_id}` | Which benchmarks describe this device, and why not | user |
+| GET | `/compliance/devices/{device_id}/posture` | Gate, and per-framework posture once the file is fully reviewed | user |
 | GET | `/ingest/files/{file_id}/lines` | Stored lines of a file you uploaded (evidence context) | user |
 | GET | `/fleet/baseline` | Peer baselines and deviations | **admin** |
 | GET | `/training/queue` | Unknown shapes, clustered and ranked | **admin** |

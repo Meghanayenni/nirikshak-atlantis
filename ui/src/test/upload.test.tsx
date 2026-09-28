@@ -44,6 +44,7 @@ function acceptedFile(overrides: Partial<UploadAccepted['detection']> = {}): Upl
     format: 'text',
     duplicate: false,
     identity: {},
+    bootstrap: null,
     detection: {
       outcome: 'detected',
       vendor: 'cisco',

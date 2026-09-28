@@ -12,6 +12,7 @@ import type {
   AuditResult,
   AuditRun,
   DeviceFrameworks,
+  DevicePosture,
   FindingList,
   RemediationPlan,
   Severity,
@@ -85,4 +86,12 @@ export function getHtmlReport(auditId: string): Promise<string> {
  */
 export function getPdfReport(auditId: string): Promise<Blob> {
   return request<Blob>(`/compliance/audits/${auditId}/report.pdf`, { blob: true });
+}
+
+/**
+ * Whether a device may be scored, and its posture per framework when it may
+ * (ADR 0068). The gate, the counts and the percentage are all the backend's.
+ */
+export function getDevicePosture(deviceId: string): Promise<DevicePosture> {
+  return request<DevicePosture>(`/compliance/devices/${deviceId}/posture`);
 }

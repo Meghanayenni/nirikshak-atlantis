@@ -164,6 +164,34 @@ def _twenty_snippets_three_platforms() -> bool:
     return len(lib.snippets) == 20 and len({(s.vendor, s.os_family) for s in lib.snippets}) == 3
 
 
+def _assessed_of_catalog_10_1014_4_42_6_84() -> bool:
+    """Controls the rulepack maps per framework, against each index's live total (ADR 0068)."""
+    from api.comply.frameworks import indexes
+    from api.comply.rulepacks import load_active_rulepack
+    from api.models.enums import Framework
+
+    mapped: dict[Framework, set[str]] = {}
+    for rule in load_active_rulepack().rules:
+        for ref in rule.frameworks:
+            mapped.setdefault(ref.framework, set()).add(ref.control_id)
+    figures = {f: (len(mapped.get(f, ())), i.control_count) for f, i in indexes().items()}
+    return figures == {
+        Framework.NIST: (10, 1014),
+        Framework.STIG: (4, 42),
+        Framework.CIS: (6, 84),
+    }
+
+
+def _five_of_twenty_six_mappings_full_all_cis() -> bool:
+    """Coverage judgements across every shipped mapping (ADR 0068)."""
+    from api.comply.rulepacks import load_active_rulepack
+    from api.models.enums import Framework, MappingCoverage
+
+    refs = [ref for rule in load_active_rulepack().rules for ref in rule.frameworks]
+    full = [ref for ref in refs if ref.coverage is MappingCoverage.FULL]
+    return len(refs) == 26 and len(full) == 5 and all(r.framework is Framework.CIS for r in full)
+
+
 @dataclass(frozen=True)
 class Claim:
     document: str
@@ -244,6 +272,19 @@ CLAIMS: tuple[Claim, ...] = (
         "`snippets/` holds twenty\nsnippets",
         _twenty_snippets_three_platforms,
         "twenty vetted snippets across three platforms",
+    ),
+    Claim(
+        "docs/architecture.md",
+        "**ten of 1,014 NIST SP 800-53 controls, four of 42 STIG requirements and six of 84 CIS "
+        "recommendations**",
+        _assessed_of_catalog_10_1014_4_42_6_84,
+        "controls mapped per framework, over each index's live total",
+    ),
+    Claim(
+        "docs/architecture.md",
+        "only **five of the twenty-six mappings — all CIS — are full checks**",
+        _five_of_twenty_six_mappings_full_all_cis,
+        "five of twenty-six mappings are full checks, all of them CIS",
     ),
 )
 

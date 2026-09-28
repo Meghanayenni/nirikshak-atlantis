@@ -7,7 +7,7 @@
  */
 import { Lock, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { VerdictCounts } from '@/components/domain/VerdictCounts';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
@@ -27,11 +27,19 @@ import { useDeviceWorkspace } from './useDeviceWorkspace';
 
 type TabId = 'overview' | 'findings' | 'review' | 'remediation' | 'report';
 
+const TAB_IDS: readonly TabId[] = ['overview', 'findings', 'review', 'remediation', 'report'];
+
+/** `?tab=review` opens a tab directly — how the Compliance page links in (ADR 0068). */
+function initialTab(requested: string | null): TabId {
+  return TAB_IDS.find((id) => id === requested) ?? 'overview';
+}
+
 export function DeviceWorkspace({ deviceId }: { deviceId: string }) {
   const workspace = useDeviceWorkspace(deviceId);
   const { push } = useToast();
   const { isAdmin } = useAuth();
-  const [tab, setTab] = useState<TabId>('overview');
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState<TabId>(() => initialTab(params.get('tab')));
   const [scope, setScope] = useState<string[]>([]);
   const [refusal, setRefusal] = useState<string | null>(null);
 

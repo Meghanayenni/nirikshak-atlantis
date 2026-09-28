@@ -100,7 +100,7 @@ contract, not by intention.
 
 ## 4. Packages and responsibilities
 
-Fifteen packages under `api/`, 114 modules.
+Fifteen packages under `api/`, 117 modules.
 
 | Package | Responsibility |
 | --- | --- |
@@ -111,7 +111,7 @@ Fifteen packages under `api/`, 114 modules.
 | `ingest/` | Upload, validation, format and vendor detection (and re-detection of a stored file when the packs change), line hashing and the fleet line cache, device identity extraction, vendor-pack loading and checksum verification. |
 | `parse/` | Text to `ConfigTree`; applies a pack's patterns to produce `FieldMatch` objects and the **residue** — every node no pattern matched. |
 | `normalise/` | `ParseResult` to `CanonicalSecurityModel`. Decides what an **absent** directive means, and scrubs residue for the training queue. |
-| `comply/` | The deterministic rule engine. Reads the canonical model and nothing else; emits `Finding` objects. |
+| `comply/` | The deterministic rule engine. Reads the canonical model and nothing else; emits `Finding` objects. Also rolls a run's findings up per framework control, behind a gate on the review queue (ADR 0068) — a summary of verdicts already decided, never a new one. |
 | `analyse/` | Semantic ACL analysis by interval logic — shadowed, redundant, overly permissive. Observations, not verdicts. |
 | `prioritise/` | Exposure assessment and peer baselines. Ranks findings when exposure can be determined, and abstains when it cannot. |
 | `remediate/` | Resolves a vetted snippet for a failing finding, or states that none exists. |
@@ -241,7 +241,7 @@ is real; the output is an honest refusal.
 
 | Not claimed | Why |
 | --- | --- |
-| **Coverage against any framework, or anything for ISO/IEC 27001** | NIST SP 800-53 (ADR 0035), the DISA Cisco IOS XE Router NDM STIG and the CIS Cisco IOS XE 17.x Benchmark (ADR 0052) are sourced; ISO/IEC 27001 is a purchased standard and is **absent** from the selector, never present and empty. Four of 42 STIG requirements and six of 84 CIS recommendations carry a mapping — evidence about seven checks, not coverage. Both platform benchmarks describe Cisco IOS XE only and are scoped to releases matching 17.x, so on every other device their identifiers are not shown, the report says why, and selecting them is refused with 409 rather than answered with zero findings (ADR 0054). The interface offers a per-device benchmark selector whose options, reasons and refusals all come from the API (ADR 0058). Four rules are looser than the STIG control proposed for them and are recorded as declining it. The STIG XCCDF is held in the repository; the CIS Benchmark is referenced by digest and never held. |
+| **Coverage against any framework, or anything for ISO/IEC 27001** | NIST SP 800-53 (ADR 0035), the DISA Cisco IOS XE Router NDM STIG and the CIS Cisco IOS XE 17.x Benchmark (ADR 0052) are sourced; ISO/IEC 27001 is a purchased standard and is **absent** from the selector, never present and empty. Four of 42 STIG requirements and six of 84 CIS recommendations carry a mapping — evidence about seven checks, not coverage. Both platform benchmarks describe Cisco IOS XE only and are scoped to releases matching 17.x, so on every other device their identifiers are not shown, the report says why, and selecting them is refused with 409 rather than answered with zero findings (ADR 0054). The interface offers a per-device benchmark selector whose options, reasons and refusals all come from the API (ADR 0058). Four rules are looser than the STIG control proposed for them and are recorded as declining it. The STIG XCCDF is held in the repository; the CIS Benchmark is referenced by digest and never held. The posture view (ADR 0068) states how many of an edition's controls this project assesses — **ten of 1,014 NIST SP 800-53 controls, four of 42 STIG requirements and six of 84 CIS recommendations** — as the size of what is not assessed, never as coverage of the framework. Its headline is a fraction of assessed controls **fully satisfied**, and only **five of the twenty-six mappings — all CIS — are full checks**; every other mapping is a partial check, whose pass is reported as *no violation found*, never as a satisfied control. It scores a device only once its review queue is fully decided and the run includes every decision. |
 | **An *official* mapping to any framework** | Ten rules carry NIST control identifiers validated against the Rev 5 OSCAL catalog (ADR 0035), three carry four STIG IDs and six carry CIS recommendation numbers (ADR 0052), and every one is `project_asserted`. A catalog publishes *controls*; it does not publish *mappings*. `OFFICIAL` is reachable only from a published **crosswalk** — CIS's Benchmark-to-800-53 mappings, NIST's 800-53-to-27001 material — and this project has obtained none (ADR 0045). The value is kept because it is the one route to CIS coverage without buying the CIS Benchmark, not because anything uses it. |
 | **Absence-aware evaluation accuracy** | No platform default and no capability claim ships, so the `EVALUATE` branch has never fired on real data. |
 | **Exposure scores or a priority ranking** | Interfaces and access lists are read, and `interface_roles` now exists for a pack to declare which names are management-plane (ADR 0034) — but **no pack declares one**, because no vendor documentation has been sourced. Exposure stays indeterminate. Severity alone must not determine remediation order, so no severity-sorted list is offered in its place. |
@@ -415,7 +415,7 @@ can be run once, and it has not been spent.
 | DEF-13 | Pack checksums were declared and never verified against file bytes | Fixed (ADR 0020) |
 | DEF-14 | `POST /compliance/audits` never appended `AUDIT_RUN` to the chain | Fixed (ADR 0021) |
 | DEF-15 | Detected device identity never reached the canonical model in the live pipeline | Fixed (ADR 0021) |
-| **DEF-16** | **The confirmation loop does not know about corpus splits, so an administrator working the Needs-review queue can compile a pattern from a file reserved for measuring the parser** | **OPEN** |
+| **DEF-16** | **The confirmation loop does not know about corpus splits, so an administrator working the Needs-review queue can compile a pattern from a file reserved for measuring the parser** | **OPEN** — narrowed (ADR 0068) |
 | DEF-17 | Two patterns asserting different values for one field collapsed to UNKNOWN, so a device whose weakest vty line enables telnet reported no FAIL | Fixed (ADR 0026) |
 | **DEF-18** | **Deleting a trained pack orphans every stored finding that cites it — two audit runs on this deployment can no longer name the pack that read them** | **OPEN** — evidence secured (ADR 0031) |
 | **DEF-19** | **A second account that uploads a file another account uploaded first is shown the device and refused its audit — `POST /compliance/audits` answers 404, because a file's owner is its first uploader** | **OPEN** — deferred past submission |
@@ -493,7 +493,18 @@ of the suggestions the queue holds for that cluster when `/training/confirm` is
 called (`api/routers/training.py`), which is recomputed server-side rather than
 taken from the client.
 
-**DEF-16 — the detector now runs, and the defect is unchanged** (ADR 0051). Its
+**DEF-16 — narrowed, not closed** (ADR 0068). Where `corpus/MANIFEST.yaml` is
+present, `/training/confirm` refuses a line reviewed from an evaluation or
+held-out file, or known only from such files, and `/training/compile` refuses a
+recorded decision whose line is known only from them; the posture gate reports
+such a file as reserved for measurement and never asks for its review. What is
+still open: a deployment without the manifest cannot run the check at all;
+decisions recorded earlier are untouched — twelve in the development database
+rest on lines found only in `edge-rtr-11.cfg`, and no pattern derives from any of
+them; and the loop still has no notion of a split for an operator's own uploads,
+which is correct, since they have none.
+
+**DEF-16 — the detector now runs** (ADR 0051). Its
 guard scans `packs/trained/`, which is gitignored and empty on every checkout,
 so it had skipped every time it ever executed and the contamination was found by
 hand. It is now driven against a pack the real training loop writes from the
@@ -532,7 +543,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-67 ADRs, recording decisions numbered up to D171.
+68 ADRs, recording decisions numbered up to D179.
 
 | ADR | Phase | Subject | Decisions |
 | --- | --- | --- | --- |
@@ -603,6 +614,7 @@ would reappear inside a layer built to have neither.
 | 0065 | P18 | JunOS in two surfaces, and a default a gap makes unsafe | D161, D162, D163, D164, D165 |
 | 0066 | P18 | An example carries its block | D166 |
 | 0067 | P18 | A platform described from its own file | D167, D168, D169, D170, D171 |
+| 0068 | P18 | A score only for a file fully read | D172, D173, D174, D175, D176, D177, D178, D179 |
 
 ---
 
@@ -640,6 +652,20 @@ Inside a device the tabs are the pipeline again: *Overview* (what was read),
 exception to the product's density — spacious, one line at a time, because a
 cramped review produces careless confirmations and a careless confirmation
 enters a vendor pack permanently.
+
+**Compliance posture is gated server-side** (ADR 0068). The Compliance page lists
+every device and, opened, shows how far it complies with each sourced framework
+— the unit is the framework control, rolled up from the rules mapped to it —
+or, until every Needs-review entry for its file has a decision and the latest
+run is newer than every decision, the reason it is not scored and no number at
+all. An evaluation or held-out corpus file is never reviewed or scored. The
+headline is a fraction of controls fully satisfied, never a percentage, and it
+never appears without the no-violation-found, violated and undetermined counts
+and the catalog-coverage line beside it. A framework whose edition does not
+describe the device is *not applicable*, never zero. The Needs-review tab counts
+decided entries with the gate's own function. `GET /compliance/devices/{id}/posture`
+decides all of it, and the report's posture section is built by the same
+function.
 
 **The report is gated.** A device's report opens once it has been audited, every
 unrecognised line has been decided (including "not security relevant"), and every

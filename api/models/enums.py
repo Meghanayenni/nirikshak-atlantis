@@ -247,6 +247,20 @@ class MappingProvenance(StrEnum):
     """This project read the control and judged that its check evidences it."""
 
 
+class MappingCoverage(StrEnum):
+    """How much of a control one rule tests (ADR 0068).
+
+    A FAIL is a violation of the control whichever this is. A PASS is not
+    symmetric: it shows the control is met only when the rule tests all of it.
+    """
+
+    FULL = "full"
+    """The control is one configuration requirement and the rule tests it completely."""
+
+    PARTIAL = "partial"
+    """The rule tests part of the control. A pass means no violation was found."""
+
+
 # ---------------------------------------------------------------------------
 # Platform knowledge provenance (decision D11)
 # ---------------------------------------------------------------------------

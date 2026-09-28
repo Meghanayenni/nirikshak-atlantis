@@ -18,6 +18,10 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      The HTTP server is one of the many services least functionality restricts.
+      Only that one is tested.
   - framework: nist
     control_id: "AC-17(02)"
     version: "5.2.0"
@@ -25,6 +29,10 @@ frameworks:
     # Our judgement that this check evidences this control, not a
     # published crosswalk. No catalog maps NIRIKSHAK's own rules.
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      Disabling the plaintext HTTP server removes one unencrypted management path.
+      Other remote sessions are not examined.
   - framework: stig
     control_id: "CISC-ND-000470"
     version: "V3R7 (2026-04-01)"
@@ -32,6 +40,10 @@ frameworks:
     # `ip http server` is on the control's list of commands that must not be
     # configured. The other services on that list are not read (ADR 0052).
     mapping_provenance: project_asserted
+    coverage: partial
+    coverage_reason: >-
+      The check lists about fifteen services that must be absent, from the bootp
+      server to the small TCP and UDP servers. This rule tests the HTTP server only.
 not_mapped:
   - framework: cis
     reason: >-
