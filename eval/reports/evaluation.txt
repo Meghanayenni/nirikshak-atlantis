@@ -4,8 +4,8 @@ NIRIKSHAK — EVALUATION REPORT (P9–P10)
 
 Accuracy is reported as a measurement, not a claim.
 
-Generated      : 2026-09-27T14:51:55.561531+00:00
-Rulepack       : 1.3.0
+Generated      : 2026-09-28T19:52:33.017234+00:00
+Rulepack       : 1.4.0
 Vendor packs   : arista/eos 1.2.0, cisco/ios 1.6.0, juniper/junos 1.3.0
 Files scored   : 5 (evaluation split only)
 Held-out vendor: paloalto — NOT READ (blocked; see section 10)
@@ -43,6 +43,7 @@ juniper/dev/edge-rtr-02.conf           dev     juniper   no
 juniper/dev/srx-branch-04.conf         dev     juniper   no
 juniper/dev/srx-edge-01.conf           dev     juniper   no
 juniper/eval/srx-dc-02.conf            eval    juniper   yes
+mikrotik/dev/edge-mt-01.rsc            dev     mikrotik  no
 
 2. GROUND-TRUTH PROVENANCE
 ==============================================================================
@@ -50,11 +51,11 @@ A label is authored from the configuration, never from parser output.
 
 file                                   labelled by            review      conflict
 ------------------------------------------------------------------------------
-arista/eval/sw-leaf-07.cfg             ai-assistant unreviewed  none
-cisco/eval/edge-rtr-11.cfg             ai-assistant unreviewed  PATTERN AUTHOR
-cisco/eval/rtr-edge-09.cfg             ai-assistant unreviewed  PATTERN AUTHOR
-cisco/eval/sw-dist-11.cfg              ai-assistant unreviewed  PATTERN AUTHOR
-juniper/eval/srx-dc-02.conf            ai-assistant unreviewed  none
+arista/eval/sw-leaf-07.cfg             ai-assistant           unreviewed  none
+cisco/eval/edge-rtr-11.cfg             ai-assistant           unreviewed  PATTERN AUTHOR
+cisco/eval/rtr-edge-09.cfg             ai-assistant           unreviewed  PATTERN AUTHOR
+cisco/eval/sw-dist-11.cfg              ai-assistant           unreviewed  PATTERN AUTHOR
+juniper/eval/srx-dc-02.conf            ai-assistant           unreviewed  none
 
 Independently reviewed labels: 0 of 5.
 

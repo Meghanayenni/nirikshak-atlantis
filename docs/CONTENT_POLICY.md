@@ -106,8 +106,8 @@ file under `snippets/` must name a `vetted_by` and a `reference`, must carry no
 field shaped to hold vendor prose, and must load through
 `api/remediate/library.py` — which validates it against
 `snippets/schema/snippet.schema.json` and then against the contract. A
-`vetted_by` that looks automated is refused: the field exists to name the person
-accountable for the commands.
+`vetted_by` must be a name on the team's allowlist (`tests/architecture/team.py`):
+the field exists to name the person accountable for the commands.
 
 The library holds twenty snippets across three platforms, each naming its vetter
 and the vendor document it was checked against. See `snippets/README.md`.

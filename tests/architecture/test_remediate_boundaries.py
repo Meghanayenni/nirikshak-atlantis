@@ -27,6 +27,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.architecture.team import TEAM_VETTERS
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REMEDIATE = REPO_ROOT / "api" / "remediate"
 COMPLY = REPO_ROOT / "api" / "comply"
@@ -198,11 +200,8 @@ def test_every_shipped_snippet_is_attributable() -> None:
         who = snippet.vetted_by.strip()
         if not who:
             problems.append(f"{snippet.snippet_id}: no vetter")
-        if any(
-            token in who.lower()
-            for token in ("model", "llm", "gpt", "the assistant", "ai-generated", "automated", "tbd")
-        ):
-            problems.append(f"{snippet.snippet_id}: {who!r} is not a person")
+        elif who not in TEAM_VETTERS:
+            problems.append(f"{snippet.snippet_id}: {who!r} is not a named team vetter")
         if not (snippet.reference or "").strip():
             problems.append(f"{snippet.snippet_id}: cites no document")
         if snippet.impact.service_affecting and not snippet.rollback:

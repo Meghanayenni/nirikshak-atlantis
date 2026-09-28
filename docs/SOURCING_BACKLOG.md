@@ -359,8 +359,8 @@ command for, produces. It is the correct output, not a gap.
 
 **Why it cannot be closed by writing YAML.** `RemediationSnippet` requires
 `vetted_by` and `reference`, in the contract and in the JSON schema, and
-`tests/architecture/test_rule_content_policy.py` refuses a vetter whose name
-looks automated. A snippet therefore cannot exist without a **person** who read a
+`tests/architecture/test_rule_content_policy.py` accepts only a vetter named on
+the team's allowlist. A snippet therefore cannot exist without a **person** who read a
 **document** and checked the commands against it.
 
 **What would close it.** For one platform, one rule at a time: a vendor
@@ -380,8 +380,8 @@ command would probably be correct, attributed to nobody, checked against nothing
 — and pasted into a production device on NIRIKSHAK's authority. Nor may
 `vetted_by` name a model, a placeholder or the project generically: the field
 exists to name the person who is accountable for the commands, and
-`tests/architecture/test_rule_content_policy.py` still refuses a vetter whose
-name looks automated.
+`tests/architecture/test_rule_content_policy.py` accepts only a vetter named on
+the team's allowlist.
 
 Every command carrying a site-specific value — a syslog collector, a time
 source, banner wording — ships that value as a bracketed placeholder rather than

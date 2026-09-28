@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tests.architecture.team import TEAM_VETTERS
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RULES_ROOT = REPO_ROOT / "rules"
 SNIPPETS_ROOT = REPO_ROOT / "snippets"
@@ -129,11 +131,10 @@ def test_every_snippet_names_a_human_vetter() -> None:
         vetter = str(data.get("vetted_by", "")).strip()
         if not vetter:
             violations.append(f"{rel} has no vetted_by")
-        elif any(
-            token in vetter.lower()
-            for token in ("model", "llm", "gpt", "the assistant", "ai-generated", "automated", "tbd")
-        ):
-            violations.append(f"{rel} names {vetter!r} as its vetter — a human must vet a command")
+        elif vetter not in TEAM_VETTERS:
+            violations.append(
+                f"{rel} names {vetter!r} as its vetter — only a named team member vets a command"
+            )
 
     assert not violations, "Rule 4 — commands come from a vetted library:\n" + "\n".join(
         f"  {v}" for v in violations
