@@ -9,7 +9,7 @@ intention.
 **Source of the clause wording.** The official statement is held verbatim in
 `docs/PS26155_STATEMENT.md`, including the `â€”` encoding artefacts it arrived
 with. Every clause below is quoted from it. An earlier version of this document
-worked from the team's restatement in `docs/NIRIKSHAK_Concept_Report.pdf`; the
+worked from the team's restatement in the Concept Report; the
 section *What the official wording changed* at the end lists every place the
 official text moved an assessment.
 
@@ -400,5 +400,5 @@ Compared with the assessment made from the team's restatement:
 | Technical presentation (max 5 slides) | **To be produced by the team** | — |
 
 Supporting material: `docs/PS26155_STATEMENT.md` (the official statement),
-`docs/NIRIKSHAK_Technical_Report.pdf` (full technical report), `docs/adr/` (60
+`docs/adr/` (67
 decision records), `docs/SOURCING_BACKLOG.md` (every gap that code cannot close).

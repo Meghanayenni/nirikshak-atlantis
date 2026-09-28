@@ -40,3 +40,9 @@ The file was untracked at the time, so this was a filesystem rename; `git mv`
 did not apply.
 
 Documentation written from this point forward references the new name.
+
+**Note, appended 2026-09-28.** The Concept Report is no longer in the
+repository. It moved, with the project and technical reports, to a gitignored
+`internal/` directory that nothing committed depends on. The name this ADR
+standardised is kept there; `DEVELOPER_GUIDE.md` and the README now say the
+specification is held outside the repository rather than giving a path.

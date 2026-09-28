@@ -3,8 +3,8 @@
 Self-learning, vendor-agnostic network security compliance auditor.
 Smart India Hackathon 2026 · PS 26155 · NTRO · Team Atlantis.
 
-Specification: `docs/NIRIKSHAK_Concept_Report.pdf`. Read it before any major
-architectural decision.
+Specification: the NIRIKSHAK Concept Report, held outside this repository. Read
+it before any major architectural decision.
 
 ---
 
@@ -359,9 +359,9 @@ impressive but unverifiable ones.
 
 ## 15. Source of Truth
 
-`docs/NIRIKSHAK_Concept_Report.pdf` is the specification; this file defines
-implementation constraints. On conflict: identify it, explain it, do not silently
-choose — ask for a decision when it affects architecture.
+The NIRIKSHAK Concept Report, held outside this repository, is the specification;
+this file defines implementation constraints. On conflict: identify it, explain
+it, do not silently choose — ask for a decision when it affects architecture.
 
 The repository must remain consistent with the NIRIKSHAK architecture and SIH
 Problem Statement 26155.

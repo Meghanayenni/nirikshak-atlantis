@@ -12,8 +12,8 @@ here as plainly as the capability itself — because on this build the differenc
 between *"the check passed"* and *"the check could not be made"* is most of what
 NIRIKSHAK is for.
 
-The specification is `docs/NIRIKSHAK_Concept_Report.pdf`. The permanent
-implementation constraints are in `DEVELOPER_GUIDE.md`. The reasoning behind individual
+The specification is the NIRIKSHAK Concept Report, held outside this repository.
+The permanent implementation constraints are in `DEVELOPER_GUIDE.md`. The reasoning behind individual
 choices is in `docs/adr/`; this document is the map, not the argument.
 
 ---
@@ -532,8 +532,7 @@ would reappear inside a layer built to have neither.
 
 ## 10. Decision index
 
-One hundred and forty-eight numbered decisions across 60 ADRs. (D63 and D64 were never issued; the
-count is of decisions recorded, not of the highest number reached.)
+67 ADRs, recording decisions numbered up to D171.
 
 | ADR | Phase | Subject | Decisions |
 | --- | --- | --- | --- |

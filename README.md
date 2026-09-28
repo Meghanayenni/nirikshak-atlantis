@@ -52,8 +52,10 @@ on. And the accuracy of that pipeline is a measurement rather than a claim —
 | Report formats | HTML and PDF, both from the same persisted run |
 
 Each of those is the subject of a test, and each is bounded elsewhere on this
-page by what it does **not** mean. Juniper and Arista read structure and
-identity and no canonical field, so every compliance check on them abstains.
+page by what it does **not** mean. Juniper reads four canonical fields —
+telnet, banner, logging hosts and SSH version, each only in the syntax form a
+development file carries — and Arista three: telnet, idle timeout and banner.
+Every other check on those two platforms abstains.
 The framework mappings are `project_asserted`. The corpus is synthetic. Six
 access lists is not a detection rate.
 
@@ -742,5 +744,6 @@ separate from application logic throughout.
 
 ## Specification
 
-`docs/NIRIKSHAK_Concept_Report.pdf` is the product specification and the source
-of truth. `DEVELOPER_GUIDE.md` defines the permanent implementation constraints.
+The NIRIKSHAK Concept Report is the product specification and the source of
+truth; it is held outside this repository. `DEVELOPER_GUIDE.md` defines the
+permanent implementation constraints.

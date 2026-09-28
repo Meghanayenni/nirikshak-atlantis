@@ -55,3 +55,8 @@ Thumbs.db
 *CIS*benchmark*
 *cis*benchmark*
 *CIS_Cisco_IOS*
+
+# Team-reference documents held outside the published tree: the original
+# concept specification, the project and technical reports and their sources.
+# Nothing committed may depend on this directory.
+/internal/
